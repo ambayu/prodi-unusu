@@ -1,0 +1,3622 @@
+
+FAKULTAS ILMU KOMPUTER		
+7	Fakultas Ilmu Komputer	fasilkom.unusu.ac.id	103.116.168.49
+8	Teknik Informatika	tif.unusu.ac.id	103.116.168.49
+9	Ilmu Komputer	iko.unusu.ac.id	103.116.168.49
+10	Sistem Informasi	sin.unusu.ac.id	103.116.168.49
+C	FAKULTAS ILMU PENDIDIKAN		
+11	Fakultas Ilmu Pendidikan	fip.unusu.ac.id	103.116.168.49
+12	Pendidikan Guru Sekolah Dasar	pgsd.unusu.ac.id	103.116.168.49
+D	FAKULTAS EKONOMI		
+13	Fakultas Ekonomi	fe.unusu.ac.id	103.116.168.49
+14	Manajemen	manajemen.unusu.ac.id	103.116.168.49
+E	FAKULTAS PERTANIAN		
+15	Fakultas Pertanian	faperta.unusu.ac.id	103.116.168.49
+16	Agribisnis	agribisnis.unusu.ac.id	103.116.168.49
+17	Ilmu dan Teknologi Pangan	itp.unusu.ac.id	103.116.168.49
+18	Budidaya Pertanian	bdp.unusu.ac.id	103.116.168.49
+F	FAKULTAS ILMU KESEHATAN		
+19	Fakultas Ilmu Kesehatan	fikes.unusu.ac.id	103.116.168.49
+20	Ilmu Gizi	ilmugizi.unusu.ac.id	103.116.168.49
+21	D3 Analis Kesehatan	ankes.unusu.ac.id	103.116.168.49
+G	FAKULTAS AGAMA ISLAM		
+22	Fakultas Agama Islam	fai.unusu.ac.id	103.116.168.49
+23	Pendidikan Islam Anak Usia Dini	piaud.unusu.ac.id	103.116.168.49
+24	Pendidikan Agama Islam	pai.unusu.ac.id	103.116.168.49
+25	Hukum Keluarga Islam	hki.unusu.ac.id	103.116.168.49
+26	Studi Islam	studislam.unusu.ac.id	103.116.168.49
+…
+
+Oke, berarti sekarang kita sudah memiliki data domain dan struktur organisasi Universitas Nusa Utama (UNUSU) untuk dimasukkan ke dalam PRD.
+
+Dari data yang kamu berikan, ada 20 website/domain yang diarahkan ke satu VPS dengan IP 103.116.168.49, terdiri dari website fakultas dan program studi.
+
+Saya akan menjadikan data ini sebagai kebutuhan nyata proyek, bukan sekadar contoh.
+1. Struktur website UNUSU
+
+Universitas Nusa Utama
+20 domain
+
+Fakultas Ilmu Komputer
+jadi itu contohnya fasilkom tidak masuk kesitu  nanti dia masuk ke prodi.unusu.ac.id untuk login utamanya dan manajemen login tiap admin prodi untuk mengatur data administrasinya, saya mau admin bisa ganti widget tiap design landing pagenya agar tiaap aplikasi prodi beda beda designnya
+
+Nah, sekarang saya paham konsep sebenarnya. Berarti sistem yang kamu inginkan bukan sekadar CMS multi-domain biasa, melainkan Multi-Tenant Website Builder untuk Universitas Nusa Utama (UNUSU).
+
+Ada satu perbedaan penting dari rancangan sebelumnya:
+
+    Website fakultas tidak otomatis menjadi bagian dari website Prodi.
+
+    Setiap Prodi memiliki website publik dan desain landing page sendiri.
+
+    Semua administrasi website dikelola melalui satu portal pusat.
+
+    Admin masing-masing Prodi memiliki akun dan hak akses sendiri.
+
+    Admin dapat mengubah susunan widget, memilih komponen, dan mengatur desain landing page tanpa coding.
+
+1. Arsitektur sistem yang benar
+
+PORTAL ADMIN UNUSU
+prodi.unusu.ac.id
+
+Centralized Website Management
+
+Login dan manajemen hak akses
+
+Super Admin
+
+Mengelola seluruh website Prodi, akun, domain, template dan konfigurasi sistem.
+
+Admin Prodi
+
+Mengelola konten dan desain website Prodi masing-masing.
+
+Satu aplikasi, banyak website independen
+Website Prodi
+
+Teknik Informatika
+
+tif.unusu.ac.id
+
+Landing page desain A
+Website Prodi
+
+Sistem Informasi
+
+sin.unusu.ac.id
+
+Landing page desain B
+Website Prodi
+
+Manajemen
+
+manajemen.unusu.ac.id
+
+Landing page desain C
+Website Prodi
+
+Agribisnis
+
+agribisnis.unusu.ac.id
+
+Landing page desain D
+
+Seluruh domain Prodi mengarah ke VPS 103.116.168.49.
+
+Bagaimana dengan Fakultas Ilmu Komputer (FASILKOM)?
+
+FASILKOM tidak dimasukkan sebagai website Prodi dalam pengelolaan ini. Portal prodi.unusu.ac.id menjadi pintu masuk administrasi pusat. Website fakultas dan website Prodi merupakan entitas yang berbeda.
+2. Fitur utama: Website Builder berbasis Widget
+
+Ini bagian paling penting dari kebutuhanmu.
+
+Saya tidak menyarankan membuat CMS yang hanya bisa mengganti logo, warna, dan banner. Admin harus bisa menyusun landing page sendiri menggunakan widget yang disediakan sistem.
+
+Contoh tampilan editor:
+Webbie - Website Builder by Oktavira Revi for Hatypo Studio on Dribbble
+Elementor Features | The #1 Drag and Drop Website Builder
+No-Code Website Builder by Octet Design Studio on Dribbble
+Contoh widget yang tersedia
+
+Widget
+	
+
+Fungsi
+
+Hero Banner
+	
+
+Banner utama website
+
+About Prodi
+	
+
+Profil singkat
+
+Sambutan Kaprodi
+	
+
+Sambutan ketua Prodi
+
+Statistics
+	
+
+Jumlah mahasiswa, dosen, alumni
+
+Lecturer
+	
+
+Daftar dosen
+
+News
+	
+
+Berita terbaru
+
+Announcement
+	
+
+Pengumuman
+
+Study Program
+	
+
+Informasi akademik
+
+Facilities
+	
+
+Fasilitas
+
+Gallery
+	
+
+Galeri foto
+
+Achievement
+	
+
+Prestasi
+
+Testimonials
+	
+
+Testimoni alumni
+
+Partners
+	
+
+Mitra kerja sama
+
+CTA
+	
+
+Tombol ajakan
+
+FAQ
+	
+
+Pertanyaan umum
+
+Contact
+	
+
+Informasi kontak
+Cara kerja editor
+
+Misalnya Admin Teknik Informatika membuat landing page:
+
+Editor Landing Page
+Live Preview
+
+Widget tersedia
+
+Hero Banner
+
+About Prodi
+
+Statistics
+
+Lecturer
+
+News
+
+Gallery
+
+Facilities
+
+CTA
+
+Susunan landing page
+
+Drag & Drop
+
+01
+
+Hero Banner
+
+Judul, gambar, tombol
+
+02
+
+Statistics
+
+4 kartu statistik
+
+03
+
+About Prodi
+
+Profil singkat
+
+04
+
+Lecturer
+
+Daftar dosen
+
+05
+
+News
+
+Berita terbaru
+
+Ilustrasi konsep editor, bukan tampilan final aplikasi.
+
+Admin dapat:
+
+    Menambahkan widget.
+
+    Menghapus widget.
+
+    Mengubah urutan widget.
+
+    Mengatur isi setiap widget.
+
+    Mengubah background dan warna widget.
+
+    Mengatur ukuran dan layout.
+
+    Mengatur visibilitas widget.
+
+    Melihat preview sebelum dipublikasikan.
+
+Contoh hasil akhirnya:
+
+    Teknik Informatika menggunakan Hero + Statistics + Lecturer + News.
+
+    Sistem Informasi menggunakan Hero + About + Research + Gallery.
+
+    Manajemen menggunakan Hero + Statistics + Partners + News.
+
+Ketiganya tetap menggunakan satu aplikasi, tetapi tampilan landing page berbeda.
+3. Struktur pengelolaan admin
+
+Saya menyarankan pembagian seperti ini:
+
+Role
+	
+
+Hak akses
+
+Super Admin
+	
+
+Semua Prodi, domain, akun dan konfigurasi
+
+Admin Fakultas
+	
+
+Mengelola data fakultas jika modul fakultas diaktifkan
+
+Admin Prodi
+	
+
+Mengelola website dan administrasi Prodi sendiri
+
+Editor
+	
+
+Mengelola konten sesuai izin yang diberikan
+
+Portal utama:
+
+https://prodi.unusu.ac.id
+
+Admin Prodi tidak harus login melalui domain website publiknya. Semuanya masuk melalui portal pusat tersebut.
+4. Revisi rancangan database
+
+Selain tabel CMS sebelumnya, kita perlu menambahkan tabel khusus Website Builder.
+
+Tabel
+	
+
+Kegunaan
+
+faculties
+	
+
+Data fakultas
+
+study_programs
+	
+
+Data program studi
+
+domains
+	
+
+Domain setiap website
+
+users
+	
+
+Akun administrator
+
+roles
+	
+
+Hak akses
+
+widgets
+	
+
+Master widget yang tersedia
+
+website_pages
+	
+
+Halaman website
+
+page_sections
+	
+
+Susunan section halaman
+
+section_widgets
+	
+
+Widget yang digunakan pada section
+
+widget_settings
+	
+
+Konfigurasi setiap widget
+
+themes
+	
+
+Tema dan konfigurasi desain
+
+media
+	
+
+File dan gambar
+
+posts
+	
+
+Berita
+
+lecturers
+	
+
+Data dosen
+
+announcements
+	
+
+Pengumuman
+
+menus
+	
+
+Navigasi
+
+Penting: konfigurasi widget sebaiknya disimpan sebagai JSON agar setiap widget memiliki pengaturan berbeda tanpa harus membuat kolom database baru untuk setiap jenis widget.
+5. Arsitektur final yang saya rekomendasikan
+6. Tambahan penting untuk PRD
+
+Saya ingin menetapkan beberapa aturan agar sistem ini tidak menjadi website builder yang terlalu terbatas:
+
+    Widget harus reusable dan dapat digunakan pada banyak Prodi.
+
+    Setiap Prodi boleh menggunakan widget yang berbeda.
+
+    Widget memiliki konfigurasi masing-masing.
+
+    Sistem menyediakan beberapa pilihan variasi desain widget.
+
+    Admin dapat mengatur urutan widget dengan drag and drop.
+
+    Landing page memiliki preview desktop, tablet, dan mobile.
+
+    Ada fitur draft dan publish.
+
+    Perubahan desain tidak boleh memengaruhi website Prodi lainnya.
+
+    Super Admin dapat menambahkan widget baru ke seluruh platform.
+
+    Widget yang sedang digunakan tidak boleh rusak ketika ada pembaruan sistem.
+
+7. Tiga keputusan yang perlu kita tetapkan
+
+Sebelum saya memfinalisasi PRD versi 2.0, ada tiga hal yang menentukan arsitektur Website Builder.
+
+1. Model Website Builder
+Full Drag & Drop seperti Elementor. Admin bebas menyusun widget.
+Section Builder. Admin memilih section dan widget dari komponen yang tersedia.
+Kombinasi keduanya.
+
+2. Kebebasan desain setiap Prodi
+Setiap Prodi bebas membuat desain landing page sendiri.
+Admin memilih template yang sudah disediakan.
+Ada template awal, tetapi bisa dikustomisasi sepenuhnya.
+
+3. Bagaimana pengelolaan website Fakultas?
+Website fakultas tidak masuk sistem website builder ini. Fokus hanya website Prodi.
+Website fakultas juga dikelola melalui portal pusat, tetapi terpisah dari Prodi.
+Untuk sekarang fokus Prodi, modul Fakultas disiapkan untuk pengembangan berikutnya.
+
+Rekomendasi saya: kombinasi Section Builder dan Drag & Drop, desain independen setiap Prodi, serta modul Fakultas disiapkan untuk pengembangan berikutnya. Dengan begitu sistem tetap fleksibel, tetapi tidak membuat CMS terlalu rumit untuk dikelola.
+
+menu menu yg harus ada Beranda                     Profil                     Visi & Misi                     Kurikulum                     Dokumen                     Dosen                     Sarpras                     Berita                     Galeri                     Kontak  ,
+
+svg  Berita & Kegiatan                     
+Informasi terbaru dari prodi
+
+svg  Dosen                         
+Tenaga pendidik prodi Kurikulum per Semester
+
+Struktur mata kuliah Program Studi Sistem Informasi lengkap dengan bobot SKS dan Rencana Pembelajaran Semester (RPS).
+
+    8 semester
+    66 mata kuliah
+    148 SKS
+    svg  66 RPS tersedia
+
+                         svg  Pilih semester atau cari mata kuliah                                                      svg                             Cari mata kuliah                                                                           
+
+Semua66 MK · 148 SKS                                                                                                                                                                        Semester 110 MK · 21 SKS                                                                                                                                                                                Semester 211 MK · 21 SKS                                                                                                                                                                                Semester 311 MK · 20 SKS                                                                                                                                                                                Semester 410 MK · 20 SKS                                                                                                                                                                                Semester 58 MK · 20 SKS                                                                                                                                                                                Semester 68 MK · 21 SKS                                                                                                                                                                                Semester 77 MK · 19 SKS                                                                                                                                                                                Semester 81 MK · 6 SKS                                                                                                           
+
+SMT1                                 
+Semester 1
+
+10 mata kuliah
+
+21 SKS                                     svg  10 RPS                                 
+Kode MK	Nama Mata Kuliah	SKS	Keterangan	RPS
+ILK 110	Kalkulus	3	Wajib	
+ILK 120	Pengantar Teknologi Informasi	2	Wajib	
+ILK 123	Sistem Operasi	2	Wajib	
+ILK 127	Praktik Dasar Dasar Pemrograman	1	Wajib	&#x
+…
+
+Oke, ini kita masukkan sebagai kebutuhan wajib dalam PRD Multi-Tenant Website UNUSU. Berarti setiap website Prodi memiliki struktur menu standar, tetapi admin tetap bisa mengatur konten, tampilan, dan widget di dalamnya.
+
+Saya pisahkan menjadi dua bagian: struktur halaman publik dan modul administrasi yang harus dikelola CMS.
+1. Struktur menu website setiap Prodi
+
+Menu berikut menjadi struktur standar untuk semua website Prodi.
+
+No.
+	
+
+Menu
+	
+
+URL
+	
+
+Jenis halaman
+
+1
+	
+
+Beranda
+	
+
+/
+	
+
+Landing page
+
+2
+	
+
+Profil
+	
+
+/profil
+	
+
+Halaman informasi
+
+3
+	
+
+Visi & Misi
+	
+
+/visi-misi
+	
+
+Halaman informasi
+
+4
+	
+
+Kurikulum
+	
+
+/kurikulum
+	
+
+Halaman dinamis
+
+5
+	
+
+Dokumen
+	
+
+/dokumen
+	
+
+Repository dokumen
+
+6
+	
+
+Dosen
+	
+
+/dosen
+	
+
+Direktori dosen
+
+7
+	
+
+Sarpras
+	
+
+/sarana-prasarana
+	
+
+Halaman informasi
+
+8
+	
+
+Berita
+	
+
+/berita
+	
+
+Daftar berita
+
+9
+	
+
+Galeri
+	
+
+/galeri
+	
+
+Galeri foto/video
+
+10
+	
+
+Kontak
+	
+
+/kontak
+	
+
+Informasi kontak
+
+Admin Prodi dapat mengatur:
+
+    Nama dan urutan menu.
+
+    Mengaktifkan atau menonaktifkan menu.
+
+    Mengubah label menu.
+
+    Mengatur URL atau slug.
+
+    Mengatur submenu jika diperlukan.
+
+Menu standar tidak harus dihapus ketika dinonaktifkan; Super Admin dapat menetapkan menu wajib.
+2. Detail fitur masing-masing halaman
+T.C. Boğaziçi Üniversitesi
+
+1. Beranda
+
+    Hero banner
+
+    Profil singkat Prodi
+
+    Statistik mahasiswa, dosen, alumni
+
+    Berita & kegiatan
+
+    Sambutan Kaprodi
+
+    Informasi dosen
+
+    Keunggulan Prodi
+
+    CTA dan kontak
+    Widget Builder
+
+Faculty of Letters | Kumamoto University
+
+2. Profil
+
+    Sejarah Prodi
+
+    Deskripsi Prodi
+
+    Identitas Prodi
+
+    Tujuan dan sasaran
+
+    Struktur organisasi
+
+Vision Mission : The Assam Royal Global University
+
+3. Visi & Misi
+
+    Visi
+
+    Misi
+
+    Tujuan
+
+    Sasaran strategis
+
+Kelas Karyawan S1 Ilmu Gizi - Kelas Karyawan S1 S2 Universitas Esa Unggul
+
+4. Kurikulum
+
+    Kurikulum per semester
+
+    Kode mata kuliah
+
+    Nama mata kuliah
+
+    Bobot SKS
+
+    Keterangan wajib/pilihan/praktik
+
+    File RPS
+
+    Pencarian mata kuliah
+
+    Filter semester
+
+    Statistik total semester, mata kuliah, SKS dan RPS
+
+Kyoto University Library Network - Learn More about KURENAI
+
+5. Dokumen
+
+    Upload dokumen PDF
+
+    Kategori dokumen
+
+    Deskripsi dokumen
+
+    Tahun dokumen
+
+    Download dokumen
+
+    Pencarian dan filter
+
+Website Redesign Project
+
+6. Dosen
+
+    Foto dosen
+
+    Nama dan gelar
+
+    NIDN/NIDK
+
+    Jabatan akademik
+
+    Pendidikan terakhir
+
+    Bidang keahlian
+
+    Email dan profil
+
+University Homepage by Marina M on Dribbble
+
+7. Sarpras
+
+    Nama fasilitas
+
+    Foto fasilitas
+
+    Deskripsi
+
+    Lokasi
+
+    Ketersediaan fasilitas
+
+Blog - 10 university news pages to inspire your next website redesign
+
+8. Berita
+
+    Judul berita
+
+    Thumbnail
+
+    Isi berita
+
+    Kategori
+
+    Tanggal publikasi
+
+    Penulis
+
+    Berita terkait
+
+大学案内｜成安造形大学
+
+9. Galeri
+
+    Album foto
+
+    Galeri video
+
+    Kategori kegiatan
+
+    Deskripsi
+
+    Tanggal kegiatan
+
+Kulia - Modern University Website UI Template by Klit Vogli on Dribbble
+
+10. Kontak
+
+    Alamat Prodi
+
+    Email
+
+    Nomor telepon
+
+    WhatsApp
+
+    Google Maps
+
+    Media sosial
+
+    Formulir pesan
+
+3. Modul administrasi yang harus tersedia
+
+Setiap Admin Prodi memiliki dashboard sendiri dengan menu berikut:
+
+Menu admin
+	
+
+Fungsi
+
+Dashboard
+	
+
+Statistik dan ringkasan website
+
+Pengaturan Website
+	
+
+Nama, logo, identitas, favicon
+
+Menu Navigasi
+	
+
+Mengatur menu publik
+
+Page Builder
+	
+
+Mengatur widget dan layout
+
+Profil
+	
+
+Mengelola profil Prodi
+
+Visi & Misi
+	
+
+Mengelola visi dan misi
+
+Kurikulum
+	
+
+Mengelola semester, MK, RPS
+
+Dokumen
+	
+
+Mengelola repository dokumen
+
+Dosen
+	
+
+Mengelola data dosen
+
+Sarpras
+	
+
+Mengelola fasilitas
+
+Berita
+	
+
+Mengelola berita
+
+Galeri
+	
+
+Mengelola album
+
+Kontak
+	
+
+Mengatur informasi kontak
+
+Pengaturan Tema
+	
+
+Warna, font, header, footer
+
+Pengguna
+	
+
+Mengelola editor jika diizinkan
+4. Ketentuan penting untuk Page Builder
+
+Ada dua jenis halaman yang perlu dibedakan.
+
+A. Halaman yang bebas dikustomisasi
+
+Beranda merupakan halaman utama yang paling bebas diatur menggunakan widget. Halaman Profil dan halaman informasi lain juga dapat menggunakan section builder.
+
+B. Halaman yang memiliki struktur data khusus
+
+Kurikulum, Dosen, Berita, Dokumen, dan Galeri harus memiliki modul CRUD dan struktur data masing-masing.
+
+Contohnya, halaman Kurikulum bukan sekadar widget teks. Data mata kuliah harus disimpan secara terstruktur agar bisa difilter berdasarkan semester dan dicari berdasarkan nama mata kuliah.
+
+Admin tetap dapat mengatur tampilan modul tersebut melalui variasi widget, tetapi tidak boleh merusak fungsi datanya.
+5. Tambahan database
+
+Beberapa tabel khusus yang perlu ditambahkan:
+
+Tabel
+	
+
+Keterangan
+
+menus
+	
+
+Menu navigasi setiap Prodi
+
+pages
+	
+
+Halaman website
+
+page_sections
+	
+
+Section setiap halaman
+
+widgets
+	
+
+Master komponen
+
+section_widgets
+	
+
+Widget yang dipasang
+
+widget_settings
+	
+
+Konfigurasi widget
+
+curriculums
+	
+
+Data kurikulum
+
+curriculum_courses
+	
+
+Mata kuliah
+
+rps_documents
+	
+
+Dokumen RPS
+
+lecturers
+	
+
+Data dosen
+
+documents
+	
+
+Repository dokumen
+
+facilities
+	
+
+Sarana prasarana
+
+posts
+	
+
+Berita
+
+galleries
+	
+
+Album galeri
+
+gallery_items
+	
+
+Foto dan video
+
+contacts
+	
+
+Informasi kontak
+
+Semua tabel konten harus memiliki relasi study_program_id sehingga data antar-Prodi terisolasi.
+6. Ketentuan yang akan dimasukkan ke PRD
+Standar website Prodi
+
+    Seluruh website Prodi menggunakan 10 menu standar di atas.
+
+    Setiap Prodi memiliki data dan konten independen.
+
+    Setiap Prodi memiliki desain dan tema independen.
+
+    Beranda dapat dikustomisasi menggunakan Page Builder.
+
+    Halaman lain dapat dikustomisasi tanpa menghilangkan fungsi utama modulnya.
+
+    Widget dapat memiliki beberapa variasi desain.
+
+    Semua halaman mendukung responsive desktop, tablet, dan mobile.
+
+    Admin dapat menyimpan draft sebelum publikasi.
+
+    Sistem mendukung preview sebelum perubahan diterapkan.
+
+    Super Admin dapat mengelola seluruh website melalui prodi.unusu.ac.id.
+
+Satu hal yang perlu diperhatikan: data kurikulum yang kamu berikan menjadi contoh kebutuhan nyata modul akademik. Jadi sistem harus mendukung 8 semester, mata kuliah, SKS, kategori mata kuliah, dan file RPS per mata kuliah, bukan hanya tabel biasa.
+
+Dengan tambahan ini, spesifikasi PRD sudah jauh lebih konkret dan bisa dijadikan dasar pembagian pekerjaan backend, frontend, database, dan UI/UX.
+buatkan prd lengkapnya sistemnya pakai react prisma vite monolitif fullstack
+Worked for 11s
+
+Berikut saya susun PRD lengkap Sistem Manajemen Website Multi-Prodi Universitas Nusa Utama (UNUSU) berdasarkan seluruh pembahasan kita.
+
+Saya tetapkan arsitekturnya sebagai Monolithic Fullstack Application: satu aplikasi, satu codebase, satu backend, satu database, dan banyak domain website Prodi.
+
+Stack yang digunakan:
+
+    Frontend: React + TypeScript + Vite.
+
+    Backend: Node.js + Express + TypeScript.
+
+    ORM: Prisma.
+
+    Database: MySQL.
+
+    UI: Tailwind CSS + shadcn/ui.
+
+    Authentication: Session/JWT berbasis role dan hak akses.
+
+    Deployment: Ubuntu VPS + Nginx + PM2.
+
+    Architecture: Modular Monolith, bukan microservices.
+
+Saya juga memasukkan kebutuhan paling penting: setiap Prodi dapat memiliki desain website yang benar-benar berbeda melalui Widget Builder, tanpa harus membuat aplikasi terpisah.
+PRODUCT REQUIREMENTS DOCUMENT (PRD)
+SISTEM MANAJEMEN WEBSITE MULTI-PRODI UNIVERSITAS NUSA UTAMA (UNUSU)
+
+Versi: 1.0
+Status: Draft – Perencanaan Pengembangan
+Jenis Aplikasi: Multi-Tenant Website Management System
+Arsitektur: Modular Monolith Fullstack
+Platform: Web Application
+Deployment: Single VPS – Multiple Domains
+1. OVERVIEW
+1.1 Latar Belakang
+
+Universitas Nusa Utama (UNUSU) memiliki beberapa fakultas dan program studi yang membutuhkan website resmi masing-masing dengan domain berbeda.
+
+Pengelolaan website secara terpisah menyebabkan beberapa permasalahan:
+
+    Setiap website membutuhkan instalasi aplikasi sendiri.
+
+    Pembaruan fitur harus dilakukan berulang kali.
+
+    Pengelolaan konten tidak terpusat.
+
+    Pengelolaan akun administrator sulit dikontrol.
+
+    Desain website setiap Prodi sulit diseragamkan maupun dikembangkan secara independen.
+
+    Pemeliharaan server dan database menjadi lebih kompleks.
+
+Untuk mengatasi permasalahan tersebut, diperlukan sebuah aplikasi terpusat yang mampu mengelola banyak website Prodi menggunakan satu aplikasi fullstack.
+
+Sistem menyediakan portal administrasi pusat melalui:
+
+https://prodi.unusu.ac.id
+
+Sementara itu, masing-masing website publik tetap menggunakan domain sendiri, misalnya:
+
+    https://tif.unusu.ac.id
+
+    https://sin.unusu.ac.id
+
+    https://iko.unusu.ac.id
+
+    https://manajemen.unusu.ac.id
+
+    https://agribisnis.unusu.ac.id
+
+Seluruh website menggunakan backend dan database yang sama, tetapi mempunyai konten, pengguna, konfigurasi, dan desain yang independen.
+1.2 Tujuan Sistem
+
+    Membangun satu aplikasi untuk mengelola seluruh website Program Studi UNUSU.
+
+    Memusatkan autentikasi dan administrasi melalui satu portal.
+
+    Memberikan akses terpisah kepada administrator masing-masing Prodi.
+
+    Menyediakan Website Builder berbasis widget.
+
+    Memungkinkan setiap Prodi membuat desain landing page yang berbeda.
+
+    Menyediakan CMS untuk mengelola informasi akademik dan administrasi Prodi.
+
+    Mempermudah penambahan Prodi dan domain baru tanpa membuat aplikasi baru.
+
+    Mengurangi biaya infrastruktur dan pemeliharaan.
+
+1.3 Konsep Utama
+
+Sistem menggunakan konsep:
+
+One Application – Multiple Websites – Independent Management.
+
+Artinya:
+
+    Satu aplikasi React.
+
+    Satu backend Node.js.
+
+    Satu database MySQL.
+
+    Satu sistem autentikasi.
+
+    Banyak domain.
+
+    Banyak tenant.
+
+    Setiap tenant memiliki data dan desain independen.
+
+Tidak ada kebutuhan untuk melakukan instalasi aplikasi baru ketika menambahkan website Prodi.
+1.4 Target Pengguna
+
+    Administrator Universitas.
+
+    Administrator Fakultas (jika modul Fakultas diaktifkan).
+
+    Administrator Program Studi.
+
+    Editor konten.
+
+    Pengunjung website.
+
+    Calon mahasiswa.
+
+    Mahasiswa.
+
+    Dosen dan tenaga kependidikan.
+
+2. TECHNOLOGY STACK
+2.1 Frontend
+Teknologi	Kegunaan
+React	Library UI
+TypeScript	Type safety
+Vite	Build tool dan development server
+Tailwind CSS	Styling
+shadcn/ui	Komponen antarmuka
+React Router	Routing
+TanStack Query	Server state management
+React Hook Form	Form management
+Zod	Validasi data
+Zustand	Client state management
+Lucide Icons	Ikon
+2.2 Backend
+Teknologi	Kegunaan
+Node.js	Runtime
+Express.js	Backend framework
+TypeScript	Type safety
+Prisma ORM	Database access
+MySQL	Database
+Zod	Request validation
+Multer	Upload file
+bcrypt/Argon2	Password hashing
+Session/JWT	Authentication
+Helmet	Security headers
+2.3 Infrastruktur
+Teknologi	Kegunaan
+Ubuntu Server	Operating system
+Nginx	Reverse proxy dan domain routing
+PM2	Process management
+Let's Encrypt	SSL
+Git	Version control
+2.4 Arsitektur Aplikasi
+
+Menggunakan Modular Monolith.
+
+Frontend React dan backend Express berada dalam satu repository dan satu proyek aplikasi. Backend menyediakan API dan menyajikan hasil build frontend.
+
+Seluruh modul berjalan dalam satu aplikasi Node.js.
+
+Struktur yang direkomendasikan:
+
+unusu-multi-website/
+│
+├── src/
+│   ├── client/
+│   │   ├── app/
+│   │   ├── components/
+│   │   ├── layouts/
+│   │   ├── pages/
+│   │   │   ├── admin/
+│   │   │   ├── builder/
+│   │   │   └── public/
+│   │   ├── features/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   └── styles/
+│   │
+│   ├── server/
+│   │   ├── modules/
+│   │   │   ├── auth/
+│   │   │   ├── tenants/
+│   │   │   ├── domains/
+│   │   │   ├── users/
+│   │   │   ├── pages/
+│   │   │   ├── menus/
+│   │   │   ├── builder/
+│   │   │   ├── widgets/
+│   │   │   ├── lecturers/
+│   │   │   ├── curriculum/
+│   │   │   ├── documents/
+│   │   │   ├── facilities/
+│   │   │   ├── posts/
+│   │   │   ├── galleries/
+│   │   │   ├── contacts/
+│   │   │   └── settings/
+│   │   ├── middlewares/
+│   │   ├── services/
+│   │   ├── config/
+│   │   └── app.ts
+│   │
+│   └── shared/
+│       ├── types/
+│       ├── schemas/
+│       └── constants/
+│
+├── prisma/
+│   ├── schema.prisma
+│   ├── migrations/
+│   └── seed.ts
+│
+├── public/
+├── uploads/
+├── docs/
+│   ├── README.md
+│   ├── PRD.md
+│   ├── ARCHITECTURE.md
+│   ├── DATABASE.md
+│   ├── DESIGN-RULES.md
+│   ├── CHANGELOG.md
+│   └── DEVELOPMENT-RULES.md
+│
+├── tests/
+├── .env.example
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+
+Catatan arsitektur: Struktur tersebut merupakan satu proyek, bukan frontend dan backend yang harus di-deploy sebagai dua aplikasi berbeda. Vite digunakan untuk membangun frontend, sedangkan Express menangani API, autentikasi, domain resolution, dan penyajian frontend hasil build.
+3. DOMAIN DAN MULTI-TENANT MANAGEMENT
+3.1 Portal Administrasi Utama
+
+Domain:
+
+prodi.unusu.ac.id
+
+Fungsi:
+
+    Login administrator.
+
+    Dashboard Super Admin.
+
+    Manajemen fakultas dan Prodi.
+
+    Manajemen domain.
+
+    Manajemen pengguna.
+
+    Manajemen hak akses.
+
+    Manajemen widget.
+
+    Manajemen template.
+
+    Monitoring website.
+
+    Konfigurasi sistem.
+
+Portal ini merupakan pintu masuk administrasi seluruh website.
+3.2 Inventaris Domain
+
+Semua domain yang diberikan menggunakan IP:
+
+103.116.168.49
+Fakultas Ilmu Komputer
+Entitas	Domain
+Fakultas Ilmu Komputer	fasilkom.unusu.ac.id
+Teknik Informatika	tif.unusu.ac.id
+Ilmu Komputer	iko.unusu.ac.id
+Sistem Informasi	sin.unusu.ac.id
+Fakultas Ilmu Pendidikan
+Entitas	Domain
+Fakultas Ilmu Pendidikan	fip.unusu.ac.id
+Pendidikan Guru Sekolah Dasar	pgsd.unusu.ac.id
+Fakultas Ekonomi
+Entitas	Domain
+Fakultas Ekonomi	fe.unusu.ac.id
+Manajemen	manajemen.unusu.ac.id
+Fakultas Pertanian
+Entitas	Domain
+Fakultas Pertanian	faperta.unusu.ac.id
+Agribisnis	agribisnis.unusu.ac.id
+Ilmu dan Teknologi Pangan	itp.unusu.ac.id
+Budidaya Pertanian	bdp.unusu.ac.id
+Fakultas Ilmu Kesehatan
+Entitas	Domain
+Fakultas Ilmu Kesehatan	fikes.unusu.ac.id
+Ilmu Gizi	ilmugizi.unusu.ac.id
+D3 Analis Kesehatan	ankes.unusu.ac.id
+Fakultas Agama Islam
+Entitas	Domain
+Fakultas Agama Islam	fai.unusu.ac.id
+Pendidikan Islam Anak Usia Dini	piaud.unusu.ac.id
+Pendidikan Agama Islam	pai.unusu.ac.id
+Hukum Keluarga Islam	hki.unusu.ac.id
+Studi Islam	studislam.unusu.ac.id
+
+Total inventaris: 20 domain, terdiri dari 6 domain Fakultas dan 14 domain Program Studi.
+
+Website Fakultas dan website Program Studi merupakan entitas berbeda. Portal administrasi pusat tetap berada pada prodi.unusu.ac.id. Aktivasi website Fakultas sebagai tenant dapat dilakukan sesuai keputusan pengelolaan universitas; fokus implementasi awal adalah website Program Studi.
+3.3 Domain Resolution
+
+Sistem harus dapat mengenali tenant berdasarkan hostname yang mengakses aplikasi.
+
+Contoh:
+
+User membuka:
+https://sin.unusu.ac.id
+
+        ↓
+
+Nginx meneruskan request
+        ↓
+
+Express membaca hostname
+        ↓
+
+Domain Resolver mencari domain
+        ↓
+
+Database menemukan tenant Sistem Informasi
+        ↓
+
+Mengambil konfigurasi website
+        ↓
+
+React merender website Sistem Informasi
+
+Domain Resolver wajib:
+
+    Mengenali hostname.
+
+    Memeriksa domain aktif.
+
+    Menentukan tenant.
+
+    Mengambil tema tenant.
+
+    Mengambil konfigurasi navigasi.
+
+    Mengambil halaman yang sesuai.
+
+    Mengambil konten tenant.
+
+    Menolak domain yang tidak terdaftar atau nonaktif.
+
+Dilarang menentukan tenant berdasarkan slug yang dikirim dari frontend tanpa verifikasi hostname di backend.
+4. USER ROLES AND ACCESS CONTROL
+4.1 Super Admin
+
+Memiliki akses penuh ke seluruh aplikasi.
+
+Hak akses:
+
+    Melihat seluruh tenant.
+
+    Menambahkan Fakultas.
+
+    Menambahkan Program Studi.
+
+    Mengelola domain.
+
+    Mengelola administrator.
+
+    Mengatur role dan permission.
+
+    Mengelola master widget.
+
+    Membuat template website.
+
+    Mengaktifkan dan menonaktifkan widget.
+
+    Melihat seluruh konten Prodi.
+
+    Monitoring aktivitas sistem.
+
+    Mengelola konfigurasi global.
+
+4.2 Admin Fakultas
+
+Role opsional apabila pengelolaan website Fakultas diaktifkan.
+
+Hak akses dibatasi pada Fakultas yang menjadi tanggung jawabnya dan entitas Prodi yang diberikan izin.
+4.3 Admin Prodi
+
+Setiap Prodi mempunyai administrator sendiri.
+
+Contoh:
+
+Admin Sistem Informasi hanya dapat mengelola:
+
+    Website sin.unusu.ac.id.
+
+    Profil Sistem Informasi.
+
+    Kurikulum Sistem Informasi.
+
+    Dosen Sistem Informasi.
+
+    Berita Sistem Informasi.
+
+    Dokumen Sistem Informasi.
+
+    Desain website Sistem Informasi.
+
+Admin Sistem Informasi tidak dapat mengubah konten Teknik Informatika atau Prodi lainnya.
+4.4 Editor
+
+Hak akses diberikan oleh Admin Prodi.
+
+Contoh:
+
+    Editor berita hanya mengelola berita.
+
+    Editor dokumen hanya mengelola dokumen.
+
+    Editor kurikulum hanya mengelola kurikulum.
+
+4.5 Permission System
+
+Menggunakan Role-Based Access Control (RBAC).
+
+Permission menggunakan format:
+
+dashboard.view
+
+website.view
+website.update
+
+pages.view
+pages.create
+pages.update
+pages.delete
+pages.publish
+
+builder.view
+builder.create
+builder.update
+builder.publish
+
+curriculum.view
+curriculum.create
+curriculum.update
+curriculum.delete
+
+lecturers.view
+lecturers.create
+lecturers.update
+lecturers.delete
+
+posts.view
+posts.create
+posts.update
+posts.delete
+posts.publish
+
+Seluruh permission diperiksa di backend.
+
+Setiap data tenant harus mempunyai relasi tenant yang jelas. Backend tidak boleh hanya mengandalkan filter di frontend.
+5. PUBLIC WEBSITE STRUCTURE
+
+Seluruh website Program Studi menggunakan struktur menu standar berikut.
+
+Admin dapat mengatur label, urutan, status aktif, dan submenu. Super Admin dapat menentukan menu wajib.
+No.	Menu	URL	Jenis
+1	Beranda	/	Landing Page
+2	Profil	/profil	Informasi
+3	Visi & Misi	/visi-misi	Informasi
+4	Kurikulum	/kurikulum	Data Akademik
+5	Dokumen	/dokumen	Repository
+6	Dosen	/dosen	Direktori
+7	Sarpras	/sarana-prasarana	Informasi
+8	Berita	/berita	Publikasi
+9	Galeri	/galeri	Multimedia
+10	Kontak	/kontak	Informasi
+
+Setiap Prodi memiliki navigasi independen.
+6. CORE FEATURES
+6.1 Central Admin Dashboard
+
+Dashboard utama untuk Super Admin.
+
+Fitur:
+
+    Total Fakultas.
+
+    Total Program Studi.
+
+    Total website aktif.
+
+    Total website nonaktif.
+
+    Total administrator.
+
+    Total berita.
+
+    Total dokumen.
+
+    Aktivitas terbaru.
+
+    Daftar domain.
+
+    Status publikasi website.
+
+    Monitoring aktivitas admin.
+
+Dashboard Admin Prodi menampilkan data milik Prodi masing-masing.
+6.2 Tenant Management
+
+Fitur pengelolaan tenant:
+
+    Tambah tenant.
+
+    Edit tenant.
+
+    Hapus tenant dengan proteksi relasi data.
+
+    Aktifkan/nonaktifkan tenant.
+
+    Hubungkan tenant ke Fakultas.
+
+    Atur identitas Prodi.
+
+    Atur domain.
+
+    Atur logo.
+
+    Atur deskripsi.
+
+    Atur informasi akademik.
+
+Data tenant minimal:
+
+id
+faculty_id
+name
+slug
+code
+description
+logo
+status
+created_at
+updated_at
+
+6.3 Domain Management
+
+Fitur:
+
+    Tambah domain.
+
+    Edit domain.
+
+    Hapus domain.
+
+    Hubungkan domain ke tenant.
+
+    Status aktif/nonaktif.
+
+    Set primary domain.
+
+    Validasi domain unik.
+
+    Pengaturan SSL dan HTTPS.
+
+    Monitoring domain.
+
+Satu tenant dapat memiliki lebih dari satu domain jika diperlukan.
+6.4 Website Identity Management
+
+Setiap tenant mempunyai konfigurasi sendiri:
+
+    Nama website.
+
+    Nama universitas.
+
+    Nama Fakultas.
+
+    Nama Program Studi.
+
+    Logo.
+
+    Favicon.
+
+    Alamat.
+
+    Email.
+
+    Nomor telepon.
+
+    Media sosial.
+
+    Copyright.
+
+    SEO title.
+
+    SEO description.
+
+    SEO image.
+
+7. WEBSITE BUILDER – FITUR UTAMA
+
+Website Builder merupakan fitur inti sistem.
+
+Tujuannya memungkinkan setiap Admin Prodi membangun landing page dengan desain yang berbeda tanpa menulis kode.
+7.1 Konsep Builder
+
+Sistem menggunakan pendekatan:
+
+Section-Based Drag & Drop Widget Builder.
+
+Admin dapat:
+
+    Menambahkan section.
+
+    Menambahkan widget.
+
+    Menghapus widget.
+
+    Mengubah urutan widget.
+
+    Mengatur layout.
+
+    Mengubah konfigurasi widget.
+
+    Mengatur background.
+
+    Mengatur warna.
+
+    Mengatur typography.
+
+    Mengatur spacing.
+
+    Melihat preview.
+
+    Menyimpan draft.
+
+    Mempublikasikan halaman.
+
+7.2 Master Widget Library
+
+Widget tersedia dari sistem pusat.
+
+Kategori widget:
+A. Hero & Header
+
+    Hero Banner.
+
+    Hero Split Layout.
+
+    Hero Slider.
+
+    Page Header.
+
+    Breadcrumb.
+
+    Announcement Bar.
+
+B. Profile & Information
+
+    About Prodi.
+
+    Sambutan Kaprodi.
+
+    Visi & Misi.
+
+    Keunggulan Prodi.
+
+    Profile Card.
+
+    Text Content.
+
+C. Statistics
+
+    Student Statistics.
+
+    Lecturer Statistics.
+
+    Alumni Statistics.
+
+    Achievement Statistics.
+
+    Counter.
+
+D. Academic
+
+    Curriculum Overview.
+
+    Curriculum Semester.
+
+    Lecturer List.
+
+    Lecturer Carousel.
+
+    Research Information.
+
+    Academic Information.
+
+E. Publication
+
+    Latest News.
+
+    News Grid.
+
+    News Carousel.
+
+    Announcement.
+
+    Document List.
+
+    Gallery Grid.
+
+F. Facilities
+
+    Facility Grid.
+
+    Facility Carousel.
+
+    Laboratory.
+
+    Campus Information.
+
+G. Supporting
+
+    Testimonials.
+
+    Partners.
+
+    FAQ.
+
+    CTA.
+
+    Contact Information.
+
+    Google Maps.
+
+    Social Media.
+
+    Footer.
+
+7.3 Widget Configuration
+
+Setiap widget mempunyai konfigurasi berbeda.
+
+Contoh konfigurasi Hero:
+
+{
+  "title": "Program Studi Sistem Informasi",
+  "subtitle": "Mencetak lulusan unggul...",
+  "background": {
+    "type": "image",
+    "value": "/uploads/hero.jpg",
+    "overlay": true
+  },
+  "layout": "split",
+  "alignment": "left",
+  "buttons": [
+    {
+      "label": "Profil Prodi",
+      "url": "/profil",
+      "variant": "primary"
+    }
+  ]
+}
+
+Contoh konfigurasi Statistics:
+
+{
+  "layout": "four-columns",
+  "items": [
+    {
+      "label": "Mahasiswa",
+      "value": 250,
+      "icon": "users"
+    },
+    {
+      "label": "Dosen",
+      "value": 15,
+      "icon": "graduation-cap"
+    },
+    {
+      "label": "Mata Kuliah",
+      "value": 66,
+      "icon": "book-open"
+    },
+    {
+      "label": "SKS",
+      "value": 148,
+      "icon": "award"
+    }
+  ]
+}
+
+7.4 Widget Variants
+
+Setiap widget dapat mempunyai beberapa variasi tampilan.
+
+Contoh:
+
+Hero Banner
+├── Classic
+├── Split Image
+├── Full Background
+├── Modern Minimal
+└── Slider
+
+News
+├── Grid
+├── List
+├── Featured
+└── Carousel
+
+Lecturer
+├── Grid Card
+├── Horizontal Card
+├── Compact List
+└── Carousel
+
+Variasi tersebut harus dikembangkan sebagai komponen React yang reusable.
+7.5 Drag & Drop
+
+Builder wajib mendukung:
+
+    Drag widget dari library.
+
+    Drop widget ke halaman.
+
+    Reorder widget.
+
+    Reorder section.
+
+    Duplikasi widget.
+
+    Duplikasi section.
+
+    Delete.
+
+    Undo/Redo (dapat menggunakan riwayat perubahan).
+
+    Pengaturan responsive.
+
+7.6 Responsive Preview
+
+Builder mempunyai mode preview:
+
+    Desktop.
+
+    Tablet.
+
+    Mobile.
+
+Preview harus menggunakan komponen renderer yang sama dengan website publik agar hasilnya konsisten.
+7.7 Draft dan Publish
+
+Setiap perubahan desain disimpan sebagai draft.
+
+Alur:
+
+Admin mengedit halaman
+        ↓
+Simpan Draft
+        ↓
+Preview
+        ↓
+Validasi
+        ↓
+Publish
+        ↓
+Website publik diperbarui
+
+Sistem harus mendukung penyimpanan versi publik dan draft secara terpisah.
+
+Perubahan pada satu tenant tidak boleh memengaruhi tenant lainnya.
+7.8 Page Builder untuk Halaman Lain
+
+Builder tidak hanya digunakan pada halaman Beranda.
+
+Halaman Profil, Visi & Misi, dan Sarpras juga dapat menggunakan section builder.
+
+Untuk halaman dengan data terstruktur seperti Kurikulum, Dosen, Berita, Dokumen, dan Galeri, builder hanya boleh mengatur layout dan tampilan komponen.
+
+Builder tidak boleh menghilangkan fungsi CRUD, pencarian, filter, atau relasi data modul.
+8. CMS DAN ADMINISTRASI WEBSITE
+8.1 Beranda
+
+Konten:
+
+    Hero banner.
+
+    Profil singkat.
+
+    Sambutan Kaprodi.
+
+    Statistik.
+
+    Berita terbaru.
+
+    Informasi dosen.
+
+    Keunggulan Prodi.
+
+    Galeri.
+
+    CTA.
+
+    Footer.
+
+Seluruh susunan dapat dikustomisasi melalui Builder.
+8.2 Profil
+
+Fitur:
+
+    Sejarah Prodi.
+
+    Deskripsi.
+
+    Identitas Prodi.
+
+    Tujuan.
+
+    Sasaran.
+
+    Struktur organisasi.
+
+    Foto pendukung.
+
+8.3 Visi & Misi
+
+Fitur:
+
+    Visi.
+
+    Misi.
+
+    Tujuan.
+
+    Sasaran strategis.
+
+    Edit konten.
+
+    Pengaturan tampilan.
+
+8.4 Kurikulum
+
+Modul Kurikulum merupakan modul akademik penting.
+
+Fitur:
+
+    Tambah kurikulum.
+
+    Edit kurikulum.
+
+    Hapus kurikulum.
+
+    Menentukan tahun kurikulum.
+
+    Mengatur semester.
+
+    Mengelola mata kuliah.
+
+    Upload RPS.
+
+    Download RPS.
+
+    Pencarian mata kuliah.
+
+    Filter semester.
+
+    Statistik akademik.
+
+Struktur Kurikulum
+
+Setiap kurikulum memiliki beberapa semester.
+
+Setiap semester memiliki mata kuliah.
+
+Data mata kuliah:
+Field	Keterangan
+Kode MK	Kode mata kuliah
+Nama MK	Nama mata kuliah
+SKS	Bobot SKS
+Semester	Semester mata kuliah
+Keterangan	Wajib, pilihan, praktik
+RPS	File RPS
+Deskripsi	Deskripsi mata kuliah
+Contoh Data Sistem Informasi
+
+Data referensi dari contoh yang diberikan:
+
+    8 semester.
+
+    66 mata kuliah.
+
+    148 SKS.
+
+    66 RPS tersedia.
+
+Distribusi:
+Semester	Mata Kuliah	SKS
+1	10	21
+2	11	21
+3	11	20
+4	10	20
+5	8	20
+6	8	21
+7	7	19
+8	1	6
+Total	66	148
+
+Angka di atas merupakan data referensi, bukan angka yang di-hardcode ke aplikasi.
+
+Statistik harus dihitung berdasarkan database.
+Halaman Publik Kurikulum
+
+Menampilkan:
+
+    Judul Kurikulum.
+
+    Deskripsi.
+
+    Total semester.
+
+    Total mata kuliah.
+
+    Total SKS.
+
+    Total RPS.
+
+    Search mata kuliah.
+
+    Filter semester.
+
+    Tabel mata kuliah.
+
+    Tombol Lihat RPS.
+
+Format tabel:
+Kode MK	Nama MK	SKS	Keterangan	RPS
+ILK 110	Kalkulus	3	Wajib	Lihat RPS
+ILK 120	Pengantar Teknologi Informasi	2	Wajib	Lihat RPS
+
+URL RPS:
+
+/kurikulum/:courseId/rps
+8.5 Dokumen
+
+Fitur:
+
+    Upload PDF.
+
+    Kategori dokumen.
+
+    Nama dokumen.
+
+    Deskripsi.
+
+    Tahun.
+
+    Tanggal upload.
+
+    Preview dokumen.
+
+    Download.
+
+    Search.
+
+    Filter kategori.
+
+8.6 Dosen
+
+Fitur:
+
+    Tambah dosen.
+
+    Edit dosen.
+
+    Hapus dosen.
+
+    Upload foto.
+
+    Nama dan gelar.
+
+    NIDN/NIDK.
+
+    Jabatan akademik.
+
+    Pendidikan.
+
+    Bidang keahlian.
+
+    Email.
+
+    Profil.
+
+8.7 Sarana dan Prasarana
+
+Fitur:
+
+    Tambah fasilitas.
+
+    Edit fasilitas.
+
+    Upload gambar.
+
+    Nama fasilitas.
+
+    Deskripsi.
+
+    Lokasi.
+
+    Kategori.
+
+    Status.
+
+8.8 Berita
+
+Fitur:
+
+    Buat berita.
+
+    Edit berita.
+
+    Hapus berita.
+
+    Draft.
+
+    Publish.
+
+    Jadwal publikasi.
+
+    Kategori.
+
+    Thumbnail.
+
+    Rich text editor.
+
+    SEO.
+
+    Berita terkait.
+
+8.9 Galeri
+
+Fitur:
+
+    Buat album.
+
+    Upload banyak foto.
+
+    Upload video atau embed video.
+
+    Kategori.
+
+    Deskripsi.
+
+    Tanggal kegiatan.
+
+    Cover album.
+
+    Pengaturan publikasi.
+
+8.10 Kontak
+
+Fitur:
+
+    Alamat.
+
+    Email.
+
+    Telepon.
+
+    WhatsApp.
+
+    Google Maps.
+
+    Media sosial.
+
+    Formulir pesan.
+
+9. THEME MANAGEMENT
+
+Setiap Prodi dapat mempunyai identitas visual berbeda.
+
+Pengaturan tema:
+
+    Primary color.
+
+    Secondary color.
+
+    Accent color.
+
+    Background.
+
+    Typography.
+
+    Font heading.
+
+    Font body.
+
+    Border radius.
+
+    Shadow.
+
+    Button style.
+
+    Header layout.
+
+    Footer layout.
+
+    Container width.
+
+Contoh:
+
+{
+  "colors": {
+    "primary": "#14532D",
+    "secondary": "#64748B",
+    "accent": "#EAB308",
+    "background": "#FFFFFF",
+    "foreground": "#172033"
+  },
+  "typography": {
+    "heading": "Plus Jakarta Sans",
+    "body": "Inter"
+  },
+  "layout": {
+    "container": "1280px",
+    "header": "modern",
+    "footer": "multi-column"
+  }
+}
+
+Tema harus disimpan per tenant.
+
+Mengubah tema Sistem Informasi tidak boleh mengubah tema Teknik Informatika.
+10. DATABASE DESIGN
+
+Database menggunakan MySQL dan Prisma ORM.
+
+Pendekatan database: Shared Database – Shared Schema – Tenant Scoped Data.
+10.1 Core Tables
+Tabel	Fungsi
+faculties	Data fakultas
+study_programs	Data Prodi
+domains	Domain website
+users	Akun pengguna
+roles	Role
+permissions	Permission
+user_roles	Relasi user dan role
+role_permissions	Relasi role dan permission
+10.2 Website Management
+Tabel	Fungsi
+website_settings	Identitas website
+themes	Tema website
+menus	Navigasi
+pages	Halaman
+page_versions	Riwayat versi halaman
+page_sections	Section halaman
+widgets	Master widget
+section_widgets	Widget yang digunakan
+widget_variants	Variasi widget
+media	File media
+10.3 CMS Tables
+Tabel	Fungsi
+profiles	Profil Prodi
+visions_missions	Visi dan misi
+curriculums	Kurikulum
+curriculum_semesters	Semester
+curriculum_courses	Mata kuliah
+rps_documents	File RPS
+lecturers	Dosen
+documents	Repository dokumen
+facilities	Sarana prasarana
+posts	Berita
+post_categories	Kategori berita
+galleries	Album galeri
+gallery_items	Foto dan video
+contacts	Informasi kontak
+10.4 System Tables
+Tabel	Fungsi
+audit_logs	Riwayat aktivitas
+sessions	Session pengguna
+notifications	Notifikasi
+contact_messages	Pesan pengunjung
+system_settings	Pengaturan global
+10.5 Relasi Data
+
+Aturan utama:
+
+    Satu Fakultas memiliki banyak Prodi.
+
+    Satu Prodi memiliki satu atau lebih domain.
+
+    Satu Prodi memiliki banyak pengguna.
+
+    Satu Prodi memiliki banyak halaman.
+
+    Satu halaman memiliki banyak section.
+
+    Satu section memiliki banyak widget.
+
+    Satu Prodi memiliki banyak berita, dosen, dokumen, fasilitas, dan kurikulum.
+
+    Satu kurikulum memiliki banyak semester.
+
+    Satu semester memiliki banyak mata kuliah.
+
+    Satu mata kuliah dapat memiliki dokumen RPS.
+
+Seluruh data yang bersifat tenant-specific wajib mempunyai study_program_id atau hubungan tenant yang dapat diverifikasi.
+
+Jangan menggunakan tenant_id dari request frontend sebagai satu-satunya dasar otorisasi.
+10.6 Mermaid ERD
+
+erDiagram
+    FACULTIES ||--o{ STUDY_PROGRAMS : owns
+    STUDY_PROGRAMS ||--o{ DOMAINS : has
+    STUDY_PROGRAMS ||--o{ USER_ROLES : access
+    USERS ||--o{ USER_ROLES : assigned
+    ROLES ||--o{ USER_ROLES : contains
+    ROLES ||--o{ ROLE_PERMISSIONS : grants
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : assigned
+
+    STUDY_PROGRAMS ||--o{ PAGES : owns
+    PAGES ||--o{ PAGE_VERSIONS : versions
+    PAGES ||--o{ PAGE_SECTIONS : contains
+    PAGE_SECTIONS ||--o{ SECTION_WIDGETS : contains
+    WIDGETS ||--o{ SECTION_WIDGETS : uses
+
+    STUDY_PROGRAMS ||--|| WEBSITE_SETTINGS : configures
+    STUDY_PROGRAMS ||--|| THEMES : uses
+    STUDY_PROGRAMS ||--o{ MENUS : has
+
+    STUDY_PROGRAMS ||--o{ CURRICULUMS : owns
+    CURRICULUMS ||--o{ CURRICULUM_SEMESTERS : contains
+    CURRICULUM_SEMESTERS ||--o{ CURRICULUM_COURSES : contains
+    CURRICULUM_COURSES ||--o{ RPS_DOCUMENTS : has
+
+    STUDY_PROGRAMS ||--o{ LECTURERS : owns
+    STUDY_PROGRAMS ||--o{ DOCUMENTS : owns
+    STUDY_PROGRAMS ||--o{ FACILITIES : owns
+    STUDY_PROGRAMS ||--o{ POSTS : owns
+    STUDY_PROGRAMS ||--o{ GALLERIES : owns
+    GALLERIES ||--o{ GALLERY_ITEMS : contains
+
+11. USER FLOW
+11.1 Super Admin Membuat Website Prodi
+
+flowchart TD
+    A[Login Super Admin] --> B[Dashboard]
+    B --> C[Manajemen Fakultas]
+    C --> D[Pilih Fakultas]
+    D --> E[Tambah Program Studi]
+    E --> F[Isi Identitas Prodi]
+    F --> G[Daftarkan Domain]
+    G --> H[Buat Admin Prodi]
+    H --> I[Aktifkan Website]
+    I --> J[Website Siap Dikelola]
+
+11.2 Admin Prodi Mengatur Website
+
+flowchart TD
+    A[Login Portal Pusat] --> B[Dashboard Prodi]
+    B --> C[Page Builder]
+    C --> D[Pilih Halaman]
+    D --> E[Tambah Widget]
+    E --> F[Atur Layout dan Desain]
+    F --> G[Atur Konten]
+    G --> H[Preview]
+    H --> I{Sudah Sesuai?}
+    I -->|Tidak| E
+    I -->|Ya| J[Simpan Draft]
+    J --> K[Publish]
+    K --> L[Website Publik Diperbarui]
+
+11.3 Pengunjung Mengakses Website
+
+sequenceDiagram
+    actor Visitor
+    participant DNS
+    participant Nginx
+    participant Express
+    participant Resolver
+    participant Prisma
+    participant MySQL
+    participant React
+
+    Visitor->>DNS: Buka sin.unusu.ac.id
+    DNS->>Nginx: Resolve IP VPS
+    Visitor->>Nginx: HTTP Request
+    Nginx->>Express: Forward Request
+    Express->>Resolver: Resolve Hostname
+    Resolver->>Prisma: Cari Domain
+    Prisma->>MySQL: Query Tenant
+    MySQL-->>Prisma: Tenant Sistem Informasi
+    Prisma-->>Resolver: Tenant Configuration
+    Resolver-->>Express: Tenant Context
+    Express->>Prisma: Ambil Published Page
+    Prisma->>MySQL: Query Content
+    MySQL-->>Express: Website Data
+    Express-->>React: Data Website
+    React-->>Visitor: Render Website
+
+12. API DESIGN
+
+Backend menggunakan REST API.
+
+Base URL:
+
+/api/v1
+Authentication
+
+POST   /api/v1/auth/login
+POST   /api/v1/auth/logout
+GET    /api/v1/auth/me
+POST   /api/v1/auth/refresh
+
+Tenant Management
+
+GET    /api/v1/tenants
+POST   /api/v1/tenants
+GET    /api/v1/tenants/:id
+PUT    /api/v1/tenants/:id
+DELETE /api/v1/tenants/:id
+
+Domain Management
+
+GET    /api/v1/domains
+POST   /api/v1/domains
+PUT    /api/v1/domains/:id
+DELETE /api/v1/domains/:id
+
+Page Builder
+
+GET    /api/v1/pages
+POST   /api/v1/pages
+GET    /api/v1/pages/:id
+PUT    /api/v1/pages/:id
+
+POST   /api/v1/pages/:id/sections
+PUT    /api/v1/sections/:id
+DELETE /api/v1/sections/:id
+
+POST   /api/v1/sections/:id/widgets
+PUT    /api/v1/widgets/:id
+DELETE /api/v1/widgets/:id
+
+POST   /api/v1/pages/:id/preview
+POST   /api/v1/pages/:id/publish
+
+Curriculum
+
+GET    /api/v1/curriculums
+POST   /api/v1/curriculums
+PUT    /api/v1/curriculums/:id
+
+GET    /api/v1/curriculums/:id/semesters
+POST   /api/v1/semesters
+PUT    /api/v1/semesters/:id
+
+GET    /api/v1/courses
+POST   /api/v1/courses
+PUT    /api/v1/courses/:id
+DELETE /api/v1/courses/:id
+
+POST   /api/v1/courses/:id/rps
+GET    /api/v1/courses/:id/rps
+
+Public Website
+
+GET    /api/v1/public/site
+GET    /api/v1/public/pages/:slug
+GET    /api/v1/public/menus
+GET    /api/v1/public/curriculum
+GET    /api/v1/public/lecturers
+GET    /api/v1/public/documents
+GET    /api/v1/public/facilities
+GET    /api/v1/public/posts
+GET    /api/v1/public/galleries
+GET    /api/v1/public/contact
+
+Public endpoint mengambil tenant berdasarkan hostname yang sudah diverifikasi oleh backend.
+13. SECURITY REQUIREMENTS
+
+Keamanan merupakan kebutuhan wajib.
+
+    Password harus di-hash menggunakan Argon2 atau bcrypt.
+
+    Implementasikan RBAC.
+
+    Setiap request admin harus melalui autentikasi dan otorisasi backend.
+
+    Setiap query data tenant wajib dibatasi berdasarkan tenant context.
+
+    Jangan mempercayai study_program_id dari frontend.
+
+    Terapkan proteksi CSRF jika menggunakan cookie-based session.
+
+    Terapkan rate limiting pada login.
+
+    Gunakan HTTP-only dan Secure cookie.
+
+    Validasi semua input menggunakan Zod.
+
+    Batasi tipe dan ukuran file upload.
+
+    Gunakan nama file yang aman dan unik.
+
+    Lindungi endpoint upload.
+
+    Gunakan HTTPS untuk seluruh domain.
+
+    Catat aktivitas penting ke audit log.
+
+    Cegah akses langsung terhadap file privat.
+
+    Backup database secara berkala.
+
+    Terapkan transaksi database untuk operasi penting.
+
+File RPS dan dokumen publik dapat diakses pengunjung sesuai status publikasi. Dokumen privat hanya boleh diakses pengguna yang berwenang.
+14. NON-FUNCTIONAL REQUIREMENTS
+Performance
+
+    Website publik harus cepat dimuat.
+
+    Gunakan pagination pada daftar data.
+
+    Optimalkan gambar.
+
+    Gunakan lazy loading.
+
+    Hindari query N+1.
+
+    Gunakan caching untuk konfigurasi website yang sering diakses.
+
+    Gunakan database indexing untuk pencarian.
+
+Scalability
+
+    Penambahan tenant tidak membutuhkan instalasi aplikasi baru.
+
+    Penambahan domain tidak membutuhkan backend baru.
+
+    Widget harus reusable.
+
+    Modul harus independen secara logis.
+
+    Database mendukung pertumbuhan jumlah konten.
+
+Maintainability
+
+    Menggunakan TypeScript.
+
+    Struktur modular.
+
+    Reusable components.
+
+    Validasi terpusat.
+
+    Error handling terpusat.
+
+    Dokumentasi teknis.
+
+    Prisma migrations.
+
+    Automated tests.
+
+SEO
+
+    Setiap domain memiliki SEO metadata independen.
+
+    Setiap halaman mempunyai title dan description.
+
+    Sitemap per domain.
+
+    Canonical URL.
+
+    Open Graph.
+
+    URL slug yang ramah mesin pencari.
+
+Responsive
+
+Seluruh website wajib mendukung:
+
+    Desktop.
+
+    Laptop.
+
+    Tablet.
+
+    Smartphone.
+
+15. ADMINISTRATIVE INTERFACE
+15.1 Menu Super Admin
+
+Dashboard
+
+Manajemen Organisasi
+├── Fakultas
+└── Program Studi
+
+Website Management
+├── Daftar Website
+├── Domain
+├── Website Settings
+└── Website Monitoring
+
+User Management
+├── Pengguna
+├── Roles
+└── Permissions
+
+Website Builder
+├── Widget Library
+├── Widget Variants
+└── Template Library
+
+System Management
+├── Media Library
+├── Audit Logs
+├── Notifications
+└── System Settings
+
+15.2 Menu Admin Prodi
+
+Dashboard
+
+Website
+├── Identitas Website
+├── Navigasi
+├── Page Builder
+└── Theme Settings
+
+Konten
+├── Profil
+├── Visi & Misi
+├── Kurikulum
+├── Dokumen
+├── Dosen
+├── Sarpras
+├── Berita
+├── Galeri
+└── Kontak
+
+Pengelolaan
+├── Media Library
+├── Pengguna / Editor
+└── Audit Aktivitas
+
+Menu harus ditampilkan berdasarkan permission pengguna.
+16. DEPLOYMENT ARCHITECTURE
+
+Semua domain diarahkan ke satu VPS.
+
+IP:
+
+103.116.168.49
+
+Arsitektur:
+
+flowchart TB
+    A[Internet] --> B[DNS]
+    B --> C[Nginx Reverse Proxy]
+    C --> D[Node.js Express Application]
+    D --> E[Domain Resolver]
+    E --> F[Prisma ORM]
+    F --> G[(MySQL Database)]
+
+    D --> H[React Static Build]
+    D --> I[File Storage]
+
+    C --> J[prodi.unusu.ac.id]
+    C --> K[tif.unusu.ac.id]
+    C --> L[sin.unusu.ac.id]
+    C --> M[iko.unusu.ac.id]
+    C --> N[Domain Prodi Lainnya]
+
+Deployment Rules
+
+    Satu aplikasi Node.js.
+
+    Satu proses PM2.
+
+    Satu database MySQL.
+
+    Semua domain menggunakan konfigurasi Nginx yang mengarah ke aplikasi yang sama.
+
+    SSL aktif pada setiap domain.
+
+    Hostname diteruskan secara aman ke backend.
+
+    File upload dikelola melalui storage terpusat.
+
+    Database dan file penting mempunyai backup.
+
+17. TESTING REQUIREMENTS
+
+Sistem harus melalui pengujian sebelum production.
+Functional Testing
+
+    Login setiap role.
+
+    Pembuatan tenant.
+
+    Pembuatan domain.
+
+    Pengelolaan konten.
+
+    Widget Builder.
+
+    Draft dan Publish.
+
+    Pengelolaan kurikulum.
+
+    Upload dan download RPS.
+
+    Pengelolaan dosen.
+
+    Pengelolaan berita.
+
+    Pengelolaan galeri.
+
+Tenant Isolation Testing
+
+Contoh pengujian:
+
+    Admin Sistem Informasi tidak dapat mengubah data Teknik Informatika.
+
+    Admin Teknik Informatika tidak dapat mengakses halaman administrasi Sistem Informasi.
+
+    Widget tenant A tidak boleh tampil pada tenant B.
+
+    Tema tenant A tidak boleh memengaruhi tenant B.
+
+    Dokumen tenant A tidak dapat diakses melalui endpoint privat tenant B.
+
+    Manipulasi ID di request tidak boleh membuka data tenant lain.
+
+Builder Testing
+
+    Tambah widget.
+
+    Hapus widget.
+
+    Reorder.
+
+    Duplikasi.
+
+    Edit konfigurasi.
+
+    Preview.
+
+    Publish.
+
+    Draft.
+
+    Responsive preview.
+
+    Validasi konfigurasi widget yang tidak valid.
+
+Performance Testing
+
+    Simulasi banyak domain.
+
+    Simulasi beberapa pengguna bersamaan.
+
+    Pengujian query database.
+
+    Pengujian upload dokumen.
+
+    Pengujian cache.
+
+18. ACCEPTANCE CRITERIA
+
+Sistem dinyatakan memenuhi kebutuhan utama apabila:
+
+    Super Admin dapat mengelola tenant melalui satu portal.
+
+    Admin setiap Prodi memiliki akun sendiri.
+
+    Semua domain dapat diarahkan ke satu aplikasi.
+
+    Domain Resolver dapat menentukan website yang benar.
+
+    Setiap website memiliki data independen.
+
+    Setiap website dapat menggunakan desain berbeda.
+
+    Admin dapat menyusun landing page menggunakan Widget Builder.
+
+    Widget dapat diatur dan dikonfigurasi.
+
+    Tersedia fitur draft dan publish.
+
+    Tersedia 10 menu publik standar.
+
+    Setiap menu mempunyai modul pengelolaan sesuai jenis datanya.
+
+    Kurikulum mendukung semester, mata kuliah, SKS, dan RPS.
+
+    Sistem dapat menambahkan Prodi baru tanpa membuat aplikasi baru.
+
+    Sistem mendukung responsive design.
+
+    Pengujian isolasi tenant berhasil.
+
+    Seluruh domain menggunakan HTTPS.
+
+    Tidak terjadi kebocoran data antar-Prodi.
+
+19. DEVELOPMENT ROADMAP
+
+Pengembangan dilakukan bertahap agar fitur utama selesai dan bisa diuji sebelum melanjutkan ke tahap berikutnya.
+Phase 1 – Foundation
+
+    Setup React, Vite, Express, TypeScript.
+
+    Setup Prisma dan MySQL.
+
+    Setup struktur Modular Monolith.
+
+    Authentication.
+
+    RBAC.
+
+    Fakultas dan Prodi.
+
+    Tenant Resolver.
+
+    Domain Management.
+
+Output: Fondasi multi-tenant berjalan.
+Phase 2 – Website Management
+
+    Website Settings.
+
+    Theme Management.
+
+    Menu Management.
+
+    Page Management.
+
+    Media Library.
+
+    Public Website Renderer.
+
+Output: Setiap domain sudah dapat menampilkan website Prodi masing-masing.
+Phase 3 – Website Builder
+
+    Widget Registry.
+
+    Widget Library.
+
+    Widget Variants.
+
+    Section Builder.
+
+    Drag & Drop.
+
+    Widget Configuration.
+
+    Responsive Preview.
+
+    Draft dan Publish.
+
+    Version Management.
+
+Output: Setiap Prodi dapat membuat desain website sendiri.
+Phase 4 – CMS Modules
+
+    Profil.
+
+    Visi & Misi.
+
+    Kurikulum.
+
+    Dokumen.
+
+    Dosen.
+
+    Sarpras.
+
+    Berita.
+
+    Galeri.
+
+    Kontak.
+
+Output: Seluruh modul administrasi dan publik berjalan.
+Phase 5 – System Management
+
+    Audit Logs.
+
+    Notification.
+
+    SEO.
+
+    Sitemap.
+
+    Backup.
+
+    Monitoring.
+
+    Security hardening.
+
+Output: Sistem siap production.
+Phase 6 – Production Deployment
+
+    Setup VPS.
+
+    Setup MySQL.
+
+    Setup Nginx.
+
+    Setup SSL seluruh domain.
+
+    PM2.
+
+    Migrasi database.
+
+    Seed data awal.
+
+    Testing domain.
+
+    UAT.
+
+    Go Live.
+
+Output: Website Prodi UNUSU dapat digunakan secara resmi.
+20. DEVELOPMENT RULES FOR AI CODING AGENTS
+
+Seluruh proses pengembangan wajib mengikuti aturan berikut.
+
+    Baca docs/PRD.md sebelum melakukan implementasi.
+
+    Baca docs/ARCHITECTURE.md sebelum mengubah struktur aplikasi.
+
+    Baca docs/DATABASE.md sebelum mengubah schema Prisma.
+
+    Baca docs/DESIGN-RULES.md sebelum mengerjakan UI.
+
+    Baca docs/CHANGELOG.md sebelum melanjutkan pekerjaan sebelumnya.
+
+    Jangan membuat implementasi yang bertentangan dengan PRD.
+
+    Jangan membuat aplikasi terpisah untuk setiap tenant.
+
+    Jangan membuat komponen khusus per Prodi apabila komponen reusable dapat digunakan.
+
+    Semua konten tenant harus mempunyai isolasi data.
+
+    Semua operasi penting harus melalui validasi backend.
+
+    Jangan menggunakan data hardcoded untuk menggantikan database production.
+
+    Jangan mengubah konfigurasi tenant lain ketika mengerjakan tenant tertentu.
+
+    Gunakan Prisma Migration untuk perubahan database.
+
+    Setiap fitur harus memiliki pengujian.
+
+    Update changelog setiap menyelesaikan fitur.
+
+    Jangan menghapus fitur yang sudah berjalan tanpa persetujuan.
+
+    Gunakan desain UI yang konsisten, modern, minimalis, dan profesional.
+
+    Hindari UI generik hasil AI, penggunaan gradient berlebihan, neon, dan glassmorphism berlebihan.
+
+    Dashboard menggunakan layout dashboard khusus, bukan generic page layout.
+
+    Halaman selain dashboard menggunakan page template yang sudah disediakan.
+
+21. OUT OF SCOPE – TAHAP PERTAMA
+
+Fitur berikut tidak menjadi fokus implementasi awal:
+
+    Sistem akademik KRS dan KHS.
+
+    Sistem penerimaan mahasiswa baru.
+
+    Sistem pembayaran UKT.
+
+    Sistem e-learning.
+
+    Sistem informasi kepegawaian.
+
+    Integrasi SIAKAD.
+
+    Integrasi SSO universitas.
+
+    Website Fakultas sebagai tenant aktif, kecuali diputuskan untuk diaktifkan.
+
+    Aplikasi mobile native.
+
+Sistem ini berfokus pada manajemen website, konten, informasi akademik publik, dan administrasi website Program Studi.
+22. DEFINITION OF DONE
+
+Pengembangan dinyatakan selesai apabila:
+
+    Semua kebutuhan utama PRD telah diimplementasikan.
+
+    Seluruh modul dapat digunakan.
+
+    Semua domain terdaftar dapat menampilkan tenant yang benar.
+
+    Setiap Admin Prodi dapat mengelola website sendiri.
+
+    Website Builder dapat digunakan tanpa coding.
+
+    Setiap website memiliki desain independen.
+
+    Data antar-Prodi terisolasi.
+
+    Seluruh halaman responsive.
+
+    Tidak ada error kritis.
+
+    Automated testing lulus.
+
+    Dokumentasi teknis tersedia.
+
+    Deployment production berhasil.
+
+    Backup dan prosedur recovery tersedia.
+
+23. FINAL PROJECT VISION
+
+Sistem ini bukan sekadar CMS biasa.
+
+Sistem ini merupakan Centralized Multi-Tenant Website Platform yang memungkinkan Universitas Nusa Utama mengelola seluruh website Program Studi melalui satu aplikasi.
+
+Prinsip akhirnya:
+
+ONE CODEBASE
+
+ONE BACKEND
+
+ONE DATABASE
+
+ONE CENTRAL ADMIN
+
+MULTIPLE INDEPENDENT WEBSITES
+
+INDEPENDENT DESIGN PER STUDY PROGRAM
+
+Setiap Program Studi bebas membangun identitas digitalnya masing-masing, sementara universitas tetap mempunyai kendali penuh terhadap infrastruktur, keamanan, dan pengelolaan sistem secara keseluruhan.
+Rekomendasi sebelum mulai coding
+
+Ada tiga keputusan teknis yang menurut saya perlu dijaga sejak awal:
+
+    Gunakan Modular Monolith, jangan memisahkan frontend dan backend menjadi dua repository atau dua deployment aplikasi.
+
+    Gunakan tenant isolation di backend, bukan sekadar menyembunyikan menu di frontend. Ini sangat penting karena satu database digunakan banyak Prodi.
+
+    Bangun Widget Registry dan Renderer terlebih dahulu sebelum membuat banyak variasi desain. Dengan begitu widget baru bisa ditambahkan tanpa merombak seluruh website.
+
+Tahap berikutnya yang paling tepat adalah membuat Technical Architecture Document, Prisma ERD yang lebih detail, dan pembagian task implementasi per modul berdasarkan PRD ini.
+harusnya kan beda davbar dan komponen landingpagenya antara website utama dan antara prodi
+
+Betul. Berarti arsitektur UI-nya harus dibedakan menjadi dua jenis website yang berbeda, bukan satu template yang dipakai bersama.
+
+Walaupun menggunakan satu aplikasi monolitik, satu backend, dan satu database, website utama UNUSU dan website masing-masing prodi memiliki desain, navigasi, serta komponen landing page sendiri.
+1. Website utama UNUSU
+Main Website
+
+Website utama berfungsi sebagai portal universitas yang mewakili institusi secara keseluruhan.
+
+    Navbar khusus universitas.
+
+    Header dan footer khusus universitas.
+
+    Landing page khusus universitas.
+
+    Komponen hero/banner universitas.
+
+    Informasi fakultas dan program studi.
+
+    Berita dan pengumuman universitas.
+
+    Informasi penerimaan mahasiswa baru.
+
+    Agenda dan kegiatan universitas.
+
+    Informasi layanan universitas.
+
+Universitas Baiturrahmah UNBRAH 2026 Rankings, Courses, Tuition & Admissions
+T.C. Boğaziçi Üniversitesi
+University Homepage by Marina M on Dribbble
+2. Website masing-masing program studi
+Prodi Website
+
+Setiap prodi memiliki identitas website sendiri, termasuk navbar, footer, dan komponen landing page.
+
+Contohnya:
+
+    tif.unusu.ac.id
+
+    iko.unusu.ac.id
+
+    sin.unusu.ac.id
+
+    pgsd.unusu.ac.id
+
+    manajemen.unusu.ac.id
+
+    agribisnis.unusu.ac.id
+
+Masing-masing website memiliki:
+
+    Navbar khusus prodi.
+
+    Header dan footer khusus prodi.
+
+    Landing page yang dapat memiliki susunan komponen berbeda.
+
+    Profil program studi.
+
+    Visi dan misi.
+
+    Kurikulum.
+
+    Dosen.
+
+    Sarana dan prasarana.
+
+    Dokumen.
+
+    Berita dan galeri.
+
+    Kontak.
+
+University Homepage by Marina M on Dribbble
+Athabasca University — Tatiana Dudin
+Mount Allison launches new website | Mount Allison
+3. Perbedaan arsitektur komponen
+
+Ini bagian penting yang perlu dimasukkan ke PRD.
+MONOLITHIC FULLSTACK APPLICATION
+│
+├── WEBSITE UTAMA UNUSU
+│   ├── MainNavbar
+│   ├── MainHeader
+│   ├── MainLandingPage
+│   │   ├── MainHero
+│   │   ├── UniversityProfile
+│   │   ├── FacultyList
+│   │   ├── UniversityNews
+│   │   ├── AdmissionSection
+│   │   └── UniversityAgenda
+│   └── MainFooter
+│
+├── WEBSITE PROGRAM STUDI
+│   ├── ProdiNavbar
+│   ├── ProdiHeader
+│   ├── ProdiLandingPage
+│   │   ├── ProdiHero
+│   │   ├── ProdiProfile
+│   │   ├── ProdiVisionMission
+│   │   ├── ProdiLecturers
+│   │   ├── ProdiCurriculum
+│   │   ├── ProdiNews
+│   │   └── ProdiGallery
+│   └── ProdiFooter
+│
+└── ADMINISTRATOR
+    ├── Main Website Admin
+    ├── Prodi Website Admin
+    └── Super Admin
+4. Pengaturan admin juga harus dipisahkan
+
+Fitur
+	
+
+Admin website utama
+	
+
+Admin prodi
+
+Navbar
+	
+
+Kelola navbar universitas
+	
+
+Kelola navbar prodi
+
+Landing page
+	
+
+Kelola komponen utama
+	
+
+Kelola komponen prodi
+
+Tema
+	
+
+Tema universitas
+	
+
+Tema masing-masing prodi
+
+Berita
+	
+
+Berita universitas
+	
+
+Berita prodi
+
+Profil
+	
+
+Profil universitas
+	
+
+Profil prodi
+
+Kurikulum
+	
+
+Tidak ada
+	
+
+Ada
+
+Dosen
+	
+
+Data tingkat universitas/fakultas
+	
+
+Data dosen prodi
+
+Domain
+	
+
+Domain utama
+	
+
+Domain masing-masing prodi
+
+Login administrator tetap melalui prodi.unusu.ac.id sebagai portal administrasi terpusat, tetapi hak akses dan dashboard dibedakan sesuai perannya.
+5. Aturan penting untuk developer
+
+Saya sarankan menambahkan ketentuan berikut ke PRD:
+
+    MainWebsiteLayout dan ProdiWebsiteLayout wajib menjadi dua layout terpisah.
+
+    Navbar, footer, header, dan landing page website utama tidak boleh menggunakan komponen khusus prodi.
+
+    Komponen website utama dan prodi tidak boleh saling bergantung secara struktural.
+
+    Setiap prodi boleh memiliki konfigurasi desain, urutan section, widget, warna, dan konten yang berbeda.
+
+    Pengaturan website utama tidak boleh mengubah tampilan website prodi, begitu juga sebaliknya.
+
+    Komponen umum seperti tombol, input, modal, dan utilitas boleh digunakan bersama jika memang relevan.
+
+    Seluruh website tetap berjalan dalam satu aplikasi monolitik dengan satu backend dan database.
+
+Kesimpulannya: satu sistem pengelolaan, tetapi dua ekosistem tampilan website yang berbeda. Bahkan nantinya website utama dan setiap prodi bisa dikembangkan desainnya secara independen tanpa harus mengubah struktur website lainnya.
+
+Ini sebaiknya menjadi requirement inti, bukan sekadar opsi konfigurasi tema.
+apa promptnya kita kasih
+
+Berikan prompt berikut ke AI coding agent (Codex, Claude Code, OpenCode, atau Windsurf). Tujuannya agar AI memahami bahwa website utama UNUSU dan website setiap prodi adalah dua sistem tampilan berbeda, meskipun berada dalam satu aplikasi monolitik.
+PROMPT — PEMISAHAN ARSITEKTUR WEBSITE UTAMA UNUSU DAN WEBSITE PROGRAM STUDI
+
+Bertindaklah sebagai Senior Software Architect, Senior UI/UX Designer, dan Senior Fullstack Developer.
+
+Saya ingin kamu memahami dan menerapkan pemisahan arsitektur tampilan antara Website Utama Universitas UNUSU dan Website Program Studi (Prodi).
+1. Konsep Utama
+
+Sistem ini menggunakan satu aplikasi monolitik fullstack dengan teknologi:
+
+    Frontend: React + TypeScript + Vite
+
+    Backend: Node.js + Express
+
+    ORM: Prisma
+
+    Database: MySQL
+
+    Routing: React Router
+
+    Styling: Tailwind CSS
+
+Walaupun menggunakan satu codebase, satu backend, dan satu database, website utama dan website prodi harus memiliki ekosistem tampilan yang berbeda.
+
+Jangan membuat satu template website yang dipaksakan untuk semua domain.
+2. Pemisahan Website
+A. Website Utama UNUSU
+
+Website utama merupakan portal institusi universitas.
+
+Buat struktur komponen tersendiri:
+
+    MainWebsiteLayout
+
+    MainNavbar
+
+    MainHeader
+
+    MainFooter
+
+    MainLandingPage
+
+Landing page memiliki komponen khusus universitas, seperti:
+
+    MainHero
+
+    UniversityProfile
+
+    UniversityVisionMission
+
+    FacultyList
+
+    StudyProgramList
+
+    UniversityNews
+
+    UniversityAnnouncement
+
+    AdmissionSection
+
+    UniversityAgenda
+
+    UniversityGallery
+
+    UniversityContact
+
+Semua komponen tersebut dapat dikembangkan tanpa memengaruhi website prodi.
+B. Website Program Studi
+
+Setiap program studi memiliki website mandiri dengan identitas visual dan struktur landing page sendiri.
+
+Buat struktur komponen tersendiri:
+
+    ProdiWebsiteLayout
+
+    ProdiNavbar
+
+    ProdiHeader
+
+    ProdiFooter
+
+    ProdiLandingPage
+
+Contoh komponen landing page:
+
+    ProdiHero
+
+    ProdiProfile
+
+    ProdiVisionMission
+
+    ProdiStatistics
+
+    ProdiLecturers
+
+    ProdiCurriculum
+
+    ProdiFacilities
+
+    ProdiNews
+
+    ProdiGallery
+
+    ProdiContact
+
+Setiap prodi dapat memiliki:
+
+    Navbar dan footer berbeda.
+
+    Logo dan identitas visual berbeda.
+
+    Warna dan tipografi berbeda.
+
+    Susunan section landing page berbeda.
+
+    Jenis widget berbeda.
+
+    Konten dan informasi masing-masing.
+
+Contoh domain:
+
+    tif.unusu.ac.id
+
+    iko.unusu.ac.id
+
+    sin.unusu.ac.id
+
+    pgsd.unusu.ac.id
+
+    manajemen.unusu.ac.id
+
+    agribisnis.unusu.ac.id
+
+Perbedaan desain antarprodi tidak boleh dibatasi hanya pada pergantian warna atau logo. Masing-masing prodi harus bisa mempunyai susunan dan variasi komponen landing page yang berbeda.
+3. Sistem Widget dan Landing Page Builder
+
+Buat sistem pengelolaan landing page berbasis konfigurasi.
+
+Administrator dapat:
+
+    Mengaktifkan atau menonaktifkan section.
+
+    Mengubah urutan section dengan drag and drop.
+
+    Memilih variasi tampilan widget yang tersedia.
+
+    Mengubah konten setiap widget.
+
+    Mengatur gambar, judul, deskripsi, dan tombol.
+
+    Mengatur warna dan konfigurasi visual yang diizinkan.
+
+    Melihat preview desktop, tablet, dan mobile.
+
+    Menyimpan perubahan sebagai draft.
+
+    Mempublikasikan perubahan.
+
+Gunakan sistem widget registry dengan daftar komponen yang sudah ditentukan dan tervalidasi.
+
+Jangan mengizinkan administrator memasukkan JavaScript atau HTML sembarangan untuk membuat widget.
+
+Setiap website memiliki konfigurasi landing page sendiri yang tersimpan di database.
+
+Konfigurasi website utama harus terpisah dari seluruh konfigurasi website prodi.
+4. Pemisahan Layout dan Komponen
+
+Aturan wajib:
+
+    MainWebsiteLayout tidak boleh menggunakan ProdiWebsiteLayout.
+
+    MainNavbar tidak boleh menggunakan ProdiNavbar.
+
+    MainFooter tidak boleh menggunakan ProdiFooter.
+
+    MainLandingPage tidak boleh menggunakan ProdiLandingPage.
+
+    Perubahan desain website utama tidak boleh memengaruhi website prodi.
+
+    Perubahan desain satu prodi tidak boleh memengaruhi prodi lainnya.
+
+Komponen dasar yang sifatnya umum seperti Button, Input, Modal, dan utilitas boleh digunakan bersama apabila sesuai.
+
+Jangan melakukan duplikasi komponen secara berlebihan. Namun, jangan pula memaksakan komponen yang memiliki kebutuhan desain dan perilaku berbeda menjadi satu komponen generik.
+5. Sistem Domain dan Resolusi Website
+
+Aplikasi harus dapat mengenali website berdasarkan hostname.
+
+Contoh:
+
+    unusu.ac.id → Website Utama UNUSU.
+
+    tif.unusu.ac.id → Website Teknik Informatika.
+
+    sin.unusu.ac.id → Website Sistem Informasi.
+
+    pgsd.unusu.ac.id → Website PGSD.
+
+    prodi.unusu.ac.id → Portal administrasi terpusat.
+
+Gunakan tabel domain di database untuk menentukan website yang harus ditampilkan.
+
+Jangan melakukan hardcode domain satu per satu di frontend.
+6. Pemisahan Administrator
+
+Portal login administrator berada di:
+
+prodi.unusu.ac.id
+
+Portal tersebut merupakan pusat pengelolaan sistem.
+
+Administrator memiliki hak akses sesuai peran:
+
+    Super Admin: mengelola seluruh website, domain, pengguna, dan konfigurasi.
+
+    Main Website Admin: mengelola website utama UNUSU.
+
+    Faculty Admin: opsional, mengelola program studi di bawah fakultasnya.
+
+    Prodi Admin: mengelola website prodi yang menjadi tanggung jawabnya.
+
+    Content Editor: mengelola konten sesuai izin yang diberikan.
+
+Dashboard administrasi website utama dan dashboard administrasi prodi boleh memiliki navigasi serta menu yang berbeda sesuai kebutuhan pengelolaan.
+7. Struktur Folder yang Diharapkan
+
+Rancang struktur folder yang jelas dan mudah dikembangkan.
+
+Contoh:
+
+src/
+├── app/
+│   ├── router/
+│   ├── providers/
+│   └── domain-resolver/
+│
+├── modules/
+│   ├── main-website/
+│   │   ├── layouts/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   └── sections/
+│   │
+│   ├── prodi-website/
+│   │   ├── layouts/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   └── sections/
+│   │
+│   └── admin/
+│       ├── main-website/
+│       ├── prodi/
+│       ├── super-admin/
+│       └── shared/
+│
+├── shared/
+│   ├── components/
+│   ├── hooks/
+│   ├── utils/
+│   └── types/
+│
+└── services/
+
+Struktur tersebut merupakan acuan. Sesuaikan dengan arsitektur backend dan frontend proyek yang sebenarnya.
+8. Ketentuan Implementasi
+
+Sebelum melakukan perubahan:
+
+    Pelajari struktur proyek yang sudah ada.
+
+    Periksa routing, layout, komponen, Prisma schema, dan sistem autentikasi.
+
+    Identifikasi bagian yang masih mencampurkan website utama dengan website prodi.
+
+    Buat rencana refactoring tanpa merusak fitur yang sudah berjalan.
+
+    Pastikan seluruh kebutuhan pemisahan tampilan dapat dipenuhi.
+
+Jangan langsung mengubah seluruh proyek tanpa memahami struktur existing.
+
+Jika proyek sudah berjalan, pertahankan fitur yang tidak berkaitan dengan perubahan ini.
+9. Kriteria Keberhasilan
+
+Implementasi dianggap berhasil apabila:
+
+    Website utama memiliki navbar, footer, layout, dan landing page tersendiri.
+
+    Website prodi memiliki navbar, footer, layout, dan landing page tersendiri.
+
+    Setiap prodi dapat memiliki desain landing page yang berbeda.
+
+    Administrator dapat mengelola section dan widget sesuai hak akses.
+
+    Perubahan website utama tidak mengubah website prodi.
+
+    Perubahan satu prodi tidak mengubah prodi lain.
+
+    Semua domain berjalan dalam satu aplikasi monolitik.
+
+    Seluruh data tetap terisolasi berdasarkan website/tenant.
+
+    Portal administrasi tetap terpusat di prodi.unusu.ac.id.
+
+PRINSIP PALING PENTING: SATU APLIKASI, SATU BACKEND, SATU DATABASE, TETAPI WEBSITE UTAMA DAN SETIAP WEBSITE PRODI MEMILIKI EKOSISTEM UI, LAYOUT, NAVBAR, FOOTER, DAN LANDING PAGE MASING-MASING.
+
+Jangan mengorbankan independensi desain demi membuat semua website menggunakan satu template generik.
+
+Saran saya: berikan prompt ini setelah AI membaca PRD lengkap dan struktur proyek yang sudah ada. Minta AI membuat analisis serta rencana implementasi terlebih dahulu, jangan langsung coding. Setelah arsitekturnya disetujui, baru lanjut implementasi bertahap.
+itu prd full atau pemisah aja ?
+
+Itu hanya prompt pemisahan arsitektur website utama dan website prodi, bukan PRD lengkap.
+
+Jadi ada dua dokumen yang berbeda:
+
+    PRD Full — menjelaskan keseluruhan sistem, mulai dari tujuan, fitur, role, domain, database, autentikasi, admin, widget builder, kurikulum, deployment, hingga acceptance criteria.
+
+    Prompt Pemisahan UI — instruksi teknis agar AI memisahkan layout, navbar, footer, komponen, dan landing page website utama dengan website prodi.
+
+Rekomendasi saya: gabungkan aturan pemisahan UI tersebut ke dalam PRD Full sebagai requirement wajib. Jadi developer atau AI coding agent cukup membaca satu PRD utama dan tidak ada aturan yang terlewat.
+
+Kalau kita susun final, hasilnya adalah satu PRD lengkap untuk sistem UNUSU Multi-Website Management System, dengan stack React + Vite + Express + Prisma + MySQL, arsitektur monolitik, dan desain independen untuk website utama serta setiap prodi.
+Context window full
+Start a new chat with an automatic summary of this conversation, or upgrade to continue here with more context available in every chat.
+
+perlukah 

@@ -1,0 +1,99 @@
+# ==========================================
+# RAHASIA & ENVIRONMENT
+# Jangan pernah commit file .env. Nilai asli hanya ada di mesin lokal dan VPS.
+# ==========================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ==========================================
+# DEPENDENSI
+# ==========================================
+node_modules/
+.pnp
+.pnp.js
+
+# ==========================================
+# HASIL BUILD
+# Prisma Client di-generate ulang lewat `npx prisma generate`.
+# ==========================================
+dist/
+build/
+*.tsbuildinfo
+node_modules/.prisma/
+
+# ==========================================
+# BERKAS UNGGAHAN PENGGUNA
+# Isi uploads/ adalah data operasional tenant, bukan kode.
+# Struktur folder tetap dilacak agar `npm run dev` tidak gagal.
+# ==========================================
+uploads/*
+!uploads/.gitkeep
+!uploads/media/
+!uploads/media/.gitkeep
+!uploads/documents/
+!uploads/documents/.gitkeep
+!uploads/rps/
+!uploads/rps/.gitkeep
+
+# ==========================================
+# BERKAS SEMENTARA
+# ==========================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+
+# Berkas keluaran pengujian
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+
+# Berkas cadangan dan arsip lokal
+*.bak
+*.tmp
+*.temp
+*.orig
+*.rej
+*.zip
+*.7z
+*.rar
+
+# ==========================================
+# SISTEM OPERASI & EDITOR
+# ==========================================
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*~
+
+# ==========================================
+# LOG PROSES
+# ==========================================
+*.pid
+*.seed
+.pm2/
+pm2-*.log
+
+# ==========================================
+# CATATAN
+# ==========================================
+# Folder prd/ berisi dokumen sumber dan percakapan asal. Dokumen acuan yang
+# dipakai sehari-hari sudah disalin ke docs/. Folder prd/ tetap dilacak karena
+# merupakan spesifikasi resmi proyek.
