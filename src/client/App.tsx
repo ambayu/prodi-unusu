@@ -367,18 +367,30 @@ export const App: React.FC = () => {
         </>
       ) : (
         /* ===== WEBSITE PROGRAM STUDI ===== */
-        <ProdiRoutes />
+        prodiRouteElements()
       )}
     </Routes>
   );
 };
 
-/** Rute website prodi, memakai tenant dari konteks situs. */
-const ProdiRoutes: React.FC = () => {
-  const tenant = useSiteStore((state) => state.tenant);
+/**
+ * Rute website prodi.
+ *
+ * Ditulis sebagai fungsi yang mengembalikan elemen `<Route>` langsung, bukan
+ * sebagai komponen React. `Routes` hanya menerima anak berupa `<Route>` atau
+ * `<Fragment>`, sehingga membungkusnya dalam komponen sendiri akan gagal dengan
+ * kesalahan "[ProdiRoutes] is not a Route component".
+ */
+function prodiRouteElements() {
+  const tenant = useSiteStore.getState().tenant;
 
   if (!tenant) {
-    return <DomainNotRegistered hostname={window.location.hostname} message="Tenant website tidak ditemukan." />;
+    return (
+      <Route
+        path="*"
+        element={<DomainNotRegistered hostname={window.location.hostname} message="Tenant website tidak ditemukan." />}
+      />
+    );
   }
 
   const wrap = (children: React.ReactNode) => <ProdiWebsiteLayout>{children}</ProdiWebsiteLayout>;
@@ -399,6 +411,6 @@ const ProdiRoutes: React.FC = () => {
       <Route path="*" element={wrap(<NotFoundPage />)} />
     </>
   );
-};
+}
 
 export default App;
