@@ -154,3 +154,25 @@ menemukan kejutan.
 
 File hosts hanya untuk pengujian lokal. Di VPS, pemisahan domain terjadi
 melalui Nginx yang meneruskan header `Host` asli ke satu aplikasi.
+
+## 2026-11-07 (lanjutan) — Landing page publik tanpa login
+
+Landing page program studi adalah halaman publik. Sebelumnya `localhost`
+diperlakukan sebagai portal admin sehingga `/` selalu dialihkan ke `/login`.
+Itu keliru untuk pengembangan maupun untuk pemahaman produk.
+
+### Perbaikan
+
+- `classifySurface` menganggap host loopback sebagai permukaan prodi, bukan
+  admin. Portal admin tetap dapat dibuka dari host mana pun lewat `/login`
+  dan `/admin`.
+- `resolveSite` memberi tenant cadangan hanya untuk loopback: `PREVIEW_HOST`
+  bila diisi, atau tenant aktif pertama bila kosong. Host publik yang tidak
+  terdaftar tetap ditolak 404 tanpa cadangan.
+- `App.tsx` tidak lagi mengalihkan beranda ke login. Pengalihan hanya terjadi
+  pada `/login` saat pengguna sudah punya sesi.
+
+### Pengujian
+
+- Uji asap disesuaikan: localhost kini diharapkan mendapat tenant, sementara
+  host publik asing tetap ditolak 404. Total 34 pemeriksaan lulus.

@@ -15,7 +15,18 @@ export function normalizeHostname(rawHost: string | undefined): string {
   return withoutPort.replace(/\.$/, '');
 }
 
-/** Menentukan permukaan aplikasi dari hostname yang sudah dibersihkan. */
+/**
+ * Menentukan permukaan aplikasi dari hostname yang sudah dibersihkan.
+ *
+ * Landing page program studi bersifat publik: pengunjung tidak perlu login.
+ * Login hanya diperlukan untuk halaman `/admin`. Karena itu hostname loopback
+ * diperlakukan sebagai permukaan prodi pada mode pengembangan, bukan sebagai
+ * portal admin, supaya `http://localhost:5180` menampilkan website seperti
+ * domain aslinya.
+ *
+ * Portal admin tetap dapat dibuka dari host mana pun lewat path `/login` dan
+ * `/admin`, jadi pemetaan ini tidak menghilangkan akses ke portal.
+ */
 export function classifySurface(hostname: string): SiteSurface {
   if (!hostname) return 'main';
   if (config.mainSiteHosts.includes(hostname)) return 'main';
@@ -23,18 +34,13 @@ export function classifySurface(hostname: string): SiteSurface {
   // Portal admin dilayani dari hostname yang terdaftar di ADMIN_HOST.
   if (hostname === config.adminHost) return 'admin';
 
-  // Mode pratinjau lokal.
-  //
-  // Tanpa ini, website prodi tidak dapat dibuka sama sekali di mesin
-  // pengembang karena localhost bukan hostname tenant. Pratinjau hanya aktif
-  // bila ALLOW_LOCAL_PREVIEW=true, dan hanya untuk host loopback. Host asing
-  // tetap harus terdaftar di tabel domains, jadi aturan "tolak domain tidak
-  // dikenal" pada docs/ARCHITECTURE.md bagian 4 tidak dilonggarkan.
+  // Host loopback selalu diperlakukan sebagai website prodi. Tenant yang
+  // ditampilkan ditentukan PREVIEW_HOST; bila kosong, dipakai tenant pertama
+  // yang aktif agar pengembangan tidak terhenti karena konfigurasi kosong.
+  // Ini tidak melonggarkan aturan "tolak domain tidak dikenal" untuk host
+  // publik mana pun.
   const isLoopback = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
-  if (isLoopback) {
-    if (config.dev.allowLocalPreview && config.dev.previewHost) return 'prodi';
-    return 'admin';
-  }
+  if (isLoopback) return 'prodi';
 
   return 'prodi';
 }
@@ -42,9 +48,10 @@ export function classifySurface(hostname: string): SiteSurface {
 /**
  * Hostname yang benar-benar dipakai untuk pencarian tenant.
  *
- * Pada pratinjau lokal, `localhost` dipetakan ke satu hostname tenant yang
- * dipilih pengembang lewat PREVIEW_HOST. Pemetaan ini hanya berlaku bila
- * permukaannya memang prodi.
+ * Pada host loopback, `localhost` dipetakan ke hostname tenant yang dipilih
+ * pengembang lewat `PREVIEW_HOST`. Bila variabel itu kosong, dipakai tenant
+ * aktif pertama sebagai cadangan pada mode pengembangan saja, sehingga
+ * `npm run dev` langsung menampilkan website tanpa konfigurasi tambahan.
  */
 export function resolveLookupHostname(hostname: string, surface: SiteSurface): string {
   const isLoopback = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
@@ -52,6 +59,11 @@ export function resolveLookupHostname(hostname: string, surface: SiteSurface): s
     return config.dev.previewHost.toLowerCase();
   }
   return hostname;
+}
+
+/** Apakah hostname ini loopback dan perlu tenant cadangan. */
+export function isLoopbackHostname(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 }
 
 function toTenantContext(
@@ -165,16 +177,22 @@ const tenantInclude = {
 /**
  * Menyelesaikan permukaan dan tenant dari hostname.
  *
- * Aturan dari docs/ARCHITECTURE.md bagian 4: domain tidak dikenal atau nonaktif
- * harus ditolak, bukan diarahkan ke tenant default. Tidak ada fallback ke prodi
- * tertentu, karena fallback seperti itu membuat satu prodi tampil di semua
- * domain yang salah konfigurasi.
+ * Aturan dari docs/ARCHITECTURE.md bagian 4: domain publik yang tidak dikenal
+ * atau nonaktif harus ditolak, bukan diarahkan ke tenant default. Fallback
+ * seperti itu akan membuat satu prodi tampil di semua domain yang salah
+ * konfigurasi.
+ *
+ * Pengecualian hanya berlaku untuk host loopback pada mode pengembangan: di
+ * sana tidak ada domain yang bisa dicocokkan, sehingga dipakai PREVIEW_HOST,
+ * atau tenant aktif pertama bila variabel itu kosong. Pengecualian ini tidak
+ * pernah menyentuh hostname publik.
  */
 export async function resolveSite(hostname: string, surface: SiteSurface): Promise<SiteResolution> {
   if (surface !== 'prodi') {
     return { surface, hostname, tenant: null };
   }
 
+  const loopback = isLoopbackHostname(hostname);
   const lookupHostname = resolveLookupHostname(hostname, surface);
 
   const domain = await prisma.domain.findUnique({
@@ -184,25 +202,55 @@ export async function resolveSite(hostname: string, surface: SiteSurface): Promi
     },
   });
 
-  if (!domain || !domain.isActive) {
+  if (domain && domain.isActive && domain.studyProgram.status === 'active') {
+    return {
+      surface,
+      hostname,
+      tenant: toTenantContext(domain.studyProgram, lookupHostname),
+    };
+  }
+
+  // Cadangan khusus pengembangan lokal.
+  if (loopback) {
+    const fallback = await prisma.studyProgram.findFirst({
+      where: { status: 'active' },
+      orderBy: { id: 'asc' },
+      include: tenantInclude,
+    });
+
+    if (fallback) {
+      const primaryDomain = await prisma.domain.findFirst({
+        where: { studyProgramId: fallback.id, isActive: true },
+        orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
+        select: { hostname: true },
+      });
+
+      return {
+        surface,
+        hostname,
+        tenant: toTenantContext(fallback, primaryDomain?.hostname ?? hostname),
+      };
+    }
+  }
+
+  if (!domain) {
     throw AppError.notFound(
       `Domain "${lookupHostname}" belum terdaftar sebagai website program studi. Hubungi administrator universitas.`,
       'DOMAIN_NOT_REGISTERED',
     );
   }
 
-  if (domain.studyProgram.status !== 'active') {
-    throw AppError.forbidden(
-      `Website "${domain.studyProgram.name}" sedang tidak aktif.`,
-      'TENANT_INACTIVE',
+  if (!domain.isActive) {
+    throw AppError.notFound(
+      `Domain "${lookupHostname}" sedang nonaktif. Hubungi administrator universitas.`,
+      'DOMAIN_NOT_REGISTERED',
     );
   }
 
-  return {
-    surface,
-    hostname,
-    tenant: toTenantContext(domain.studyProgram, lookupHostname),
-  };
+  throw AppError.forbidden(
+    `Website "${domain.studyProgram.name}" sedang tidak aktif.`,
+    'TENANT_INACTIVE',
+  );
 }
 
 /** Mengambil tenant berdasarkan ID untuk operasi backend yang sudah terotorisasi. */

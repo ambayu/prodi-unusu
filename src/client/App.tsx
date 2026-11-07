@@ -85,13 +85,10 @@ export const App: React.FC = () => {
     );
   }
 
-  if (surface === 'admin' && !isAdminRoute) {
-    return (
-      <Routes>
-        <Route path="/" element={<Navigate to={user ? '/admin' : '/login'} replace />} />
-        <Route path="*" element={<Navigate to={user ? '/admin' : '/login'} replace />} />
-      </Routes>
-    );
+  // Landing page bersifat publik. Redirect ke login hanya terjadi pada path
+  // yang memang milik portal, bukan pada beranda.
+  if (isAdminRoute && location.pathname === '/login' && user) {
+    return <Navigate to="/admin" replace />;
   }
 
   return (
@@ -336,7 +333,12 @@ export const App: React.FC = () => {
         }
       />
 
-      {/* ===== WEBSITE UTAMA UNIVERSITAS ===== */}
+      {/*
+        Beranda publik. Hanya website utama universitas yang memakai ekosistem
+        MainWebsiteLayout. Permukaan prodi memakai ProdiWebsiteLayout, dan
+        portal admin tetap membuka landing page prodi karena pengunjung tidak
+        perlu login untuk melihatnya.
+      */}
       {surface === 'main' ? (
         <>
           <Route
@@ -366,7 +368,6 @@ export const App: React.FC = () => {
           <Route path="*" element={<NotFoundPage />} />
         </>
       ) : (
-        /* ===== WEBSITE PROGRAM STUDI ===== */
         prodiRouteElements()
       )}
     </Routes>
@@ -380,6 +381,9 @@ export const App: React.FC = () => {
  * sebagai komponen React. `Routes` hanya menerima anak berupa `<Route>` atau
  * `<Fragment>`, sehingga membungkusnya dalam komponen sendiri akan gagal dengan
  * kesalahan "[ProdiRoutes] is not a Route component".
+ *
+ * Seluruh rute di sini bersifat publik. Rute `/login`, `/admin`, dan
+ * `/sso/callback` sudah ditangani lebih awal dan tidak bergantung permukaan.
  */
 function prodiRouteElements() {
   const tenant = useSiteStore.getState().tenant;

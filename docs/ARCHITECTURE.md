@@ -74,6 +74,12 @@ tests/
 Hostname yang dianggap website utama dan portal admin ditentukan konfigurasi
 `MAIN_SITE_HOSTS` dan `ADMIN_HOST`, bukan pencocokan pola string.
 
+Landing page bersifat publik: pengunjung tidak perlu login. Login hanya
+diperlukan untuk `/admin`. Karena itu host loopback (`localhost`, `127.0.0.1`,
+`::1`) diperlakukan sebagai website prodi pada pengembangan, dengan tenant dari
+`PREVIEW_HOST`, atau tenant aktif pertama bila variabel itu kosong. Host publik
+yang tidak terdaftar tetap ditolak dan tidak pernah mendapat tenant cadangan.
+
 ## 4. Alur permintaan admin
 
 1. `authenticate` membaca cookie httpOnly, memverifikasi JWT, lalu memastikan

@@ -193,10 +193,17 @@ async function main() {
   check('surface terdeteksi main', mainSite.body?.surface === 'main', mainSite.body);
   check('website utama tidak memakai tenant prodi', mainSite.body?.site === null, mainSite.body?.site);
 
-  // 9. Publik tanpa tenant
-  console.log('\n9. Endpoint publik menolak permintaan tanpa tenant');
-  const noTenant = await request({ path: '/api/v1/public/curriculum', host: 'localhost:5010' });
-  check('kurikulum tanpa domain prodi ditolak 400', noTenant.status === 400, noTenant.status);
+  // 9. Endpoint publik pada host loopback
+  console.log('\n9. Endpoint publik pada host loopback memakai tenant cadangan');
+  // Landing page bersifat publik, sehingga localhost melayani website prodi
+  // tanpa login. Tenant ditentukan PREVIEW_HOST atau tenant aktif pertama.
+  const localhostSite = await request({ path: '/api/v1/site-resolution', host: 'localhost:5010' });
+  check('localhost diklasifikasikan sebagai prodi', localhostSite.body?.surface === 'prodi', localhostSite.body?.surface);
+  check('localhost mendapat tenant cadangan', typeof localhostSite.body?.tenant?.id === 'number', localhostSite.body?.tenant?.id);
+
+  // Host publik yang tidak terdaftar tetap wajib ditolak, bukan diberi tenant.
+  const unknownPublic = await request({ path: '/api/v1/public/curriculum', host: 'host-asing.unusu.ac.id' });
+  check('host publik asing ditolak 404', unknownPublic.status === 404, unknownPublic.status);
 
   // 10. Kurikulum kosong
   console.log('\n10. Data kosong dilayani tanpa mengarang angka');
