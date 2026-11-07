@@ -30,6 +30,13 @@ export default defineConfig({
     // dapat diprediksi saat menguji pemetaan domain di file hosts.
     port: 5180,
     strictPort: true,
+    // Dengarkan di semua antarmuka (IPv4 dan IPv6). Tanpa ini Vite hanya
+    // mengikat ::1 pada sebagian mesin Windows, sehingga http://localhost:5180
+    // gagal dibuka karena peramban mencoba 127.0.0.1 lebih dulu.
+    host: true,
+    // Izinkan hostname domain prodi yang dipetakan lewat file hosts, agar
+    // pengujian multi-domain lokal tidak diblokir pemeriksaan host Vite.
+    allowedHosts: ['.unusu.ac.id', 'localhost', '127.0.0.1'],
     proxy: {
       '/api': {
         target: 'http://localhost:5010',

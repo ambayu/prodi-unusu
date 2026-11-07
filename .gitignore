@@ -97,3 +97,5 @@ pm2-*.log
 # Folder prd/ berisi dokumen sumber dan percakapan asal. Dokumen acuan yang
 # dipakai sehari-hari sudah disalin ke docs/. Folder prd/ tetap dilacak karena
 # merupakan spesifikasi resmi proyek.
+
+dev.log
