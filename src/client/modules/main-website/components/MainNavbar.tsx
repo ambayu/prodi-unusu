@@ -13,13 +13,9 @@ export const MainNavbar: React.FC = () => {
 
   const mainNavLinks = [
     { label: 'Beranda', path: '/' },
-    { label: 'Tentang UNUSU', path: '/tentang' },
     { label: 'Fakultas & Prodi', path: '/fakultas' },
-    { label: 'Akademik', path: '/akademik' },
-    { label: 'Penerimaan Mahasiswa (PMB)', path: '/pmb' },
-    { label: 'Riset & Pengabdian', path: '/lppm' },
-    { label: 'Berita & Agenda', path: '/berita-kampus' },
-    { label: 'Kontak', path: '/kontak-kampus' },
+    { label: 'Berita & Agenda', path: '/berita' },
+    { label: 'Kontak', path: '/kontak' },
   ];
 
   return (
@@ -39,7 +35,7 @@ export const MainNavbar: React.FC = () => {
           <div className="flex items-center space-x-4 text-[11px] text-emerald-100">
             <span className="hidden md:inline">Jl. H.A. Manaf Lubis No.2, Gaperta Ujung, Medan</span>
             <Link to="/login" className="hover:text-amber-300 transition-colors font-bold underline">
-              Portal Layanan SSO
+              Masuk
             </Link>
           </div>
         </div>
@@ -77,13 +73,13 @@ export const MainNavbar: React.FC = () => {
               ))}
             </nav>
 
-            {/* Tombol Portal PMB & Masuk SSO */}
-            <div className="hidden sm:flex items-center space-x-3">
+            {/* Tombol Masuk Desktop */}
+            <div className="hidden xl:flex items-center space-x-3">
               <Link
                 to="/login"
                 className="px-5 py-2.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs shadow-md transition-all active:scale-95"
               >
-                Masuk SSO
+                Masuk
               </Link>
             </div>
 
@@ -119,7 +115,7 @@ export const MainNavbar: React.FC = () => {
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full flex items-center justify-center py-2.5 px-4 rounded-full bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md"
               >
-                Masuk Portal SSO
+                Masuk
               </Link>
             </div>
           </div>
