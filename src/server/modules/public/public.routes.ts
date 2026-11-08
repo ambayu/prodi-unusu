@@ -333,6 +333,79 @@ router.get(
   }),
 );
 
+/**
+ * GET /api/v1/public/news
+ *
+ * Berita terbit dari SELURUH program studi, dipakai beranda portal.
+ *
+ * Berbeda dengan `/posts` yang mensyaratkan tenant, endpoint ini justru tidak
+ * memakai `requireTenant` karena portal tidak memiliki tenant tetap. Setiap
+ * butir membawa identitas prodi asalnya agar tautan "Lihat selengkapnya" dapat
+ * mengarah ke domain prodi yang benar.
+ *
+ * `slug` hanya unik di dalam satu prodi, jadi kombinasi prodi+slug dipakai
+ * untuk membentuk kunci tautan yang unik.
+ */
+router.get(
+  '/news',
+  asyncHandler(async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 6, 1), 24);
+
+    const posts = await prisma.post.findMany({
+      where: { status: 'published', isPublished: true },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        thumbnailUrl: true,
+        publishedAt: true,
+        views: true,
+        category: { select: { name: true, slug: true } },
+        studyProgram: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            faculty: { select: { name: true } },
+            domains: {
+              where: { isActive: true },
+              orderBy: { isPrimary: 'desc' },
+              select: { hostname: true },
+            },
+          },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      items: posts.map((post) => {
+        const hostname = post.studyProgram.domains[0]?.hostname ?? null;
+        return {
+          id: post.id,
+          title: post.title,
+          slug: post.slug,
+          excerpt: post.excerpt,
+          thumbnailUrl: post.thumbnailUrl,
+          publishedAt: post.publishedAt,
+          views: post.views,
+          category: post.category,
+          studyProgramId: post.studyProgram.id,
+          studyProgramCode: post.studyProgram.code,
+          studyProgramName: post.studyProgram.name,
+          facultyName: post.studyProgram.faculty.name,
+          prodiHostname: hostname,
+          // Tautan absolut ke domain prodi asal agar tidak bergantung konteks host.
+          url: hostname ? `https://${hostname}/berita/${post.slug}` : null,
+        };
+      }),
+    });
+  }),
+);
+
 /** GET /api/v1/public/sitemap: daftar URL publik tenant untuk sitemap.xml. */
 router.get(
   '/sitemap',

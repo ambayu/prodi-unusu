@@ -22,6 +22,50 @@ export interface DirectoryFaculty {
   prodis: DirectoryProdi[];
 }
 
+export interface PortalNews {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  thumbnailUrl: string | null;
+  publishedAt: string | null;
+  views: number;
+  category: { name: string; slug: string } | null;
+  studyProgramId: number;
+  studyProgramCode: string;
+  studyProgramName: string;
+  facultyName: string;
+  prodiHostname: string | null;
+  url: string | null;
+}
+
+export interface PortalNewsResponse {
+  success: boolean;
+  items: PortalNews[];
+}
+
+/** Format tanggal ringkas berbahasa Indonesia, mis. "8 November 2026". */
+export function formatTanggalIndonesia(iso: string | null): string {
+  if (!iso) return 'Belum terbit';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 'Belum terbit';
+  const bulan = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+  return `${date.getDate()} ${bulan[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 /**
  * Mengelompokkan direktori prodi per fakultas.
  *

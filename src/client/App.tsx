@@ -22,6 +22,7 @@ import { GalleriesPage } from './pages/public/GalleriesPage';
 
 // Portal administrasi.
 import { Login } from './pages/Login';
+import { PortalNewsPage } from './pages/PortalNewsPage';
 import { SsoCallback } from './pages/SsoCallback';
 import { Dashboard } from './pages/admin/Dashboard';
 import { AdminCurriculum } from './pages/admin/AdminCurriculum';
@@ -433,6 +434,14 @@ function adminPortalRouteElements() {
         element={
           <MainWebsiteLayout>
             <MainLandingPage />
+          </MainWebsiteLayout>
+        }
+      />
+      <Route
+        path="/berita"
+        element={
+          <MainWebsiteLayout>
+            <PortalNewsPage />
           </MainWebsiteLayout>
         }
       />
