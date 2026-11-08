@@ -154,12 +154,25 @@ export function createApp() {
   // ---------------------------------------------------------
 
   if (config.isProduction) {
-    const clientDist = path.join(process.cwd(), 'dist', 'client');
-    if (fs.existsSync(clientDist)) {
+    // Vite menulis hasil build ke `dist/` (lihat vite.config.ts tanpa opsi
+    // outDir khusus), sedangkan server dikompilasi ke `dist/server/`.
+    // `dist/client` dipertahankan sebagai cadangan bila kelak outDir diubah.
+    const candidates = [
+      path.join(process.cwd(), 'dist'),
+      path.join(process.cwd(), 'dist', 'client'),
+    ];
+
+    const clientDist = candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html')));
+
+    if (clientDist) {
       app.use(express.static(clientDist));
       app.get('*', (_req, res) => {
         res.sendFile(path.join(clientDist, 'index.html'));
       });
+    } else {
+      console.warn(
+        '[UNUSU Multi-Prodi] Hasil build frontend tidak ditemukan. Jalankan `npm run build:client`.',
+      );
     }
   }
 
