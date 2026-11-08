@@ -22,7 +22,6 @@ import { GalleriesPage } from './pages/public/GalleriesPage';
 
 // Portal administrasi.
 import { Login } from './pages/Login';
-import { PortalLanding } from './pages/PortalLanding';
 import { SsoCallback } from './pages/SsoCallback';
 import { Dashboard } from './pages/admin/Dashboard';
 import { AdminCurriculum } from './pages/admin/AdminCurriculum';
@@ -342,6 +341,35 @@ export const App: React.FC = () => {
       />
 
       {/*
+        Alias rute menu.
+
+        Rute di bawah ini adalah `route` resmi pada ADMIN_MENUS
+        (src/shared/constants/organization.ts). Sebelumnya menu tersebut
+        mengarah ke path yang tidak terdaftar sehingga klik menu berakhir 404.
+        Alias ini menjaga agar menu dan router selalu sejalan.
+
+        Induk grup (Website, Konten, Pengelolaan) diarahkan ke halaman pertama
+        yang masuk akal bagi anggotanya; halaman itu sendiri tetap dijaga
+        RequirePermission sehingga tidak membuka akses baru.
+      */}
+      <Route path="/admin/website" element={<Navigate to="/admin/website/identitas" replace />} />
+      <Route path="/admin/konten" element={<Navigate to="/admin/konten/profil" replace />} />
+      <Route path="/admin/pengelolaan" element={<Navigate to="/admin/media" replace />} />
+
+      {/* Nama rute pada menu berbeda dengan nama rute halaman; disamakan di sini. */}
+      <Route path="/admin/users" element={<Navigate to="/admin/pengguna" replace />} />
+      <Route path="/admin/system-settings" element={<Navigate to="/admin/pengaturan" replace />} />
+      <Route path="/admin/audit" element={<Navigate to="/admin/audit-logs" replace />} />
+
+      {/*
+        Roles & Permissions dan Widget Library belum memiliki halaman tersendiri
+        di klien. Keduanya diarahkan ke Pengaturan agar menu tidak menghasilkan
+        404; begitu halamannya dibuat, cukup ganti tujuan alias ini.
+      */}
+      <Route path="/admin/roles" element={<Navigate to="/admin/pengaturan" replace />} />
+      <Route path="/admin/widget" element={<Navigate to="/admin/pengaturan" replace />} />
+
+      {/*
         Beranda publik. Hanya website utama universitas yang memakai ekosistem
         MainWebsiteLayout. Permukaan prodi memakai ProdiWebsiteLayout.
 
@@ -393,14 +421,21 @@ export const App: React.FC = () => {
  * Rute untuk permukaan portal administrasi (ADMIN_HOST).
  *
  * Portal tidak memiliki tenant, sehingga tidak boleh jatuh ke rute website
- * prodi. Beranda menampilkan direktori prodi agar pengunjung dapat memilih
- * website prodi atau masuk ke portal; path lain diarahkan ke login supaya
- * pengunjung langsung menemukan pintu masuk yang benar.
+ * prodi. Beranda menampilkan landing page portal (hero + direktori fakultas
+ * dan prodi) sehingga publik tetap dapat menjelajah website prodi, sedangkan
+ * path lain diarahkan ke login agar pengelola langsung menemukan pintu masuk.
  */
 function adminPortalRouteElements() {
   return (
     <>
-      <Route path="/" element={<PortalLanding />} />
+      <Route
+        path="/"
+        element={
+          <MainWebsiteLayout>
+            <MainLandingPage />
+          </MainWebsiteLayout>
+        }
+      />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </>
   );
