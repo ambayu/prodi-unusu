@@ -119,7 +119,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
               </div>
             </Link>
 
-            {/* Desktop Navigation: Item Beranda Aktif Tombol Kuning Sesuai navbar.png */}
+            {/* Desktop Navigation */}
             <div className="hidden xl:flex items-center space-x-1 lg:space-x-2">
               {navLinks.map((link, idx) => {
                 const isActive = location.pathname === link.path;
@@ -128,20 +128,26 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                   <Link
                     key={idx}
                     to={link.path}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                      isActive
-                        ? 'bg-[#fbbf24] text-slate-950 shadow-md font-extrabold'
-                        : 'text-white hover:bg-white/15'
+                    className={`relative flex items-center space-x-1.5 px-3 py-2 text-xs font-bold transition-colors group ${
+                      isActive ? 'text-[#fbbf24]' : 'text-white hover:text-amber-200'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950' : 'text-white'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-[#fbbf24]' : 'text-white group-hover:text-amber-200'}`} />
                     <span>{link.label}</span>
+                    <span
+                      aria-hidden="true"
+                      className={`absolute bottom-0 left-3 right-3 h-0.5 bg-[#fbbf24] rounded-full transition-all duration-200 ${
+                        isActive
+                          ? 'opacity-100 scale-x-100'
+                          : 'opacity-0 scale-x-0 group-hover:opacity-100 group-hover:scale-x-100'
+                      }`}
+                    />
                   </Link>
                 );
               })}
             </div>
 
-            {/* Sisi Kanan: Website Kampus + Tombol Masuk SSO Kuning Sesuai navbar.png */}
+            {/* Sisi Kanan: tautan publik ke portal universitas dan kontak prodi. */}
             <div className="hidden sm:flex items-center space-x-4">
               <a
                 href="https://unusu.ac.id"
@@ -153,12 +159,11 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                 <span>Website Kampus</span>
               </a>
 
-              {/* Tombol Masuk SSO Kuning Emas Sesuai navbar.png */}
               <Link
-                to="/login"
+                to="/kontak"
                 className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#fbbf24] hover:bg-[#f59e0b] text-slate-950 font-extrabold text-xs shadow-md transition-all active:scale-95"
               >
-                Masuk SSO
+                Hubungi Prodi
               </Link>
             </div>
 
@@ -206,11 +211,11 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                 <span>Website Kampus</span>
               </a>
               <Link
-                to="/login"
+                to="/kontak"
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl bg-white text-[#007aff] font-extrabold text-xs shadow-md"
               >
-                Masuk SSO
+                Hubungi Prodi
               </Link>
             </div>
           </div>
@@ -255,7 +260,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
               <p className="font-extrabold text-black text-xs uppercase tracking-wider mb-3">Layanan Terpadu</p>
               <ul className="space-y-1.5">
                 <li><a href="https://unusu.ac.id" className="hover:text-[#007aff] transition-colors">Portal Utama Kampus</a></li>
-                <li><Link to="/login" className="hover:text-[#007aff] transition-colors">Masuk ONE UNUSU SSO</Link></li>
+                <li><Link to="/berita" className="hover:text-[#007aff] transition-colors">Berita &amp; Pengumuman</Link></li>
                 <li><Link to="/sarpras" className="hover:text-[#007aff] transition-colors">Laboratorium & Fasilitas</Link></li>
                 <li><Link to="/kontak" className="hover:text-[#007aff] transition-colors">Layanan Aspirasi & Kontak</Link></li>
               </ul>

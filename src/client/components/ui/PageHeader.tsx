@@ -13,7 +13,7 @@ export const PageHeader: React.FC<{ eyebrow: string; title: string; description?
   description,
 }) => {
   const { tenant } = useTenant();
-  const primary = tenant?.theme.primaryColor ?? '#1e3a8a';
+  const primary = tenant?.theme.primaryColor ?? '#14532D';
   const accent = tenant?.theme.accentColor ?? '#fbbf24';
 
   return (

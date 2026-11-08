@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Bars3Icon,
   XMarkIcon,
@@ -10,6 +10,7 @@ import {
 
 export const MainNavbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
 
   const mainNavLinks = [
     { label: 'Beranda', path: '/' },
@@ -19,10 +20,10 @@ export const MainNavbar: React.FC = () => {
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-xs">
+    <header className="sticky top-0 z-50 bg-white shadow-xs">
       {/* Top Bar Institusi Universitas */}
       <div className="bg-[#14532D] text-white text-xs py-2 px-4 border-b border-emerald-900">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-1">
           <div className="flex items-center space-x-2 font-medium">
             <span className="font-extrabold uppercase tracking-wider text-amber-300">
               PORTAL UTAMA UNIVERSITAS
@@ -31,12 +32,6 @@ export const MainNavbar: React.FC = () => {
             <span className="text-slate-100">
               Universitas Nahdlatul Ulama Sumatera Utara
             </span>
-          </div>
-          <div className="flex items-center space-x-4 text-[11px] text-emerald-100">
-            <span className="hidden md:inline">Jl. H.A. Manaf Lubis No.2, Gaperta Ujung, Medan</span>
-            <Link to="/login" className="hover:text-amber-300 transition-colors font-bold underline">
-              Masuk
-            </Link>
           </div>
         </div>
       </div>
@@ -62,26 +57,29 @@ export const MainNavbar: React.FC = () => {
 
             {/* Navigasi Desktop Universitas */}
             <nav className="hidden xl:flex items-center space-x-1">
-              {mainNavLinks.map((link, idx) => (
-                <Link
-                  key={idx}
-                  to={link.path}
-                  className="px-3 py-2 rounded-xl text-xs font-bold text-white hover:bg-white/15 transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {mainNavLinks.map((link, idx) => {
+                const isActive = location.pathname === link.path;
+                return (
+                  <Link
+                    key={idx}
+                    to={link.path}
+                    className={`relative px-3 py-2 text-xs font-bold text-white transition-colors group ${
+                      isActive ? 'text-amber-300' : 'hover:text-amber-200'
+                    }`}
+                  >
+                    <span>{link.label}</span>
+                    <span
+                      aria-hidden="true"
+                      className={`absolute bottom-0 left-3 right-3 h-0.5 bg-amber-400 rounded-full transition-all duration-200 ${
+                        isActive
+                          ? 'opacity-100 scale-x-100'
+                          : 'opacity-0 scale-x-0 group-hover:opacity-100 group-hover:scale-x-100'
+                      }`}
+                    />
+                  </Link>
+                );
+              })}
             </nav>
-
-            {/* Tombol Masuk Desktop */}
-            <div className="hidden xl:flex items-center space-x-3">
-              <Link
-                to="/login"
-                className="px-5 py-2.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs shadow-md transition-all active:scale-95"
-              >
-                Masuk
-              </Link>
-            </div>
 
             {/* Mobile Hamburger */}
             <div className="xl:hidden flex items-center">
@@ -109,15 +107,6 @@ export const MainNavbar: React.FC = () => {
                 {link.label}
               </Link>
             ))}
-            <div className="pt-3 border-t border-white/15 mt-3">
-              <Link
-                to="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center py-2.5 px-4 rounded-full bg-amber-400 text-slate-950 font-extrabold text-xs shadow-md"
-              >
-                Masuk
-              </Link>
-            </div>
           </div>
         )}
       </div>

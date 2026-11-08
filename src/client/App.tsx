@@ -4,6 +4,9 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 // Ekosistem website utama universitas.
 import { MainWebsiteLayout } from './modules/main-website/layouts/MainWebsiteLayout';
 import { MainLandingPage } from './modules/main-website/pages/MainLandingPage';
+import { AboutPage, AdmissionPage, ResearchPage } from './modules/main-website/pages/MainInfoPages';
+import { AcademicsPage, FacultiesPage } from './modules/main-website/pages/FacultiesPage';
+import { CampusContactPage, CampusServicesPage } from './modules/main-website/pages/CampusPages';
 
 // Ekosistem website program studi.
 import { ProdiWebsiteLayout } from './modules/prodi-website/layouts/ProdiWebsiteLayout';
@@ -395,7 +398,7 @@ export const App: React.FC = () => {
             path="/tentang"
             element={
               <MainWebsiteLayout>
-                <MainLandingPage />
+                <AboutPage />
               </MainWebsiteLayout>
             }
           />
@@ -403,7 +406,55 @@ export const App: React.FC = () => {
             path="/fakultas"
             element={
               <MainWebsiteLayout>
-                <MainLandingPage />
+                <FacultiesPage />
+              </MainWebsiteLayout>
+            }
+          />
+          <Route
+            path="/akademik"
+            element={
+              <MainWebsiteLayout>
+                <AcademicsPage />
+              </MainWebsiteLayout>
+            }
+          />
+          <Route
+            path="/pmb"
+            element={
+              <MainWebsiteLayout>
+                <AdmissionPage />
+              </MainWebsiteLayout>
+            }
+          />
+          <Route
+            path="/lppm"
+            element={
+              <MainWebsiteLayout>
+                <ResearchPage />
+              </MainWebsiteLayout>
+            }
+          />
+          <Route
+            path="/kontak"
+            element={
+              <MainWebsiteLayout>
+                <CampusContactPage />
+              </MainWebsiteLayout>
+            }
+          />
+          <Route
+            path="/layanan"
+            element={
+              <MainWebsiteLayout>
+                <CampusServicesPage />
+              </MainWebsiteLayout>
+            }
+          />
+          <Route
+            path="/berita"
+            element={
+              <MainWebsiteLayout>
+                <PortalNewsPage />
               </MainWebsiteLayout>
             }
           />
@@ -427,24 +478,19 @@ export const App: React.FC = () => {
  * path lain diarahkan ke login agar pengelola langsung menemukan pintu masuk.
  */
 function adminPortalRouteElements() {
+  const wrap = (children: React.ReactNode) => <MainWebsiteLayout>{children}</MainWebsiteLayout>;
+
   return (
     <>
-      <Route
-        path="/"
-        element={
-          <MainWebsiteLayout>
-            <MainLandingPage />
-          </MainWebsiteLayout>
-        }
-      />
-      <Route
-        path="/berita"
-        element={
-          <MainWebsiteLayout>
-            <PortalNewsPage />
-          </MainWebsiteLayout>
-        }
-      />
+      <Route path="/" element={wrap(<MainLandingPage />)} />
+      <Route path="/tentang" element={wrap(<AboutPage />)} />
+      <Route path="/fakultas" element={wrap(<FacultiesPage />)} />
+      <Route path="/akademik" element={wrap(<AcademicsPage />)} />
+      <Route path="/pmb" element={wrap(<AdmissionPage />)} />
+      <Route path="/lppm" element={wrap(<ResearchPage />)} />
+      <Route path="/kontak" element={wrap(<CampusContactPage />)} />
+      <Route path="/layanan" element={wrap(<CampusServicesPage />)} />
+      <Route path="/berita" element={wrap(<PortalNewsPage />)} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </>
   );

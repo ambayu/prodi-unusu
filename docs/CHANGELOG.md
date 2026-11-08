@@ -2,7 +2,16 @@
 
 Semua perubahan penting dicatat di sini. Format tanggal: YYYY-MM-DD.
 
-## 2026-11-07 â€” Fondasi data dan portal berfungsi end-to-end
+## 2026-11-08 — Redesain Seksi Tentang Program Studi (Dark Dot-Matrix & Student Showcase)
+
+### Added
+- Aset visual promosi di `public/assets/tentang/`: `students-duo.png` (foto pasangan mahasiswa berprestasi UNUSU), `circular-arch.png` (aksen lengkung hijau 3D), `halftone-corners.png` (pola halftone sudut), `mint-glow.png` (pendaran cahaya mint), dan `wave-banner.png` (pita gelombang bawah).
+
+### Changed
+- `src/client/modules/main-website/pages/MainLandingPage.tsx`: Redesain total seksi "Sekilas Tentang Program Studi di UNUSU" mengadopsi tema gelap futuristik (*dark obsidian & emerald*) berbasis tekstur *dot-matrix grid*, pendaran *mint glow*, framing *circular arch*, dan kartu pilar akademik *glassmorphism*.
+- Penggantian `SparklesIcon` menjadi `ShieldCheckIcon` dan `GlobeAltIcon` sesuai kepatuhan Anti-Sparkles Rule.
+
+## 2026-11-07 — Fondasi data dan portal berfungsi end-to-end
 
 Perubahan besar. Aplikasi sebelumnya hanya tampilan; sekarang tersambung ke
 database, memiliki autentikasi nyata, dan seluruh data berasal dari MySQL.
