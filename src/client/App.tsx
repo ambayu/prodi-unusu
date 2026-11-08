@@ -335,9 +335,14 @@ export const App: React.FC = () => {
 
       {/*
         Beranda publik. Hanya website utama universitas yang memakai ekosistem
-        MainWebsiteLayout. Permukaan prodi memakai ProdiWebsiteLayout, dan
-        portal admin tetap membuka landing page prodi karena pengunjung tidak
-        perlu login untuk melihatnya.
+        MainWebsiteLayout. Permukaan prodi memakai ProdiWebsiteLayout.
+
+        Permukaan `admin` (ADMIN_HOST, yaitu prodi.unusu.ac.id) sengaja TIDAK
+        memakai tenant: portal administrasi memilih program studi dari
+        penugasan pengguna, bukan dari domain yang sedang dibuka. Karena itu
+        beranda diarahkan ke halaman login, bukan ke galat "domain belum
+        terdaftar" yang dulu muncul karena surface admin ikut dicabang ke
+        rute prodi.
       */}
       {surface === 'main' ? (
         <>
@@ -367,12 +372,30 @@ export const App: React.FC = () => {
           />
           <Route path="*" element={<NotFoundPage />} />
         </>
+      ) : surface === 'admin' ? (
+        adminPortalRouteElements()
       ) : (
         prodiRouteElements()
       )}
     </Routes>
   );
 };
+
+/**
+ * Rute untuk permukaan portal administrasi (ADMIN_HOST).
+ *
+ * Portal tidak memiliki tenant, sehingga tidak boleh jatuh ke rute website
+ * prodi. Halaman publik yang tidak dikenal diarahkan ke login supaya
+ * pengunjung langsung menemukan pintu masuk yang benar.
+ */
+function adminPortalRouteElements() {
+  return (
+    <>
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </>
+  );
+}
 
 /**
  * Rute website prodi.
