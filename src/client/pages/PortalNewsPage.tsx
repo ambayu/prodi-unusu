@@ -75,8 +75,10 @@ const NewsCard: React.FC<{ item: PortalNews }> = ({ item }) => {
             {item.views.toLocaleString('id-ID')}
           </span>
           {href && (
+            // Penanda bahwa kartu dapat diklik untuk membaca berita di domain
+            // prodi asalnya; bukan tombol terpisah.
             <span className="ml-auto inline-flex items-center gap-1 font-bold text-emerald-700">
-              Selengkapnya
+              Baca di {item.studyProgramCode}
               <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
             </span>
           )}
