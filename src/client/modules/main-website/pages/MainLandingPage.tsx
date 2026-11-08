@@ -6,22 +6,74 @@ import {
   ArrowTopRightOnSquareIcon,
   ArrowRightIcon,
   BookOpenIcon,
+  BriefcaseIcon,
+  CalculatorIcon,
   CalendarDaysIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CodeBracketIcon,
+  CommandLineIcon,
+  CpuChipIcon,
   EyeIcon,
+  GlobeAltIcon,
+  HeartIcon,
   NewspaperIcon,
+  PresentationChartLineIcon,
   SparklesIcon,
+  Square3Stack3DIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import { api, toApiError } from '../../../services/api';
 import {
   formatTanggalIndonesia,
   groupByFaculty,
+  type DirectoryProdi,
   type DirectoryResponse,
   type PortalNewsResponse,
 } from '../../../services/directory';
 import { ErrorState, LoadingState } from '../../../components/ui/States';
+
+/** Gambar representatif prodi sesuai disiplin ilmu (senada dengan desain referensi). */
+const PRODI_THUMBNAILS: Record<string, string> = {
+  TIF: '/images/prodi/prodi-coding.png',
+  TI: '/images/prodi/prodi-coding.png',
+  IKOM: '/images/prodi/prodi-ai.png',
+  IKO: '/images/prodi/prodi-ai.png',
+  ILKOM: '/images/prodi/prodi-ai.png',
+  SI: '/images/prodi/prodi-analytics.png',
+  SIN: '/images/prodi/prodi-analytics.png',
+  PGSD: '/images/prodi/prodi-education.png',
+  PEND: '/images/prodi/prodi-education.png',
+  MNJ: '/images/prodi/prodi-finance.png',
+  MAN: '/images/prodi/prodi-finance.png',
+  AKN: '/images/prodi/prodi-finance.png',
+  AKT: '/images/prodi/prodi-finance.png',
+  AGR: '/images/prodi/prodi-education.png',
+  AGB: '/images/prodi/prodi-finance.png',
+  KES: '/images/prodi/prodi-ai.png',
+  KDM: '/images/prodi/prodi-ai.png',
+  PAI: '/images/prodi/prodi-education.png',
+  KPI: '/images/prodi/prodi-education.png',
+};
+
+function getProdiThumbnail(code: string) {
+  return PRODI_THUMBNAILS[code.toUpperCase()] || '/images/prodi/prodi-coding.png';
+}
+
+/** Ikon spesifik representatif tiap bidang program studi. */
+function getProdiIcon(code: string) {
+  const c = code.toUpperCase();
+  if (['TIF', 'TI'].includes(c)) return CodeBracketIcon;
+  if (['IKOM', 'IKO', 'ILKOM'].includes(c)) return CpuChipIcon;
+  if (['SI', 'SIN'].includes(c)) return PresentationChartLineIcon;
+  if (['PGSD', 'PEND'].includes(c)) return BookOpenIcon;
+  if (['MNJ', 'MAN'].includes(c)) return BriefcaseIcon;
+  if (['AKN', 'AKT'].includes(c)) return CalculatorIcon;
+  if (['AGR', 'AGB'].includes(c)) return SparklesIcon;
+  if (['KES', 'KDM'].includes(c)) return HeartIcon;
+  if (['PAI', 'KPI'].includes(c)) return BookOpenIcon;
+  return CommandLineIcon;
+}
 
 /** Banner hero portal. Murni gambar: tanpa teks dan tanpa tombol di atasnya. */
 const HERO_SLIDES = [
@@ -193,19 +245,45 @@ export const MainLandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. Direktori fakultas & program studi */}
+      {/* 3. Direktori fakultas & program studi (Desain Sesuai Referensi Gambar) */}
       <section id="fakultas-prodi" className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 sm:pt-16">
-        <div className="mx-auto mb-10 max-w-2xl text-center">
-          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-emerald-800">
-            EKOSISTEM WEBSITE MULTI-PRODI
-          </p>
-          <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
-            Fakultas &amp; Portal Mandiri Program Studi
-          </h2>
-          <p className="mt-2 text-xs text-slate-500 sm:text-sm">
-            Masing-masing program studi UNUSU memiliki identitas website independen dengan domain
-            terpisah.
-          </p>
+        {/* Banner Header dengan Ilustrasi Gedung Kampus UNUSU & Gelombang Hijau */}
+        <div className="relative mb-12 overflow-hidden rounded-3xl border border-emerald-100/80 bg-white p-6 shadow-sm sm:p-10">
+          <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-emerald-50 blur-3xl" />
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-600 via-emerald-500 to-amber-400" />
+
+          <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
+            <div className="z-10 space-y-3 lg:col-span-7">
+              <div className="flex items-center gap-3">
+                <span className="h-px w-8 bg-emerald-600" />
+                <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-800">
+                  EKOSISTEM WEBSITE MULTI-PRODI
+                </span>
+                <span className="h-px w-8 bg-emerald-600" />
+              </div>
+              <h2 className="text-2xl font-black tracking-tight text-slate-900 sm:text-4xl">
+                Fakultas &amp; Portal Mandiri Program Studi
+              </h2>
+              <p className="max-w-xl text-xs leading-relaxed text-slate-600 sm:text-sm">
+                Masing-masing program studi UNUSU memiliki identitas website independen dengan domain
+                terpisah.
+              </p>
+            </div>
+
+            <div className="relative flex justify-center lg:col-span-5 lg:justify-end">
+              <div className="relative h-44 w-full max-w-md overflow-hidden rounded-2xl shadow-md sm:h-52">
+                <img
+                  src="/images/prodi/campus-building-header.png"
+                  alt="Gedung Kampus UNUSU"
+                  className="h-full w-full object-cover object-center"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-emerald-950/40 via-transparent to-transparent" />
+                <span className="absolute bottom-2.5 right-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-extrabold text-emerald-900 backdrop-blur-xs">
+                  Gedung Kampus UNUSU
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {directoryQuery.isLoading && <LoadingState label="Memuat direktori program studi" />}
@@ -218,86 +296,113 @@ export const MainLandingPage: React.FC = () => {
           </div>
         )}
 
-        {/*
-          Fakultas adalah judul kelompok, bukan kartu tersendiri. Yang menjadi
-          kartu adalah program studi, karena itulah yang memiliki website.
-        */}
-        <div className="space-y-10">
+        {/* Baris per Fakultas: Kolom Kiri Info Fakultas + Kolom Kanan Kartu-Kartu Prodi */}
+        <div className="space-y-6">
           {faculties.map((faculty) => (
-            <section key={faculty.id}>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="flex h-9 min-w-[3rem] items-center justify-center rounded-lg bg-emerald-700 px-2 text-[11px] font-extrabold text-white shadow-sm">
-                  {faculty.code}
-                </span>
-                <h3 className="text-base font-extrabold text-slate-900">{faculty.name}</h3>
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
-                  {faculty.prodis.length} Program Studi
-                </span>
-              </div>
+            <div
+              key={faculty.id}
+              className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-4 shadow-xs sm:p-6"
+            >
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                {/* Kolom Kiri: Panel Fakultas dengan Gelombang Hijau */}
+                <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/50 via-white to-emerald-50/30 p-6 lg:col-span-3">
+                  <div className="pointer-events-none absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-emerald-200/40 blur-2xl" />
 
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {faculty.prodis.map((prodi) => {
-                  const href = prodi.primaryHostname ? `https://${prodi.primaryHostname}/` : null;
+                  <div className="space-y-4">
+                    <span className="inline-flex items-center rounded-xl bg-emerald-800 px-3.5 py-1.5 text-xs font-black tracking-wider text-white shadow-xs">
+                      {faculty.code}
+                    </span>
+                    <h3 className="text-lg font-black leading-snug text-slate-900">
+                      {faculty.name}
+                    </h3>
+                  </div>
 
-                  const body = (
-                    <>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-800 ring-1 ring-emerald-100">
-                          {prodi.logoUrl ? (
-                            <img
-                              src={prodi.logoUrl}
-                              alt=""
-                              className="h-6 w-6 rounded object-contain"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <AcademicCapIcon className="h-5 w-5" />
-                          )}
+                  <div className="mt-6 flex items-center gap-2 text-xs font-bold text-slate-600">
+                    <Square3Stack3DIcon className="h-4 w-4 text-emerald-700" />
+                    <span>{faculty.prodis.length} Program Studi</span>
+                  </div>
+                </div>
+
+                {/* Kolom Kanan: Grid Kartu Prodi dengan Banner Gambar & Ikon Terapung */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-9 lg:grid-cols-3">
+                  {faculty.prodis.map((prodi) => {
+                    const href = prodi.primaryHostname ? `https://${prodi.primaryHostname}/` : null;
+                    const IconComponent = getProdiIcon(prodi.code);
+                    const thumbnail = getProdiThumbnail(prodi.code);
+
+                    const cardContent = (
+                      <>
+                        {/* Banner Gambar Atas Kartu */}
+                        <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-100">
+                          <img
+                            src={thumbnail}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+
+                          {/* Ikon Terapung Hijau Khas Desain */}
+                          <div className="absolute -bottom-3 left-4 flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-white bg-emerald-700 text-white shadow-md transition-transform duration-300 group-hover:scale-110">
+                            <IconComponent className="h-5 w-5" />
+                          </div>
                         </div>
-                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-extrabold text-slate-600">
-                          {prodi.degree}
-                        </span>
-                      </div>
 
-                      <p className="mt-3 text-sm font-bold leading-snug text-slate-900 transition-colors group-hover:text-emerald-800">
-                        {prodi.name}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between gap-2">
-                        <p className="truncate font-mono text-[10px] font-bold text-emerald-700">
-                          {prodi.primaryHostname ?? 'domain belum tersedia'}
-                        </p>
-                        {href && (
-                          <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 shrink-0 text-slate-300 transition-colors group-hover:text-emerald-700" />
-                        )}
-                      </div>
-                    </>
-                  );
+                        {/* Konten Teks Bawah */}
+                        <div className="flex flex-1 flex-col p-4 pt-6">
+                          <h4 className="text-sm font-bold leading-snug text-slate-900 transition-colors group-hover:text-emerald-800">
+                            {prodi.name}
+                          </h4>
 
-                  const baseClass =
-                    'group flex min-h-[44px] flex-col rounded-2xl border border-slate-200 bg-white p-5 transition-all';
+                          <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                            <AcademicCapIcon className="h-4 w-4 text-emerald-700" />
+                            <span>{prodi.degree}</span>
+                          </div>
 
-                  if (!href) {
-                    return (
-                      <div key={prodi.id} className={`${baseClass} opacity-60`}>
-                        {body}
-                      </div>
+                          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                            <div className="flex min-w-0 items-center gap-1.5 text-xs text-slate-600">
+                              <GlobeAltIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                              <span className="truncate font-mono text-[11px] font-semibold text-emerald-800">
+                                {prodi.primaryHostname ?? 'domain belum tersedia'}
+                              </span>
+                            </div>
+
+                            {href && (
+                              <span className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 transition-all group-hover:bg-emerald-700 group-hover:text-white">
+                                <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </>
                     );
-                  }
 
-                  return (
-                    <a
-                      key={prodi.id}
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`${baseClass} hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-lg`}
-                    >
-                      {body}
-                    </a>
-                  );
-                })}
+                    const baseClass =
+                      'group flex min-h-[44px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all';
+
+                    if (!href) {
+                      return (
+                        <div key={prodi.id} className={`${baseClass} opacity-60`}>
+                          {cardContent}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <a
+                        key={prodi.id}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`${baseClass} hover:-translate-y-1 hover:border-emerald-600 hover:shadow-lg`}
+                      >
+                        {cardContent}
+                      </a>
+                    );
+                  })}
+                </div>
               </div>
-            </section>
+            </div>
           ))}
         </div>
       </section>
