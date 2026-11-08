@@ -1,15 +1,26 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   AcademicCapIcon,
   ArrowTopRightOnSquareIcon,
-  CheckBadgeIcon,
   ArrowRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { api, toApiError } from '../../../services/api';
 import { groupByFaculty, type DirectoryResponse } from '../../../services/directory';
 import { ErrorState, LoadingState } from '../../../components/ui/States';
+
+/** Banner hero portal. Murni gambar: tanpa teks dan tanpa tombol di atasnya. */
+const HERO_SLIDES = [
+  { id: 1, image: '/heroslider-full.png', alt: 'Kampus Universitas Nahdlatul Ulama Sumatera Utara' },
+  { id: 2, image: '/hero-slide-generated.png', alt: 'Gedung dan fasilitas kampus UNUSU' },
+  { id: 3, image: '/hero-campus.png', alt: 'Suasana kampus UNUSU' },
+];
+
+/** Jeda perpindahan slide otomatis. */
+const SLIDE_INTERVAL_MS = 6000;
 
 /**
  * Beranda portal utama program studi.
@@ -18,11 +29,32 @@ import { ErrorState, LoadingState } from '../../../components/ui/States';
  * (prodi.unusu.ac.id). Direktori fakultas dan program studi diambil dari
  * database sehingga penambahan prodi tidak memerlukan perubahan kode.
  *
- * Fakultas hanya tampil sebagai judul kelompok; yang dapat diklik adalah
- * program studi, dan tautannya membuka domain prodi di tab baru agar
- * pengunjung tidak kehilangan halaman portal.
+ * Hero berupa slider gambar penuh tanpa teks maupun tombol aksi; satu-satunya
+ * kendali adalah panah kiri dan kanan agar banner tetap bersih. Fakultas hanya
+ * tampil sebagai judul kelompok, sedangkan yang dapat diklik adalah program
+ * studi dan tautannya membuka domain prodi di tab baru.
  */
 export const MainLandingPage: React.FC = () => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const totalSlides = HERO_SLIDES.length;
+
+  const goTo = useCallback(
+    (index: number) => setCurrentSlide(((index % totalSlides) + totalSlides) % totalSlides),
+    [totalSlides],
+  );
+  const next = useCallback(() => goTo(currentSlide + 1), [currentSlide, goTo]);
+  const prev = useCallback(() => goTo(currentSlide - 1), [currentSlide, goTo]);
+
+  // Perpindahan otomatis berhenti sementara saat pengarahkan kursor atau fokus
+  // berada di slider, supaya pengunjung sempat melihat gambar yang diminati.
+  useEffect(() => {
+    if (isPaused) return;
+    const timer = setInterval(() => goTo(currentSlide + 1), SLIDE_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [currentSlide, isPaused, goTo]);
+
   const directoryQuery = useQuery({
     queryKey: ['public', 'directory'],
     queryFn: () => api.get<DirectoryResponse>('/public/directory').then((res) => res.data),
@@ -32,76 +64,59 @@ export const MainLandingPage: React.FC = () => {
   const faculties = groupByFaculty(prodis);
 
   return (
-    <div className="space-y-20 pb-20 font-sans">
-      {/* 1. Hero portal */}
-      <section className="relative overflow-hidden bg-[#14532D] py-20 text-white lg:py-28">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#22c55e_1px,transparent_1px)] opacity-20 [background-size:24px_24px]" />
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12">
-            <div className="space-y-6 lg:col-span-7">
-              <span className="inline-block rounded-full border border-emerald-700 bg-emerald-800/80 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-amber-300">
-                PORTAL RESMI UNIVERSITAS NAHDLATUL ULAMA SUMATERA UTARA
-              </span>
-              <h1 className="text-3xl font-extrabold leading-tight text-white sm:text-5xl">
-                Mencetak Cendekia Ahlussunnah wal Jama&apos;ah yang Unggul &amp; Berkarakter
-              </h1>
-              <p className="max-w-2xl text-sm leading-relaxed text-emerald-100 sm:text-base">
-                Pusat keunggulan pendidikan tinggi terakreditasi nasional dengan 6 fakultas dan 14
-                program studi mandiri, memadukan sains modern, teknologi, dan akhlak mulia.
-              </p>
-              <div className="flex flex-wrap gap-4 pt-2">
-                <a
-                  href="#fakultas-prodi"
-                  className="inline-flex min-h-[44px] items-center rounded-full bg-amber-400 px-6 text-xs font-extrabold text-slate-950 shadow-md transition-all hover:bg-amber-300"
-                >
-                  Jelajahi Program Studi
-                </a>
-                <Link
-                  to="/login"
-                  className="inline-flex min-h-[44px] items-center rounded-full border border-white/20 bg-white/10 px-6 text-xs font-bold text-white transition-all hover:bg-white/20"
-                >
-                  Portal Administrasi Pusat
-                </Link>
-              </div>
-            </div>
+    <div className="pb-20 font-sans">
+      {/* 1. Hero slider penuh, tanpa teks dan tanpa tombol */}
+      <section
+        className="relative w-full select-none overflow-hidden bg-slate-900"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onFocus={() => setIsPaused(true)}
+        onBlur={() => setIsPaused(false)}
+        aria-roledescription="carousel"
+        aria-label="Sorotan kampus"
+      >
+        <div className="relative aspect-[21/9] max-h-[560px] w-full min-h-[240px] sm:min-h-[340px]">
+          {HERO_SLIDES.map((slide, index) => (
+            <img
+              key={slide.id}
+              src={slide.image}
+              alt={slide.alt}
+              aria-hidden={index !== currentSlide}
+              className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-700 ease-in-out ${
+                index === currentSlide ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          ))}
 
-            <div className="flex justify-center lg:col-span-5">
-              <div className="w-full max-w-md space-y-4 rounded-3xl border border-white/20 bg-white/10 p-6 backdrop-blur-xs">
-                <h3 className="flex items-center text-lg font-bold text-white">
-                  <CheckBadgeIcon className="mr-2 h-5 w-5 text-amber-300" />
-                  Statistik Kampus Utama
-                </h3>
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                    <p className="text-2xl font-extrabold text-amber-300">{faculties.length || '6'}</p>
-                    <p className="text-xs text-emerald-100">Fakultas Aktif</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                    <p className="text-2xl font-extrabold text-amber-300">{prodis.length || '14'}</p>
-                    <p className="text-xs text-emerald-100">Program Studi</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                    <p className="text-2xl font-extrabold text-amber-300">100%</p>
-                    <p className="text-xs text-emerald-100">Terakreditasi</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                    <p className="text-2xl font-extrabold text-amber-300">SSO</p>
-                    <p className="text-xs text-emerald-100">Layanan Terpadu</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Panah kiri */}
+          <button
+            type="button"
+            onClick={prev}
+            aria-label="Slide sebelumnya"
+            className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-4 sm:h-12 sm:w-12"
+          >
+            <ChevronLeftIcon className="h-6 w-6" />
+          </button>
+
+          {/* Panah kanan */}
+          <button
+            type="button"
+            onClick={next}
+            aria-label="Slide berikutnya"
+            className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-4 sm:h-12 sm:w-12"
+          >
+            <ChevronRightIcon className="h-6 w-6" />
+          </button>
         </div>
       </section>
 
       {/* 2. Direktori fakultas & program studi */}
-      <section id="fakultas-prodi" className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
+      <section id="fakultas-prodi" className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 sm:pt-16">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
           <p className="mb-1 text-xs font-bold uppercase tracking-wider text-emerald-800">
             EKOSISTEM WEBSITE MULTI-PRODI
           </p>
-          <h2 className="text-3xl font-extrabold text-slate-900">
+          <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
             Fakultas &amp; Portal Mandiri Program Studi
           </h2>
           <p className="mt-2 text-xs text-slate-500 sm:text-sm">
