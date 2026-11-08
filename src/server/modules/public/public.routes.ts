@@ -284,6 +284,55 @@ router.post(
   }),
 );
 
+/**
+ * GET /api/v1/public/directory
+ *
+ * Direktori seluruh program studi beserta domain publiknya. Dipakai halaman
+ * beranda portal administrasi (ADMIN_HOST) untuk menampilkan daftar website
+ * prodi kepada pengunjung.
+ *
+ * Endpoint ini sengaja TIDAK memakai `requireTenant`: justru pada permukaan
+ * admin tidak ada tenant, dan seluruh data yang dikirim sudah bersifat publik
+ * (nama program studi, fakultas, dan hostname). Draft dan data internal tidak
+ * pernah ikut dikirim.
+ */
+router.get(
+  '/directory',
+  asyncHandler(async (_req, res) => {
+    const studyPrograms = await prisma.studyProgram.findMany({
+      where: { status: 'active' },
+      orderBy: [{ facultyId: 'asc' }, { sortOrder: 'asc' }],
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        slug: true,
+        degree: true,
+        logoUrl: true,
+        faculty: { select: { id: true, name: true, code: true } },
+        domains: {
+          where: { isActive: true },
+          orderBy: { isPrimary: 'desc' },
+          select: { hostname: true, isPrimary: true },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      total: studyPrograms.length,
+      studyPrograms: studyPrograms.map((prodi) => ({
+        ...prodi,
+        // Hostname utama dipakai untuk tautan keluar ke website prodi.
+        primaryHostname:
+          prodi.domains.find((domain) => domain.isPrimary)?.hostname ??
+          prodi.domains[0]?.hostname ??
+          null,
+      })),
+    });
+  }),
+);
+
 /** GET /api/v1/public/sitemap: daftar URL publik tenant untuk sitemap.xml. */
 router.get(
   '/sitemap',

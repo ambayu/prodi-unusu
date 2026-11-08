@@ -22,6 +22,7 @@ import { GalleriesPage } from './pages/public/GalleriesPage';
 
 // Portal administrasi.
 import { Login } from './pages/Login';
+import { PortalLanding } from './pages/PortalLanding';
 import { SsoCallback } from './pages/SsoCallback';
 import { Dashboard } from './pages/admin/Dashboard';
 import { AdminCurriculum } from './pages/admin/AdminCurriculum';
@@ -60,6 +61,21 @@ export const App: React.FC = () => {
   const user = useSiteStore((state) => state.user);
   const location = useLocation();
 
+  // Callback SSO didahulukan sebelum pemeriksaan bootstrap.
+  //
+  // Halaman ini hanya bertugas menukar tiket menjadi sesi, dan tidak
+  // memerlukan tenant maupun status bootstrap. Bila diperiksa setelah
+  // `loading`/`error`, kegagalan bootstrap (misalnya domain belum terdaftar)
+  // akan menutupi halaman callback sehingga pengguna melihat layar kosong
+  // dan tidak pernah tahu penyebab kegagalan login.
+  if (location.pathname === '/sso/callback') {
+    return (
+      <Routes>
+        <Route path="/sso/callback" element={<SsoCallback />} />
+      </Routes>
+    );
+  }
+
   if (loading) {
     return <AppLoading />;
   }
@@ -75,15 +91,7 @@ export const App: React.FC = () => {
   // Rute portal administrasi melayani semua permukaan, sehingga login dapat
   // dibuka dari domain prodi maupun domain portal.
   const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname === '/login';
-  const isCallbackRoute = location.pathname === '/sso/callback';
 
-  if (isCallbackRoute) {
-    return (
-      <Routes>
-        <Route path="/sso/callback" element={<SsoCallback />} />
-      </Routes>
-    );
-  }
 
   // Landing page bersifat publik. Redirect ke login hanya terjadi pada path
   // yang memang milik portal, bukan pada beranda.
@@ -385,13 +393,14 @@ export const App: React.FC = () => {
  * Rute untuk permukaan portal administrasi (ADMIN_HOST).
  *
  * Portal tidak memiliki tenant, sehingga tidak boleh jatuh ke rute website
- * prodi. Halaman publik yang tidak dikenal diarahkan ke login supaya
+ * prodi. Beranda menampilkan direktori prodi agar pengunjung dapat memilih
+ * website prodi atau masuk ke portal; path lain diarahkan ke login supaya
  * pengunjung langsung menemukan pintu masuk yang benar.
  */
 function adminPortalRouteElements() {
   return (
     <>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<PortalLanding />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </>
   );
