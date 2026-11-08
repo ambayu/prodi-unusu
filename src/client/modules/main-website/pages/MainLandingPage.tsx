@@ -5,11 +5,14 @@ import {
   AcademicCapIcon,
   ArrowTopRightOnSquareIcon,
   ArrowRightIcon,
+  BookOpenIcon,
   CalendarDaysIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   EyeIcon,
   NewspaperIcon,
+  SparklesIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import { api, toApiError } from '../../../services/api';
 import {
@@ -129,7 +132,68 @@ export const MainLandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. Direktori fakultas & program studi */}
+      {/* 2. Sekilas Tentang Program Studi di UNUSU */}
+      <section className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 sm:pt-16">
+        <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50/70 via-white to-amber-50/40 p-6 sm:p-10 shadow-xs">
+          <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
+            <div className="space-y-4 lg:col-span-7">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                <SparklesIcon className="h-4 w-4 text-emerald-700" />
+                PROGRAM STUDI TERAKREDITASI
+              </span>
+              <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
+                Tentang Program Studi di UNUSU
+              </h2>
+              <p className="text-xs leading-relaxed text-slate-600 sm:text-sm">
+                Universitas Nahdlatul Ulama Sumatera Utara (UNUSU) menaungi 14 program studi unggulan
+                pada 6 fakultas. Setiap program studi dirancang memadukan keilmuan modern,
+                teknologi tepat guna, serta pondasi nilai keislaman Ahlussunnah wal Jama&apos;ah
+                An-Nahdliyah untuk mencetak lulusan berakhlak mulia, kompeten, dan siap berkontribusi
+                secara nyata di dunia kerja maupun masyarakat.
+              </p>
+              <p className="text-xs leading-relaxed text-slate-600 sm:text-sm">
+                Melalui ekosistem digital multi-tenant, setiap prodi memiliki portal mandiri yang
+                menyajikan kurikulum, profil dosen, fasilitas praktikum, hingga publikasi ilmiah
+                secara transparan dan akuntabel.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:col-span-5">
+              <div className="rounded-2xl border border-white bg-white/90 p-4 shadow-sm backdrop-blur-xs">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+                  <AcademicCapIcon className="h-5 w-5" />
+                </div>
+                <p className="mt-3 text-lg font-extrabold text-slate-900">Kurikulum MBKM</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  Adaptif dengan kebutuhan industri dan kewirausahaan modern.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white bg-white/90 p-4 shadow-sm backdrop-blur-xs">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-900">
+                  <UserGroupIcon className="h-5 w-5" />
+                </div>
+                <p className="mt-3 text-lg font-extrabold text-slate-900">Dosen Berkualitas</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  Praktisi dan akademisi berpengalaman di bidangnya.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white bg-white/90 p-4 shadow-sm backdrop-blur-xs">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+                  <BookOpenIcon className="h-5 w-5" />
+                </div>
+                <p className="mt-3 text-lg font-extrabold text-slate-900">Website Mandiri</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  14 portal independen dengan pembaruan informasi berkala.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Direktori fakultas & program studi */}
       <section id="fakultas-prodi" className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 sm:pt-16">
         <div className="mx-auto mb-10 max-w-2xl text-center">
           <p className="mb-1 text-xs font-bold uppercase tracking-wider text-emerald-800">
