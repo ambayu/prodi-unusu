@@ -375,31 +375,6 @@ export const MainLandingPage: React.FC = () => {
           </>
         )}
       </section>
-
-      {/* 4. Ajakan masuk portal */}
-      <section className="mx-auto max-w-7xl px-4 pt-16 sm:px-6">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#14532D] via-emerald-800 to-emerald-900 p-8 text-white sm:p-10">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#ffffff33_1px,transparent_1px)] opacity-40 [background-size:22px_22px]" />
-          <div className="relative flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="text-lg font-extrabold text-white sm:text-xl">
-                Pengelola website program studi
-              </h2>
-              <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-emerald-100">
-                Masuk dengan akun ONE UNUSU untuk mengelola berita, profil, dan konten website
-                program studi Anda.
-              </p>
-            </div>
-            <Link
-              to="/login"
-              className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl bg-amber-400 px-5 text-sm font-extrabold text-slate-950 transition-colors hover:bg-amber-300"
-            >
-              Masuk ke Portal
-              <ArrowRightIcon className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };
