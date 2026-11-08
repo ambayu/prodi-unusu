@@ -18,7 +18,7 @@ alat bantu AI.
 | Hal | Keputusan |
 |---|---|
 | Autentikasi | JWT di cookie httpOnly, sesi tercatat di tabel `sessions` |
-| Login | SSO ONE UNUSU jalur utama, kata sandi lokal jalur darurat |
+| Login | SSO ONE UNUSU jalur utama via izin masuk `prodi-unusu:masuk_*` (tidak ada peran ADMIN_PRODI kaku di portal pusat; SUPERADMIN dapat masuk ke semua prodi), kata sandi lokal jalur darurat |
 | Database | MySQL lokal `prodi_unusu_db` pada tahap pengembangan |
 | Fakultas | Data induk, bukan tenant, tidak memiliki domain |
 | Ikon | Heroicons saja |
