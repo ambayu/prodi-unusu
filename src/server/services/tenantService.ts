@@ -34,12 +34,21 @@ export function classifySurface(hostname: string): SiteSurface {
   // Portal admin dilayani dari hostname yang terdaftar di ADMIN_HOST.
   if (hostname === config.adminHost) return 'admin';
 
-  // Host loopback selalu diperlakukan sebagai website prodi. Tenant yang
-  // ditampilkan ditentukan PREVIEW_HOST; bila kosong, dipakai tenant pertama
-  // yang aktif agar pengembangan tidak terhenti karena konfigurasi kosong.
-  // Ini tidak melonggarkan aturan "tolak domain tidak dikenal" untuk host
-  // publik mana pun.
+  // Host loopback memakai permukaan pilihan pengembang.
+  //
+  // PREVIEW_SURFACE memungkinkan `http://localhost:5180` menampilkan portal,
+  // website utama, atau website prodi tanpa menyunting berkas `hosts`.
+  // Pemaksaan ini hanya berlaku bila ALLOW_LOCAL_PREVIEW=true dan host
+  // benar-benar loopback, sehingga tidak melonggarkan aturan "tolak domain
+  // tidak dikenal" pada host publik mana pun.
   const isLoopback = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  if (isLoopback && config.dev.allowLocalPreview) {
+    const forced = config.dev.previewSurface;
+    if (forced === 'portal' || forced === 'admin') return 'admin';
+    if (forced === 'main') return 'main';
+    if (forced === 'prodi') return 'prodi';
+  }
+
   if (isLoopback) return 'prodi';
 
   return 'prodi';
@@ -56,7 +65,11 @@ export function classifySurface(hostname: string): SiteSurface {
 export function resolveLookupHostname(hostname: string, surface: SiteSurface): string {
   const isLoopback = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
   if (surface === 'prodi' && isLoopback && config.dev.previewHost) {
-    return config.dev.previewHost.toLowerCase();
+    // `localhost` tidak pernah menjadi hostname tenant, jadi tanpa pemetaan ini
+    // pencarian selalu gagal dan sistem jatuh ke tenant pertama. Nilai yang
+    // berisi nama pendek (mis. "tif") dilengkapi menjadi hostname penuh.
+    const target = config.dev.previewHost.toLowerCase();
+    return target.includes('.') ? target : `${target}.unusu.ac.id`;
   }
   return hostname;
 }

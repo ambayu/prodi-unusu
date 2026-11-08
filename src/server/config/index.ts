@@ -131,6 +131,17 @@ export const config = {
   dev: {
     allowLocalPreview: optional('ALLOW_LOCAL_PREVIEW', 'false') === 'true',
     previewHost: process.env.PREVIEW_HOST || '',
+    /**
+     * Permukaan yang dipaksakan pada host loopback (localhost / 127.0.0.1).
+     *
+     * Sengaja dipisah dari PREVIEW_HOST agar pengembang cukup menulis satu kata
+     * di `.env` tanpa menyunting berkas `hosts`:
+     *   - `portal` -> portal administrasi (landing + login + panel admin)
+     *   - `main`   -> website utama universitas
+     *   - `prodi`  -> website program studi, tenant dipilih PREVIEW_HOST
+     * Kosong berarti perilaku bawaan: host loopback dianggap website prodi.
+     */
+    previewSurface: (process.env.PREVIEW_SURFACE || '').trim().toLowerCase(),
   },
 } as const;
 
