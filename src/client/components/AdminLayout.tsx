@@ -103,6 +103,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const setActiveTenant = useSiteStore((state) => state.setActiveTenant);
   const activeTenantId = useSiteStore((state) => state.activeTenantId);
   const [availablePrograms, setAvailablePrograms] = useState<Array<{ id: number; name: string; code: string }>>([]);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (isSuperAdmin) {
