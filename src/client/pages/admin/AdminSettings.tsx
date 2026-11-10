@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowUpTrayIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { ErrorState, LoadingState } from '../../components/ui/States';
 import { Field } from '../../components/ui/FormModal';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
-import { settingsApi, type Theme, type WebsiteSetting } from '../../services/adminApi';
+import { mediaApi, settingsApi, type Theme, type WebsiteSetting } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 
 const TABS = [
@@ -30,6 +31,30 @@ export const AdminSettings: React.FC = () => {
   const [tab, setTab] = useState<TabKey>('identity');
   const [identity, setIdentity] = useState<Partial<WebsiteSetting>>({});
   const [theme, setTheme] = useState<Partial<Theme>>({});
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [uploadingSeoImage, setUploadingSeoImage] = useState(false);
+
+  const handleFileUpload = async (
+    file: File,
+    onSuccess: (url: string) => void,
+    setLoading: (val: boolean) => void
+  ) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Pilih file gambar valid (JPG, PNG, WebP, atau ICO).');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await mediaApi.upload(file);
+      onSuccess(res.data.asset.url);
+      toast.success('Gambar berhasil diunggah.');
+    } catch (err) {
+      toast.error(toApiError(err).message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const settingsQuery = useQuery({
     queryKey: ['admin', 'settings'],
@@ -69,8 +94,8 @@ export const AdminSettings: React.FC = () => {
 
   return (
     <AdminLayout
-      title="Pengaturan Website"
-      description={studyProgram ? `${studyProgram.name} • ${studyProgram.faculty.name}` : undefined}
+      title="Identitas, Tema & SEO"
+      description={studyProgram ? `${studyProgram.name} • ${studyProgram.faculty.name}` : 'Kelola identitas profil prodi, tema warna visual, dan optimasi SEO mesin pencari.'}
     >
       {settingsQuery.isLoading ? (
         <LoadingState label="Memuat pengaturan" rows={3} />
@@ -135,21 +160,96 @@ export const AdminSettings: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="URL logo" htmlFor="logo-url" hint="Contoh /logo-unusu.jpg">
-                  <input
-                    id="logo-url"
-                    className="field-input"
-                    value={identity.logoUrl ?? ''}
-                    onChange={(event) => setIdentity({ ...identity, logoUrl: event.target.value })}
-                  />
+                <Field label="Logo Website" htmlFor="logo-upload" hint="Logo resmi program studi / universitas. Format PNG/SVG transparan direkomendasikan.">
+                  <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white shadow-2xs">
+                      {identity.logoUrl ? (
+                        <>
+                          <img
+                            src={identity.logoUrl}
+                            alt="Logo Website"
+                            className="h-full w-full object-contain p-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setIdentity({ ...identity, logoUrl: null })}
+                            className="absolute top-1 right-1 rounded-full bg-rose-600 p-0.5 text-white shadow-xs hover:bg-rose-700"
+                            title="Hapus logo"
+                          >
+                            <XMarkIcon className="h-3 w-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <PhotoIcon className="h-7 w-7 text-slate-300" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50">
+                        <ArrowUpTrayIcon className="h-4 w-4 text-slate-500" />
+                        <span>{uploadingLogo ? 'Mengunggah...' : 'Pilih Berkas Logo'}</span>
+                        <input
+                          id="logo-upload"
+                          type="file"
+                          accept="image/*"
+                          disabled={uploadingLogo}
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) void handleFileUpload(file, (url) => setIdentity({ ...identity, logoUrl: url }), setUploadingLogo);
+                          }}
+                        />
+                      </label>
+                      <p className="text-[10px] text-slate-400 font-mono truncate">
+                        {identity.logoUrl || 'Belum ada logo terunggah'}
+                      </p>
+                    </div>
+                  </div>
                 </Field>
-                <Field label="URL favicon" htmlFor="favicon-url">
-                  <input
-                    id="favicon-url"
-                    className="field-input"
-                    value={identity.faviconUrl ?? ''}
-                    onChange={(event) => setIdentity({ ...identity, faviconUrl: event.target.value })}
-                  />
+
+                <Field label="Favicon Browser" htmlFor="favicon-upload" hint="Ikon tab browser (disarankan format PNG/ICO ukuran 32x32 atau 64x64).">
+                  <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white shadow-2xs">
+                      {identity.faviconUrl ? (
+                        <>
+                          <img
+                            src={identity.faviconUrl}
+                            alt="Favicon"
+                            className="h-full w-full object-contain p-2"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setIdentity({ ...identity, faviconUrl: null })}
+                            className="absolute top-1 right-1 rounded-full bg-rose-600 p-0.5 text-white shadow-xs hover:bg-rose-700"
+                            title="Hapus favicon"
+                          >
+                            <XMarkIcon className="h-3 w-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <PhotoIcon className="h-7 w-7 text-slate-300" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50">
+                        <ArrowUpTrayIcon className="h-4 w-4 text-slate-500" />
+                        <span>{uploadingFavicon ? 'Mengunggah...' : 'Pilih Berkas Favicon'}</span>
+                        <input
+                          id="favicon-upload"
+                          type="file"
+                          accept="image/*"
+                          disabled={uploadingFavicon}
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) void handleFileUpload(file, (url) => setIdentity({ ...identity, faviconUrl: url }), setUploadingFavicon);
+                          }}
+                        />
+                      </label>
+                      <p className="text-[10px] text-slate-400 font-mono truncate">
+                        {identity.faviconUrl || 'Belum ada favicon terunggah'}
+                      </p>
+                    </div>
+                  </div>
                 </Field>
               </div>
 
@@ -377,13 +477,50 @@ export const AdminSettings: React.FC = () => {
                 />
               </Field>
 
-              <Field label="Gambar SEO" htmlFor="seo-image" hint="URL gambar untuk pratinjau saat tautan dibagikan.">
-                <input
-                  id="seo-image"
-                  className="field-input"
-                  value={identity.seoImageUrl ?? ''}
-                  onChange={(event) => setIdentity({ ...identity, seoImageUrl: event.target.value })}
-                />
+              <Field label="Gambar SEO / Social Share Image" htmlFor="seo-image-upload" hint="Gambar thumbnail saat tautan website prodi dibagikan ke WhatsApp, Facebook, LinkedIn, dll.">
+                <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <div className="relative flex h-20 w-32 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white shadow-2xs">
+                    {identity.seoImageUrl ? (
+                      <>
+                        <img
+                          src={identity.seoImageUrl}
+                          alt="SEO Open Graph Preview"
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setIdentity({ ...identity, seoImageUrl: null })}
+                          className="absolute top-1 right-1 rounded-full bg-rose-600 p-1 text-white shadow-xs hover:bg-rose-700"
+                          title="Hapus gambar SEO"
+                        >
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                      </>
+                    ) : (
+                      <PhotoIcon className="h-8 w-8 text-slate-300" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50">
+                      <ArrowUpTrayIcon className="h-4 w-4 text-slate-500" />
+                      <span>{uploadingSeoImage ? 'Mengunggah...' : 'Pilih Berkas Gambar SEO'}</span>
+                      <input
+                        id="seo-image-upload"
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingSeoImage}
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleFileUpload(file, (url) => setIdentity({ ...identity, seoImageUrl: url }), setUploadingSeoImage);
+                        }}
+                      />
+                    </label>
+                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                      {identity.seoImageUrl || 'Belum ada gambar SEO terunggah (ukuran rasio 1200x630 direkomendasikan)'}
+                    </p>
+                  </div>
+                </div>
               </Field>
 
               {has('seo.update') ? (

@@ -283,13 +283,8 @@ export const ADMIN_MENUS: Array<{
 }> = [
   { menuKey: 'dashboard', label: 'Dashboard', route: '/admin', icon: 'HomeIcon', sortOrder: 1, requiredPermission: 'dashboard.view', scopeType: 'prodi' },
 
-  { menuKey: 'website', label: 'Website', route: '/admin/website', icon: 'GlobeAltIcon', sortOrder: 10, requiredPermission: 'website.view', scopeType: 'prodi' },
-  { menuKey: 'website.identity', label: 'Identitas Website', route: '/admin/website/identitas', icon: 'IdentificationIcon', parentKey: 'website', sortOrder: 11, requiredPermission: 'website.view', scopeType: 'prodi' },
-  { menuKey: 'website.navigation', label: 'Navigasi', route: '/admin/website/navigasi', icon: 'Bars3Icon', parentKey: 'website', sortOrder: 12, requiredPermission: 'navigation.view', scopeType: 'prodi' },
-  { menuKey: 'website.theme', label: 'Tema', route: '/admin/website/tema', icon: 'SwatchIcon', parentKey: 'website', sortOrder: 13, requiredPermission: 'theme.view', scopeType: 'prodi' },
-  { menuKey: 'website.seo', label: 'SEO', route: '/admin/website/seo', icon: 'MagnifyingGlassIcon', parentKey: 'website', sortOrder: 14, requiredPermission: 'seo.view', scopeType: 'prodi' },
-
-  { menuKey: 'builder', label: 'Page Builder', route: '/admin/builder', icon: 'AdjustmentsHorizontalIcon', sortOrder: 20, requiredPermission: 'builder.view', scopeType: 'prodi' },
+  { menuKey: 'builder', label: 'Page Builder & Navigasi', route: '/admin/builder', icon: 'AdjustmentsHorizontalIcon', sortOrder: 20, requiredPermission: 'builder.view', scopeType: 'prodi' },
+  { menuKey: 'website.settings', label: 'Identitas, Tema & SEO', route: '/admin/pengaturan', icon: 'Cog6ToothIcon', sortOrder: 21, requiredPermission: 'website.view', scopeType: 'prodi' },
 
   { menuKey: 'content', label: 'Konten', route: '/admin/konten', icon: 'DocumentTextIcon', sortOrder: 30, requiredPermission: 'profile.view', scopeType: 'prodi' },
   { menuKey: 'content.profile', label: 'Profil', route: '/admin/konten/profil', icon: 'UserIcon', parentKey: 'content', sortOrder: 31, requiredPermission: 'profile.view', scopeType: 'prodi' },

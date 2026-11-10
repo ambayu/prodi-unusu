@@ -316,7 +316,7 @@ export const AdminPosts: React.FC = () => {
               <div className="flex items-center gap-3">
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50">
                   <ArrowUpTrayIcon className="h-4 w-4 text-slate-500" />
-                  <span>{uploadingThumb ? 'Mengunggah...' : 'Unggah Sampul'}</span>
+                  <span>{uploadingThumb ? 'Mengunggah...' : 'Pilih & Unggah Sampul'}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -340,13 +340,18 @@ export const AdminPosts: React.FC = () => {
                 )}
               </div>
 
-              <input
-                id="post-thumbnail"
-                className="field-input text-xs font-mono"
-                placeholder="URL Gambar Sampul..."
-                value={draft.thumbnailUrl}
-                onChange={(event) => setDraft({ ...draft, thumbnailUrl: event.target.value })}
-              />
+              {draft.thumbnailUrl ? (
+                <div className="flex items-center gap-2">
+                  <img
+                    src={draft.thumbnailUrl}
+                    alt="Preview Sampul"
+                    className="h-10 w-16 object-cover rounded border border-slate-200"
+                  />
+                  <span className="text-[10px] text-slate-400 font-mono truncate max-w-xs">
+                    {draft.thumbnailUrl}
+                  </span>
+                </div>
+              ) : null}
             </div>
           </Field>
           <Field label="Status Publikasi" htmlFor="post-status">

@@ -12,7 +12,7 @@ import {
   EnvelopeIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
-import { postApi, galleryApi, lecturerApi, curriculumApi } from '../../services/contentApi';
+import { postApi, galleryApi, lecturerApi, curriculumApi, facilityApi, documentApi } from '../../services/contentApi';
 import { useTenant } from '../../hooks/useSite';
 
 interface WidgetInstanceProps {
@@ -248,7 +248,22 @@ export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({
     return <LecturersWidget title={config.title} limit={config.limit || 6} primaryColor={primaryColor} />;
   }
 
-  // 8. CTA BANNER
+  // 8. FACILITY GRID
+  if (widgetCode === 'facility_grid') {
+    return <FacilityGridWidget title={config.title} limit={config.limit || 6} primaryColor={primaryColor} />;
+  }
+
+  // 9. DOCUMENT LIST
+  if (widgetCode === 'document_list') {
+    return <DocumentListWidget title={config.title} limit={config.limit || 6} primaryColor={primaryColor} />;
+  }
+
+  // 10. CURRICULUM OVERVIEW
+  if (widgetCode === 'curriculum_overview') {
+    return <CurriculumOverviewWidget title={config.title} primaryColor={primaryColor} />;
+  }
+
+  // 11. CTA BANNER
   if (widgetCode === 'cta_banner') {
     return (
       <section className="py-16 px-4 sm:px-6">
@@ -389,7 +404,7 @@ const LatestNewsWidget: React.FC<{ title?: string; limit: number; primaryColor: 
                       <span>&bull;</span>
                       <span className="flex items-center gap-1">
                         <EyeIcon className="w-3.5 h-3.5" />
-                        {post.viewCount || 0}x
+                        {post.views || 0}x
                       </span>
                     </div>
                     <h3 className="font-bold text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-2 leading-snug">
@@ -467,13 +482,13 @@ const GalleryGridWidget: React.FC<{ title?: string; limit: number; primaryColor:
                 className="group relative rounded-2xl overflow-hidden aspect-[4/3] bg-slate-200 shadow-2xs hover:shadow-lg transition-all"
               >
                 <img
-                  src={gal.coverUrl || '/gedung-unusu.jpg'}
+                  src={gal.coverImageUrl || '/gedung-unusu.jpg'}
                   alt={gal.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 text-white">
                   <p className="text-xs font-bold line-clamp-1">{gal.title}</p>
-                  <p className="text-[10px] text-amber-300">{gal.itemCount || 0} Foto Dokumentasi</p>
+                  <p className="text-[10px] text-amber-300">{gal._count?.items ?? gal.items?.length ?? 0} Foto Dokumentasi</p>
                 </div>
               </div>
             ))}
@@ -534,11 +549,264 @@ const LecturersWidget: React.FC<{ title?: string; limit: number; primaryColor: s
               </div>
               <div>
                 <p className="font-bold text-xs sm:text-sm text-slate-900">{doc.name}</p>
-                <p className="text-[11px] text-slate-500">{doc.functionalTitle || doc.degree || 'Dosen Tetap'}</p>
+                <p className="text-[11px] text-slate-500">{doc.academicRank || doc.education || 'Dosen Tetap'}</p>
               </div>
             </div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+};
+
+// Sub-komponen Widget Sarana & Prasarana
+const FacilityGridWidget: React.FC<{ title?: string; limit: number; primaryColor: string }> = ({
+  title,
+  limit,
+  primaryColor,
+}) => {
+  const facilitiesQuery = useQuery({
+    queryKey: ['public', 'facilities', 'widget', limit],
+    queryFn: () => facilityApi.public().then((res) => (res.data.facilities ?? []).slice(0, limit)),
+  });
+
+  const facilities = facilitiesQuery.data ?? [];
+
+  return (
+    <section className="py-16 sm:py-20 bg-white border-t border-slate-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-slate-100 gap-4">
+          <div>
+            <span
+              className="inline-block py-1 px-3.5 rounded-full text-xs font-black tracking-widest uppercase mb-2"
+              style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+            >
+              Fasilitas Kampus
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {title || 'Sarana & Prasarana Pembelajaran'}
+            </h2>
+          </div>
+          <Link
+            to="/sarana-prasarana"
+            className="inline-flex items-center gap-2 text-xs font-bold transition-all hover:gap-3"
+            style={{ color: primaryColor }}
+          >
+            <span>Lihat Semua Fasilitas</span>
+            <ArrowRightIcon className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {facilities.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500">
+            Belum ada data fasilitas yang ditambahkan.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {facilities.map((fac) => (
+              <div
+                key={fac.id}
+                className="group flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs hover:shadow-lg transition-all"
+              >
+                <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
+                  <img
+                    src={fac.imageUrl || '/logo-unusu.jpg'}
+                    alt={fac.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  {fac.category && (
+                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-xs text-[10px] font-bold text-white uppercase tracking-wider">
+                      {fac.category}
+                    </span>
+                  )}
+                </div>
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-2">
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-800 transition-colors">
+                      {fac.name}
+                    </h3>
+                    {fac.location ? (
+                      <p className="text-xs text-slate-500 mt-0.5">{fac.location}</p>
+                    ) : null}
+                    {fac.description ? (
+                      <p className="text-xs text-slate-600 line-clamp-2 mt-2 leading-relaxed">
+                        {fac.description}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+// Sub-komponen Widget Dokumen Publik
+const DocumentListWidget: React.FC<{ title?: string; limit: number; primaryColor: string }> = ({
+  title,
+  limit,
+  primaryColor,
+}) => {
+  const documentsQuery = useQuery({
+    queryKey: ['public', 'documents', 'widget', limit],
+    queryFn: () => documentApi.public().then((res) => (res.data.documents ?? []).slice(0, limit)),
+  });
+
+  const documents = documentsQuery.data ?? [];
+
+  return (
+    <section className="py-16 sm:py-20 bg-slate-50 border-t border-slate-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-slate-200 gap-4">
+          <div>
+            <span
+              className="inline-block py-1 px-3.5 rounded-full text-xs font-black tracking-widest uppercase mb-2"
+              style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+            >
+              Unduhan &amp; Pedoman
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {title || 'Dokumen & Pedoman Akademik'}
+            </h2>
+          </div>
+          <Link
+            to="/dokumen"
+            className="inline-flex items-center gap-2 text-xs font-bold transition-all hover:gap-3"
+            style={{ color: primaryColor }}
+          >
+            <span>Semua Dokumen</span>
+            <ArrowRightIcon className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {documents.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-xs text-slate-500">
+            Belum ada berkas dokumen yang diunggah.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {documents.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition-shadow gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+                    <DocumentCheckIcon className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-xs sm:text-sm text-slate-900 truncate">{doc.title}</p>
+                    <p className="text-[11px] text-slate-500">{doc.category} • Tahun {doc.year}</p>
+                  </div>
+                </div>
+                {doc.fileUrl ? (
+                  <a
+                    href={doc.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-opacity hover:opacity-90 shadow-2xs"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    Unduh
+                  </a>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+// Sub-komponen Widget Kurikulum
+const CurriculumOverviewWidget: React.FC<{ title?: string; primaryColor: string }> = ({
+  title,
+  primaryColor,
+}) => {
+  const curriculumQuery = useQuery({
+    queryKey: ['public', 'curriculum', 'widget'],
+    queryFn: () => curriculumApi.public().then((res) => res.data),
+  });
+
+  const summary = curriculumQuery.data?.summary;
+  const activeCurriculum = curriculumQuery.data?.curriculums?.find((c) => c.isActive) || curriculumQuery.data?.curriculums?.[0];
+
+  return (
+    <section className="py-16 sm:py-20 bg-white border-t border-slate-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-slate-100 gap-4">
+          <div>
+            <span
+              className="inline-block py-1 px-3.5 rounded-full text-xs font-black tracking-widest uppercase mb-2"
+              style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+            >
+              Struktur Pembelajaran
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {title || 'Kurikulum & Capaian Pembelajaran'}
+            </h2>
+          </div>
+          <Link
+            to="/kurikulum"
+            className="inline-flex items-center gap-2 text-xs font-bold transition-all hover:gap-3"
+            style={{ color: primaryColor }}
+          >
+            <span>Struktur Kurikulum Lengkap</span>
+            <ArrowRightIcon className="w-4 h-4" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+            <p className="text-3xl font-extrabold tabular-nums" style={{ color: primaryColor }}>
+              {summary?.totalCredits ?? 144}
+            </p>
+            <p className="text-xs font-bold text-slate-600 mt-1 uppercase tracking-wider">Total Beban SKS</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+            <p className="text-3xl font-extrabold tabular-nums" style={{ color: primaryColor }}>
+              {summary?.totalSemesters ?? 8}
+            </p>
+            <p className="text-xs font-bold text-slate-600 mt-1 uppercase tracking-wider">Masa Studi Semester</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+            <p className="text-3xl font-extrabold tabular-nums" style={{ color: primaryColor }}>
+              {summary?.totalCourses ?? 48}
+            </p>
+            <p className="text-xs font-bold text-slate-600 mt-1 uppercase tracking-wider">Mata Kuliah Inti</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+            <p className="text-3xl font-extrabold tabular-nums" style={{ color: primaryColor }}>
+              {summary?.totalRps ?? 48}
+            </p>
+            <p className="text-xs font-bold text-slate-600 mt-1 uppercase tracking-wider">Dokumen RPS Lengkap</p>
+          </div>
+        </div>
+
+        {activeCurriculum && (
+          <div className="p-5 rounded-2xl border border-blue-200 bg-blue-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                Kurikulum Aktif: {activeCurriculum.name} (Tahun {activeCurriculum.year})
+              </p>
+              <p className="text-xs text-blue-800 mt-0.5">
+                {activeCurriculum.description || 'Disusun mengacu pada Kerangka Kualifikasi Nasional Indonesia (KKNI) dan Standar Nasional Pendidikan Tinggi.'}
+              </p>
+            </div>
+            <Link
+              to="/kurikulum"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shrink-0 shadow-2xs"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <span>Buka Kurikulum</span>
+              <ArrowRightIcon className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

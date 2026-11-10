@@ -46,18 +46,28 @@ export const FacilitiesPage: React.FC = () => {
                 key={facility.id}
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
               >
-                {facility.imageUrl ? (
+                <div className="relative h-44 w-full overflow-hidden bg-slate-100">
                   <img
-                    src={facility.imageUrl}
+                    src={facility.imageUrl || '/logo-unusu.jpg'}
                     alt={`Foto ${facility.name}`}
                     loading="lazy"
-                    className="h-44 w-full object-cover"
+                    className={`h-full w-full object-cover transition-transform duration-300 hover:scale-105 ${
+                      !facility.imageUrl ? 'opacity-40 grayscale object-contain p-6' : ''
+                    }`}
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.src.endsWith('/logo-unusu.jpg')) {
+                        target.src = '/logo-unusu.jpg';
+                        target.className = 'h-full w-full object-contain p-6 opacity-40 grayscale';
+                      }
+                    }}
                   />
-                ) : (
-                  <div className="flex h-44 items-center justify-center bg-slate-100">
-                    <BuildingOfficeIcon className="h-12 w-12 text-slate-300" />
-                  </div>
-                )}
+                  {!facility.imageUrl ? (
+                    <span className="absolute bottom-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-xs">
+                      Default UNUSU
+                    </span>
+                  ) : null}
+                </div>
 
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-2">

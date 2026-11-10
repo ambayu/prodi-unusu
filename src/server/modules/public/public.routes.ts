@@ -465,4 +465,22 @@ router.get(
   }),
 );
 
+/**
+ * GET /api/v1/public/portal/hero-slides
+ *
+ * Banner hero Portal Utama (website universitas). Tidak memakai `requireTenant`
+ * karena portal bersifat global dan halaman beranda utama diakses tanpa tenant.
+ */
+router.get(
+  '/portal/hero-slides',
+  asyncHandler(async (_req, res) => {
+    const slides = await prisma.portalHeroSlide.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+      select: { id: true, imageUrl: true, alt: true, linkUrl: true, sortOrder: true },
+    });
+    res.json({ success: true, slides });
+  }),
+);
+
 export default router;

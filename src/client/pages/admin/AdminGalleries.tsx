@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, TrashIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, PhotoIcon, ArrowUpTrayIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -8,6 +8,7 @@ import { Field, FormModal } from '../../components/ui/FormModal';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { galleryApi, type Gallery } from '../../services/contentApi';
+import { mediaApi } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 
 function toSlug(value: string): string {
@@ -40,6 +41,38 @@ export const AdminGalleries: React.FC = () => {
     eventDate: '',
     isPublished: true,
   });
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingItemMedia, setUploadingItemMedia] = useState(false);
+
+  const handleCoverUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Pilih file gambar valid (JPG, PNG, atau WebP).');
+      return;
+    }
+    setUploadingCover(true);
+    try {
+      const res = await mediaApi.upload(file);
+      setDraft((curr) => ({ ...curr, coverImageUrl: res.data.asset.url }));
+      toast.success('Sampul galeri berhasil diunggah.');
+    } catch (err) {
+      toast.error(toApiError(err).message);
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const handleItemMediaUpload = async (file: File) => {
+    setUploadingItemMedia(true);
+    try {
+      const res = await mediaApi.upload(file);
+      setItemDraft((curr) => ({ ...curr, mediaUrl: res.data.asset.url }));
+      toast.success('Media berhasil diunggah.');
+    } catch (err) {
+      toast.error(toApiError(err).message);
+    } finally {
+      setUploadingItemMedia(false);
+    }
+  };
 
   const listQuery = useQuery({
     queryKey: ['admin', 'galleries'],
@@ -277,13 +310,52 @@ export const AdminGalleries: React.FC = () => {
           </Field>
         </div>
 
-        <Field label="Gambar sampul" htmlFor="gallery-cover" hint="URL gambar, contoh /uploads/media/sampul.jpg">
-          <input
-            id="gallery-cover"
-            className="field-input"
-            value={draft.coverImageUrl}
-            onChange={(event) => setDraft({ ...draft, coverImageUrl: event.target.value })}
-          />
+        {/* Upload Sampul Album Galeri */}
+        <Field label="Gambar Sampul Album" htmlFor="gallery-cover" hint="Format JPG, PNG, atau WebP. Maksimal 5 MB.">
+          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+            <div className="relative flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white shadow-2xs">
+              {draft.coverImageUrl ? (
+                <>
+                  <img
+                    src={draft.coverImageUrl}
+                    alt="Sampul Album"
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setDraft({ ...draft, coverImageUrl: '' })}
+                    className="absolute top-1 right-1 rounded-full bg-rose-600 p-1 text-white shadow-xs hover:bg-rose-700"
+                    title="Hapus sampul"
+                  >
+                    <XMarkIcon className="h-3 w-3" />
+                  </button>
+                </>
+              ) : (
+                <PhotoIcon className="h-8 w-8 text-slate-300" />
+              )}
+            </div>
+
+            <div className="flex-1 space-y-1.5">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50">
+                <ArrowUpTrayIcon className="h-4 w-4 text-slate-500" />
+                <span>{uploadingCover ? 'Mengunggah...' : 'Pilih & Unggah Sampul'}</span>
+                <input
+                  id="gallery-cover"
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadingCover}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleCoverUpload(file);
+                  }}
+                />
+              </label>
+              <p className="text-[10px] text-slate-400 font-mono truncate">
+                {draft.coverImageUrl || 'Belum ada foto sampul album'}
+              </p>
+            </div>
+          </div>
         </Field>
 
         <Field label="Deskripsi" htmlFor="gallery-description">
@@ -317,14 +389,51 @@ export const AdminGalleries: React.FC = () => {
           addItemMutation.mutate();
         }}
       >
-        <Field label="URL media" htmlFor="gallery-item-url" required hint="Alamat gambar atau video di dalam aplikasi.">
-          <input
-            id="gallery-item-url"
-            className="field-input"
-            required
-            value={itemDraft.mediaUrl}
-            onChange={(event) => setItemDraft({ ...itemDraft, mediaUrl: event.target.value })}
-          />
+        <Field label="Unggah Berkas Media" htmlFor="gallery-item-upload" required hint="Unggah foto atau berkas video dokumentasi kegiatan.">
+          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+            <div className="relative flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-white shadow-2xs">
+              {itemDraft.mediaUrl ? (
+                <>
+                  <img
+                    src={itemDraft.mediaUrl}
+                    alt="Media Item"
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setItemDraft({ ...itemDraft, mediaUrl: '' })}
+                    className="absolute top-1 right-1 rounded-full bg-rose-600 p-0.5 text-white shadow-xs hover:bg-rose-700"
+                    title="Hapus media"
+                  >
+                    <XMarkIcon className="h-3 w-3" />
+                  </button>
+                </>
+              ) : (
+                <PhotoIcon className="h-6 w-6 text-slate-300" />
+              )}
+            </div>
+
+            <div className="flex-1 space-y-1">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50">
+                <ArrowUpTrayIcon className="h-4 w-4 text-slate-500" />
+                <span>{uploadingItemMedia ? 'Mengunggah...' : 'Pilih Berkas Media'}</span>
+                <input
+                  id="gallery-item-upload"
+                  type="file"
+                  accept="image/*,video/*"
+                  disabled={uploadingItemMedia}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleItemMediaUpload(file);
+                  }}
+                />
+              </label>
+              <p className="text-[10px] text-slate-400 font-mono truncate">
+                {itemDraft.mediaUrl || 'Pilih berkas dari perangkat Anda'}
+              </p>
+            </div>
+          </div>
         </Field>
 
         <Field label="Jenis media" htmlFor="gallery-item-type">

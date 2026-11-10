@@ -111,12 +111,14 @@ export interface Theme {
 
 export interface MenuItem {
   id: number;
+  parentId?: number | null;
   title: string;
   url: string;
   target: string;
   sortOrder: number;
   isRequired: boolean;
   isActive: boolean;
+  children?: MenuItem[];
 }
 
 export const settingsApi = {
@@ -145,6 +147,29 @@ export const settingsApi = {
   updateMenu: (id: number, data: Partial<MenuItem>) => api.put(`/admin/menus/${id}`, data),
   deleteMenu: (id: number) => api.delete(`/admin/menus/${id}`),
   reorderMenus: (items: Array<{ id: number; sortOrder: number }>) => api.put('/admin/menus/reorder', { items }),
+};
+
+// ---------------------------------------------------------
+// Portal Utama (website universitas — banner hero global)
+// ---------------------------------------------------------
+
+export interface PortalHeroSlide {
+  id: number;
+  imageUrl: string;
+  alt: string | null;
+  linkUrl: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export const portalApi = {
+  heroSlides: () => api.get<{ slides: PortalHeroSlide[] }>('/admin/portal/hero-slides'),
+  createHeroSlide: (data: Partial<PortalHeroSlide>) => api.post('/admin/portal/hero-slides', data),
+  updateHeroSlide: (id: number, data: Partial<PortalHeroSlide>) =>
+    api.put(`/admin/portal/hero-slides/${id}`, data),
+  deleteHeroSlide: (id: number) => api.delete(`/admin/portal/hero-slides/${id}`),
+  reorderHeroSlides: (items: Array<{ id: number; sortOrder: number }>) =>
+    api.put('/admin/portal/hero-slides/reorder', { items }),
 };
 
 // ---------------------------------------------------------
@@ -472,51 +497,27 @@ export const adminMenuApi = {
             scopeType: 'prodi',
           },
           {
-            menuKey: 'website.identity',
-            label: 'Identitas & Profil',
-            desc: 'Visi, misi, akreditasi prodi',
-            route: '/admin/website/identitas',
-            icon: 'IdentificationIcon',
+            menuKey: 'portal.hero',
+            label: 'Hero Slider Portal Utama',
+            desc: 'Banner beranda website universitas',
+            route: '/admin/portal',
+            icon: 'PhotoIcon',
+            parentKey: null,
+            sortOrder: 22,
+            section: 'WEBSITE',
+            requiredPermission: 'website.view',
+            scopeType: 'global',
+          },
+          {
+            menuKey: 'website.settings',
+            label: 'Identitas, Tema & SEO',
+            desc: 'Profil, warna identitas, dan optimasi SEO',
+            route: '/admin/pengaturan',
+            icon: 'Cog6ToothIcon',
             parentKey: null,
             sortOrder: 21,
             section: 'WEBSITE',
             requiredPermission: 'website.view',
-            scopeType: 'prodi',
-          },
-          {
-            menuKey: 'website.navigation',
-            label: 'Menu Navigasi',
-            desc: 'Struktur navbar & footer',
-            route: '/admin/website/navigasi',
-            icon: 'Bars3Icon',
-            parentKey: null,
-            sortOrder: 22,
-            section: 'WEBSITE',
-            requiredPermission: 'navigation.view',
-            scopeType: 'prodi',
-          },
-          {
-            menuKey: 'website.theme',
-            label: 'Tema & Visual',
-            desc: 'Warna identitas & tipografi',
-            route: '/admin/website/tema',
-            icon: 'SwatchIcon',
-            parentKey: null,
-            sortOrder: 23,
-            section: 'WEBSITE',
-            requiredPermission: 'theme.view',
-            scopeType: 'prodi',
-          },
-          {
-            menuKey: 'website.seo',
-            label: 'SEO & Meta Tag',
-            desc: 'Optimasi mesin pencari',
-            route: '/admin/website/seo',
-            icon: 'MagnifyingGlassIcon',
-            parentKey: null,
-            sortOrder: 24,
-            section: 'WEBSITE',
-            requiredPermission: 'seo.view',
             scopeType: 'prodi',
           },
 

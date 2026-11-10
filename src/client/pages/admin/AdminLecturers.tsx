@@ -280,15 +280,11 @@ export const AdminLecturers: React.FC = () => {
                 />
               </label>
 
-              {draft.photoUrl && (
-                <input
-                  type="url"
-                  className="field-input text-xs font-mono"
-                  placeholder="URL Foto..."
-                  value={draft.photoUrl}
-                  onChange={(e) => setDraft({ ...draft, photoUrl: e.target.value })}
-                />
-              )}
+              {draft.photoUrl ? (
+                <p className="text-[10px] text-slate-400 font-mono truncate max-w-xs">
+                  {draft.photoUrl}
+                </p>
+              ) : null}
             </div>
           </div>
         </Field>

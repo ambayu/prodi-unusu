@@ -70,6 +70,7 @@ export const updateThemeSchema = z.object({
 });
 
 export const menuItemSchema = z.object({
+  parentId: z.number().int().positive().nullable().optional(),
   title: z.string().trim().min(1).max(100),
   url: z.string().trim().min(1).max(500),
   target: z.enum(['_self', '_blank']).default('_self'),

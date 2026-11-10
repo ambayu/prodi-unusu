@@ -82,6 +82,14 @@ const HERO_SLIDES = [
   { id: 3, image: '/hero-slide-split-3.png', alt: 'Kampus Inovatif dan Religius UNUSU' },
 ];
 
+interface PortalHeroSlidePublic {
+  id: number;
+  imageUrl: string;
+  alt: string | null;
+  linkUrl: string | null;
+  sortOrder: number;
+}
+
 /** Jeda perpindahan slide otomatis. */
 const SLIDE_INTERVAL_MS = 6000;
 
@@ -101,10 +109,43 @@ export const MainLandingPage: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
-  const totalSlides = HERO_SLIDES.length;
+  // Banner portal dibaca dari database agar dapat dikelola admin. Bila tabel
+  // masih kosong atau API gagal, tampilan memakai HERO_SLIDES statis sebagai
+  // cadangan sehingga beranda tidak pernah kosong.
+  const heroQuery = useQuery({
+    queryKey: ['public', 'portal', 'hero-slides'],
+    queryFn: () =>
+      api
+        .get<{ slides: PortalHeroSlidePublic[] }>('/public/portal/hero-slides')
+        .then((res) => res.data.slides),
+    staleTime: 60_000,
+  });
+
+  const slides = useMemo(() => {
+    const remote = heroQuery.data ?? [];
+    if (remote.length === 0) {
+      return HERO_SLIDES.map((slide) => ({
+        id: slide.id,
+        image: slide.image,
+        alt: slide.alt,
+        linkUrl: null as string | null,
+      }));
+    }
+    return remote.map((slide) => ({
+      id: slide.id,
+      image: slide.imageUrl,
+      alt: slide.alt ?? 'Banner Portal Utama UNUSU',
+      linkUrl: slide.linkUrl,
+    }));
+  }, [heroQuery.data]);
+
+  const totalSlides = slides.length;
 
   const goTo = useCallback(
-    (index: number) => setCurrentSlide(((index % totalSlides) + totalSlides) % totalSlides),
+    (index: number) => {
+      if (totalSlides === 0) return;
+      setCurrentSlide(((index % totalSlides) + totalSlides) % totalSlides);
+    },
     [totalSlides],
   );
   const next = useCallback(() => goTo(currentSlide + 1), [currentSlide, goTo]);
@@ -117,6 +158,14 @@ export const MainLandingPage: React.FC = () => {
     const timer = setInterval(() => goTo(currentSlide + 1), SLIDE_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [currentSlide, isPaused, goTo]);
+
+  // Jumlah slide dapat berubah setelah data termuat; jepit indeks agar tidak
+  // menunjuk slide yang sudah tidak ada.
+  useEffect(() => {
+    if (currentSlide > totalSlides - 1) {
+      setCurrentSlide(0);
+    }
+  }, [totalSlides, currentSlide]);
 
   const directoryQuery = useQuery({
     queryKey: ['public', 'directory'],
@@ -154,17 +203,34 @@ export const MainLandingPage: React.FC = () => {
         aria-label="Sorotan kampus"
       >
         <div className="relative w-full h-[calc(100vh-120px)] min-h-[480px] max-h-[860px]">
-          {HERO_SLIDES.map((slide, index) => (
-            <img
-              key={slide.id}
-              src={slide.image}
-              alt={slide.alt}
-              aria-hidden={index !== currentSlide}
-              className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-700 ease-in-out ${
-                index === currentSlide ? 'opacity-100' : 'opacity-0'
-              }`}
-            />
-          ))}
+          {slides.map((slide, index) => {
+            const image = (
+              <img
+                src={slide.image}
+                alt={slide.alt}
+                aria-hidden={index !== currentSlide}
+                className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-700 ease-in-out ${
+                  index === currentSlide ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+            );
+
+            if (slide.linkUrl) {
+              return (
+                <a
+                  key={slide.id}
+                  href={slide.linkUrl}
+                  className="block h-full w-full"
+                  aria-hidden={index !== currentSlide}
+                  tabIndex={index === currentSlide ? 0 : -1}
+                >
+                  {image}
+                </a>
+              );
+            }
+
+            return <React.Fragment key={slide.id}>{image}</React.Fragment>;
+          })}
 
           {/* Panah kiri */}
           <button

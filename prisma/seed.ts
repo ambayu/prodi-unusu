@@ -426,6 +426,48 @@ async function seedSystemSettings() {
   }
 }
 
+/**
+ * Banner bawaan Portal Utama.
+ *
+ * Hanya diisi saat tabel masih kosong agar perubahan yang dilakukan admin
+ * lewat `/admin/portal` tidak pernah ditimpa ketika seeder dijalankan ulang.
+ */
+async function seedPortalHeroSlides() {
+  console.log('12. Banner hero Portal Utama');
+
+  const existing = await prisma.portalHeroSlide.count();
+  if (existing > 0) {
+    report('skipped', `banner portal (${existing} slide sudah ada)`);
+    return;
+  }
+
+  const slides = [
+    {
+      imageUrl: '/hero-slide-split-1.png',
+      alt: 'Penerimaan Mahasiswa Baru Kampus Unggul Berkarakter UNUSU',
+      linkUrl: '/pmb',
+      sortOrder: 1,
+    },
+    {
+      imageUrl: '/hero-slide-split-2.png',
+      alt: 'Ekosistem Digital Multi-Prodi Universitas Nahdlatul Ulama Sumatera Utara',
+      linkUrl: null,
+      sortOrder: 2,
+    },
+    {
+      imageUrl: '/hero-slide-split-3.png',
+      alt: 'Kampus Inovatif dan Religius UNUSU',
+      linkUrl: null,
+      sortOrder: 3,
+    },
+  ];
+
+  for (const slide of slides) {
+    await prisma.portalHeroSlide.create({ data: { ...slide, isActive: true } });
+    report('created', `banner portal ${slide.imageUrl}`);
+  }
+}
+
 async function main() {
   const startedAt = Date.now();
   console.log('=== Seeder UNUSU Multi-Prodi ===');
@@ -450,6 +492,8 @@ async function main() {
 
   console.log('11. Tema visual, halaman beranda, & page builder 14 prodi');
   await seedPageBuilderAndThemes();
+
+  await seedPortalHeroSlides();
 
   const durationMs = Date.now() - startedAt;
   console.log('');

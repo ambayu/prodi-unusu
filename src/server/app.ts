@@ -14,6 +14,7 @@ import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import publicRoutes from './modules/public/public.routes.js';
 import websiteRoutes from './modules/admin/website.routes.js';
+import portalRoutes from './modules/admin/portal.routes.js';
 import builderRoutes from './modules/admin/builder.routes.js';
 import contentRoutes from './modules/admin/content.routes.js';
 import publicationRoutes from './modules/admin/publication.routes.js';
@@ -152,6 +153,7 @@ export function createApp() {
   adminRouter.use(attachScopedTenant);
 
   adminRouter.use('/', websiteRoutes);
+  adminRouter.use('/', portalRoutes);
   adminRouter.use('/', builderRoutes);
   adminRouter.use('/', contentRoutes);
   adminRouter.use('/', publicationRoutes);

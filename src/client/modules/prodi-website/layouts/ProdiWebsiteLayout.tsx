@@ -20,11 +20,13 @@ import {
 import { useTenant } from '../../../hooks/useSite';
 import { api } from '../../../services/api';
 
-interface PublicMenu {
+export interface PublicMenu {
   id: number;
+  parentId?: number | null;
   title: string;
   url: string;
   sortOrder: number;
+  children?: PublicMenu[];
 }
 
 interface NavItem {
@@ -105,10 +107,37 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
     setOpenDropdown(null);
   }, [location.pathname]);
 
-  // Mengelompokkan menu agar ringkas & tidak sesak (Dropdown Grouping)
+  // Mengelompokkan menu agar ringkas & dinamis (Mendukung Dropdown Hirarki Database & Fallback Cerdas)
   const groupedNavItems: NavItem[] = React.useMemo(() => {
-    if (rawLinks.length === 0) return [];
+    const apiMenus = menusQuery.data ?? [];
+    if (apiMenus.length === 0) return [];
 
+    // Jika database sudah memiliki struktur anak (children) dari menu parent
+    const hasDbChildren = apiMenus.some((m) => m.children && m.children.length > 0);
+
+    if (hasDbChildren) {
+      return apiMenus
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((parent) => ({
+          label: parent.title,
+          path: parent.url,
+          icon: ICON_BY_PATH[parent.url] ?? DocumentCheckIcon,
+          children:
+            parent.children && parent.children.length > 0
+              ? parent.children
+                  .slice()
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((child) => ({
+                    label: child.title,
+                    path: child.url,
+                    icon: ICON_BY_PATH[child.url] ?? DocumentCheckIcon,
+                  }))
+              : undefined,
+        }));
+    }
+
+    // Fallback cerdas: grup standar 10 menu universitas
     const homeItem = rawLinks.find((l) => l.path === '/');
     const profilItems = rawLinks.filter((l) => l.path === '/profil' || l.path === '/visi-misi');
     const akademikItems = rawLinks.filter(
@@ -119,9 +148,23 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
     );
     const kontakItem = rawLinks.find((l) => l.path === '/kontak');
 
-    // Masukkan halaman terbitan kustom dari Page Builder yang bukan beranda
+    // Masukkan halaman terbitan kustom dari Page Builder yang bukan beranda dan bukan rute modul standar
+    const standardPageSlugs = new Set([
+      'beranda',
+      'profil',
+      'visi-misi',
+      'kurikulum',
+      'dokumen',
+      'dosen',
+      'sarana-prasarana',
+      'sarpras',
+      'berita',
+      'galeri',
+      'kontak',
+    ]);
+
     const customPages = (publishedPagesQuery.data ?? [])
-      .filter((p) => p.slug !== 'beranda')
+      .filter((p) => !standardPageSlugs.has(p.slug))
       .map((p) => ({
         label: p.title,
         path: `/halaman/${p.slug}`,
@@ -176,15 +219,25 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
       });
     }
 
-    // Sisipkan tautan khusus jika ada
-    extraItems.forEach((extra) => result.push(extra));
+    // Kelompokkan halaman kustom & tautan tambahan ke dalam dropdown "Halaman" jika ada lebih dari 1
+    if (extraItems.length > 1) {
+      result.push({
+        label: 'Halaman & Lainnya',
+        path: extraItems[0].path,
+        icon: DocumentCheckIcon,
+        children: extraItems,
+      });
+    } else {
+      // Sisipkan langsung jika hanya 1
+      extraItems.forEach((extra) => result.push(extra));
+    }
 
     if (kontakItem) {
       result.push(kontakItem);
     }
 
     return result;
-  }, [rawLinks, publishedPagesQuery.data]);
+  }, [rawLinks, menusQuery.data, publishedPagesQuery.data]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white font-sans text-slate-900">
@@ -311,10 +364,9 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                                   }`}
                                   style={isSubActive ? { color: primaryColor } : {}}
                                 >
-                                  <ChildIcon
-                                    className="w-4 h-4 shrink-0"
-                                    style={isSubActive ? { color: primaryColor } : { color: '#64748b' }}
-                                  />
+                                  <span style={isSubActive ? { color: primaryColor } : { color: '#64748b' }}>
+                                    <ChildIcon className="w-4 h-4 shrink-0" />
+                                  </span>
                                   <span>{child.label}</span>
                                 </Link>
                               );

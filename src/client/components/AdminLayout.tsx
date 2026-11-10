@@ -86,6 +86,15 @@ interface AdminLayoutProps {
 // ---------------------------------------------------------
 let savedSidebarScrollTop = 0;
 
+/**
+ * Nilai sentinel pada pemilih "Program Studi Aktif" untuk Portal Utama.
+ *
+ * Portal utama bukan program studi, sehingga tidak dikirim ke
+ * `setActiveTenant` (yang akan memanggil reload halaman dengan tenant prodi).
+ * Memilih opsi ini hanya mengarahkan pengguna ke halaman pengelolaannya.
+ */
+const PORTAL_SCOPE_VALUE = '__portal_utama__';
+
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   children,
   title,
@@ -309,19 +318,29 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <select
                   value={activeTenantId ?? ''}
                   onChange={(e) => {
-                    const id = Number(e.target.value);
+                    const raw = e.target.value;
+                    if (raw === PORTAL_SCOPE_VALUE) {
+                      navigate('/admin/portal');
+                      return;
+                    }
+                    const id = Number(raw);
                     if (id) void setActiveTenant(id);
                   }}
                   className="w-full rounded-lg border border-blue-300 bg-white px-2 py-1.5 text-xs font-bold text-slate-800 shadow-2xs focus:border-blue-600 focus:outline-none cursor-pointer"
                 >
-                  {availablePrograms.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.code} - {p.name}
-                    </option>
-                  ))}
+                  <optgroup label="Portal Utama (Website Universitas)">
+                    <option value={PORTAL_SCOPE_VALUE}>◈ Portal Utama — Website Universitas</option>
+                  </optgroup>
+                  <optgroup label="Website Program Studi">
+                    {availablePrograms.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.code} - {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
                 <p className="mt-1 text-[10px] text-blue-700/80 leading-tight">
-                  Pilih prodi untuk mengelola konten dan tampilan websitenya.
+                  Pilih prodi untuk mengelola kontennya, atau Portal Utama untuk mengatur banner beranda universitas.
                 </p>
               </div>
             ) : tenant ? (
@@ -590,16 +609,26 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <select
                   value={activeTenantId ?? ''}
                   onChange={(e) => {
-                    const id = Number(e.target.value);
+                    const raw = e.target.value;
+                    if (raw === PORTAL_SCOPE_VALUE) {
+                      navigate('/admin/portal');
+                      return;
+                    }
+                    const id = Number(raw);
                     if (id) void setActiveTenant(id);
                   }}
                   className="rounded-lg border-0 bg-transparent py-0.5 text-xs font-bold text-blue-950 focus:outline-none cursor-pointer"
                 >
-                  {availablePrograms.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.code} - {p.name}
-                    </option>
-                  ))}
+                  <optgroup label="Portal Utama">
+                    <option value={PORTAL_SCOPE_VALUE}>◈ Portal Utama</option>
+                  </optgroup>
+                  <optgroup label="Website Prodi">
+                    {availablePrograms.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.code} - {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
             )}

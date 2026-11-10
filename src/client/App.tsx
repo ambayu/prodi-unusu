@@ -40,6 +40,7 @@ import { AdminMedia } from './pages/admin/AdminMedia';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminBuilder } from './pages/admin/AdminBuilder';
 import { AdminSettings } from './pages/admin/AdminSettings';
+import { AdminPortalHero } from './pages/admin/AdminPortalHero';
 import { AdminNavigation } from './pages/admin/AdminNavigation';
 import { AdminProfile } from './pages/admin/AdminProfile';
 import { AdminMyProfile } from './pages/admin/AdminMyProfile';
@@ -259,44 +260,42 @@ export const App: React.FC = () => {
         }
       />
       <Route
-        path="/admin/website/identitas"
+        path="/admin/portal"
         element={
           <RequireAuth>
             <RequirePermission anyOf={['website.view']}>
-              <AdminSettings />
+              <AdminPortalHero />
             </RequirePermission>
           </RequireAuth>
         }
+      />
+      <Route
+        path="/admin/portal/hero-slider"
+        element={<Navigate to="/admin/portal" replace />}
+      />
+      <Route
+        path="/admin/website/identitas"
+        element={<Navigate to="/admin/pengaturan" replace />}
       />
       <Route
         path="/admin/website/navigasi"
-        element={
-          <RequireAuth>
-            <RequirePermission anyOf={['navigation.view']}>
-              <AdminNavigation />
-            </RequirePermission>
-          </RequireAuth>
-        }
+        element={<Navigate to="/admin/builder" replace />}
+      />
+      <Route
+        path="/admin/navigation"
+        element={<Navigate to="/admin/builder" replace />}
       />
       <Route
         path="/admin/website/tema"
-        element={
-          <RequireAuth>
-            <RequirePermission anyOf={['theme.view']}>
-              <AdminSettings />
-            </RequirePermission>
-          </RequireAuth>
-        }
+        element={<Navigate to="/admin/pengaturan" replace />}
       />
       <Route
         path="/admin/website/seo"
-        element={
-          <RequireAuth>
-            <RequirePermission anyOf={['seo.view']}>
-              <AdminSettings />
-            </RequirePermission>
-          </RequireAuth>
-        }
+        element={<Navigate to="/admin/pengaturan" replace />}
+      />
+      <Route
+        path="/admin/website"
+        element={<Navigate to="/admin/pengaturan" replace />}
       />
       <Route
         path="/admin/konten/profil"
@@ -379,7 +378,7 @@ export const App: React.FC = () => {
         yang masuk akal bagi anggotanya; halaman itu sendiri tetap dijaga
         RequirePermission sehingga tidak membuka akses baru.
       */}
-      <Route path="/admin/website" element={<Navigate to="/admin/website/identitas" replace />} />
+
       <Route path="/admin/konten" element={<Navigate to="/admin/konten/profil" replace />} />
       <Route path="/admin/pengelolaan" element={<Navigate to="/admin/media" replace />} />
 
