@@ -22,6 +22,7 @@ import { VisionMissionPage } from './pages/public/VisionMissionPage';
 import { FacilitiesPage } from './pages/public/FacilitiesPage';
 import { PostsPage } from './pages/public/PostsPage';
 import { GalleriesPage } from './pages/public/GalleriesPage';
+import { DynamicCustomPage } from './pages/public/DynamicCustomPage';
 
 // Portal administrasi.
 import { Login } from './pages/Login';
@@ -556,6 +557,7 @@ function prodiRouteElements() {
       <Route path="/berita" element={wrap(<PostsPage />)} />
       <Route path="/galeri" element={wrap(<GalleriesPage />)} />
       <Route path="/kontak" element={wrap(<ContactPage />)} />
+      <Route path="/halaman/:slug" element={wrap(<DynamicCustomPage />)} />
       <Route path="*" element={wrap(<NotFoundPage />)} />
     </>
   );

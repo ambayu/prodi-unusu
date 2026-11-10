@@ -22,6 +22,9 @@ import {
   WIDGETS,
 } from '../src/shared/constants/organization.js';
 import { PERMISSIONS, ROLES } from '../src/shared/constants/permissions.js';
+import { seedProdiContents } from './seed-prodi-content.js';
+import { seedPageBuilderAndThemes } from './seed-page-builder.js';
+import { seedProdiRoles } from './seed-prodi-roles.js';
 
 const prisma = new PrismaClient();
 
@@ -438,6 +441,15 @@ async function main() {
   await seedOrganization();
   await seedSuperAdmin();
   await seedSystemSettings();
+
+  console.log('9. Peran khusus 14 program studi');
+  await seedProdiRoles();
+
+  console.log('10. Konten profil, visi misi, kontak, & dosen 14 prodi');
+  await seedProdiContents();
+
+  console.log('11. Tema visual, halaman beranda, & page builder 14 prodi');
+  await seedPageBuilderAndThemes();
 
   const durationMs = Date.now() - startedAt;
   console.log('');

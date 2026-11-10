@@ -69,6 +69,17 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
     queryFn: () => api.get<{ menus: PublicMenu[] }>('/public/menus').then((res) => res.data.menus),
   });
 
+  // Query halaman terbitan dari Page Builder untuk dimasukkan ke navbar dinamis
+  const publishedPagesQuery = useQuery({
+    queryKey: ['public', 'published-pages'],
+    queryFn: () =>
+      api
+        .get<{ pages: Array<{ id: number; slug: string; title: string; isSystem: boolean }> }>(
+          '/public/pages',
+        )
+        .then((res) => res.data.pages),
+  });
+
   const rawLinks = (menusQuery.data ?? [])
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -108,7 +119,16 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
     );
     const kontakItem = rawLinks.find((l) => l.path === '/kontak');
 
-    // Item lain yang tidak masuk grup di atas
+    // Masukkan halaman terbitan kustom dari Page Builder yang bukan beranda
+    const customPages = (publishedPagesQuery.data ?? [])
+      .filter((p) => p.slug !== 'beranda')
+      .map((p) => ({
+        label: p.title,
+        path: `/halaman/${p.slug}`,
+        icon: DocumentCheckIcon,
+      }));
+
+    // Item lain yang tidak masuk grup standar
     const standardPaths = new Set([
       '/',
       '/profil',
@@ -121,7 +141,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
       '/dokumen',
       '/kontak',
     ]);
-    const extraItems = rawLinks.filter((l) => !standardPaths.has(l.path));
+    const extraItems = [...rawLinks.filter((l) => !standardPaths.has(l.path)), ...customPages];
 
     const result: NavItem[] = [];
 
@@ -164,7 +184,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     return result;
-  }, [rawLinks]);
+  }, [rawLinks, publishedPagesQuery.data]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white font-sans text-slate-900">

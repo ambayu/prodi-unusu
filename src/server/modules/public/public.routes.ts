@@ -49,6 +49,27 @@ router.get(
   }),
 );
 
+/** GET /api/v1/public/pages: daftar seluruh halaman tenant yang sudah dipublikasikan untuk navigasi. */
+router.get(
+  '/pages',
+  requireTenant,
+  asyncHandler(async (req, res) => {
+    const pages = await prisma.page.findMany({
+      where: { studyProgramId: req.tenant!.id, isPublished: true },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        layout: true,
+        isSystem: true,
+      },
+      orderBy: [{ isSystem: 'desc' }, { title: 'asc' }],
+    });
+
+    res.json({ success: true, pages });
+  }),
+);
+
 /**
  * GET /api/v1/public/pages/:slug
  *
