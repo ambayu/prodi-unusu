@@ -66,7 +66,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+        className="relative w-full max-w-md rounded-[16px] border border-[#CBD5E1] bg-white p-6 shadow-xl"
       >
         <div className="flex items-start gap-4">
           <div

@@ -78,7 +78,7 @@ export const AdminSettings: React.FC = () => {
         <ErrorState message={toApiError(settingsQuery.error).message} onRetry={() => void settingsQuery.refetch()} />
       ) : (
         <>
-          <div className="flex flex-wrap gap-2 border-b border-slate-200">
+          <div className="flex flex-wrap gap-2 border-b border-[#CBD5E1]">
             {visibleTabs.map((item) => (
               <button
                 key={item.key}

@@ -63,11 +63,11 @@ export const FormModal: React.FC<FormModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="form-modal-title"
-        className={`relative my-6 w-full rounded-2xl border border-slate-200 bg-white shadow-xl ${
+        className={`relative my-6 w-full rounded-[16px] border border-[#CBD5E1] bg-white shadow-xl ${
           wide ? 'max-w-3xl' : 'max-w-xl'
         }`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-[#CBD5E1] px-6 py-4">
           <div>
             <h2 id="form-modal-title" className="text-base font-bold text-slate-900">
               {title}
@@ -78,7 +78,7 @@ export const FormModal: React.FC<FormModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+            className="rounded-[8px] p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
             aria-label="Tutup formulir"
           >
             <XMarkIcon className="h-5 w-5" />
@@ -90,7 +90,7 @@ export const FormModal: React.FC<FormModalProps> = ({
             {children}
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
+          <div className="flex justify-end gap-2 border-t border-[#CBD5E1] bg-slate-50/60 px-6 py-4">
             <button type="button" onClick={onClose} disabled={busy} className="btn-secondary">
               Batal
             </button>

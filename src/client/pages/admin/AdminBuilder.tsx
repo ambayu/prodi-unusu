@@ -282,7 +282,7 @@ export const AdminBuilder: React.FC = () => {
         <ErrorState message={toApiError(pagesQuery.error).message} onRetry={() => void pagesQuery.refetch()} />
       ) : (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[260px_1fr]">
-          <aside className="rounded-2xl border border-slate-200 bg-white p-4">
+          <aside className="rounded-[14px] border border-[#CBD5E1] bg-white p-4 shadow-2xs">
             <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">Halaman</p>
             <ul className="space-y-1">
               {(pagesQuery.data ?? []).map((item) => (
@@ -321,7 +321,7 @@ export const AdminBuilder: React.FC = () => {
               <LoadingState label="Memuat halaman" rows={2} />
             ) : page ? (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] border border-[#CBD5E1] bg-white px-5 py-3.5 shadow-2xs">
                   <div>
                     <p className="text-sm font-bold text-slate-900">{page.title}</p>
                     <p className="font-mono text-[11px] text-slate-500">
@@ -360,8 +360,8 @@ export const AdminBuilder: React.FC = () => {
                   [...page.sections]
                     .sort((a, b) => a.sortOrder - b.sortOrder)
                     .map((section) => (
-                      <section key={section.id} className="rounded-2xl border border-slate-200 bg-white">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+                      <section key={section.id} className="rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs overflow-hidden">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#CBD5E1]/70 px-4 py-3">
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-slate-900">
                               {section.title ?? section.sectionKey}

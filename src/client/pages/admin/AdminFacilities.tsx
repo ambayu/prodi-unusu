@@ -113,7 +113,7 @@ export const AdminFacilities: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(listQuery.data ?? []).map((facility) => (
-            <article key={facility.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+            <article key={facility.id} className="rounded-[14px] border border-[#CBD5E1] bg-white p-5 shadow-2xs">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h2 className="truncate text-sm font-bold text-slate-900">{facility.name}</h2>

@@ -326,89 +326,339 @@ export const mediaApi = {
 // Menu admin & sesi
 // ---------------------------------------------------------
 
+let cachedMenu: AdminMenuItem[] | null = null;
+let menuPromise: Promise<AdminMenuItem[]> | null = null;
+
 export const adminMenuApi = {
+  getCachedMenu(): AdminMenuItem[] | null {
+    return cachedMenu;
+  },
+
+  clearCache(): void {
+    cachedMenu = null;
+    menuPromise = null;
+  },
+
   /** Menu dibangun dari kombinasi permission pengguna dan katalog database. */
-  async buildMenu(): Promise<AdminMenuItem[]> {
-    const res = await api.get<{ user: AuthUser }>('/auth/me');
-    const user = res.data.user;
-    const codes = new Set(user.permissions);
-    const isSuper = user.permissions.includes('*');
-
-    // Katalog menu diambil dari backend lewat endpoint yang sama dengan settings
-    // agar isi menu tidak ditulis ulang di dua tempat.
-    const catalog: Array<Omit<AdminMenuItem, 'children'> & { requiredPermission: string; scopeType: string }> = [
-      { menuKey: 'dashboard', label: 'Dashboard', route: '/admin', icon: 'HomeIcon', parentKey: null, sortOrder: 1, requiredPermission: 'dashboard.view', scopeType: 'prodi' },
-
-      { menuKey: 'website', label: 'Website', route: '/admin/website', icon: 'GlobeAltIcon', parentKey: null, sortOrder: 10, requiredPermission: 'website.view', scopeType: 'prodi' },
-      { menuKey: 'website.identity', label: 'Identitas Website', route: '/admin/website/identitas', icon: 'IdentificationIcon', parentKey: 'website', sortOrder: 11, requiredPermission: 'website.view', scopeType: 'prodi' },
-      { menuKey: 'website.navigation', label: 'Navigasi', route: '/admin/website/navigasi', icon: 'Bars3Icon', parentKey: 'website', sortOrder: 12, requiredPermission: 'navigation.view', scopeType: 'prodi' },
-      { menuKey: 'website.theme', label: 'Tema', route: '/admin/website/tema', icon: 'SwatchIcon', parentKey: 'website', sortOrder: 13, requiredPermission: 'theme.view', scopeType: 'prodi' },
-      { menuKey: 'website.seo', label: 'SEO', route: '/admin/website/seo', icon: 'MagnifyingGlassIcon', parentKey: 'website', sortOrder: 14, requiredPermission: 'seo.view', scopeType: 'prodi' },
-
-      { menuKey: 'builder', label: 'Page Builder', route: '/admin/builder', icon: 'AdjustmentsHorizontalIcon', parentKey: null, sortOrder: 20, requiredPermission: 'builder.view', scopeType: 'prodi' },
-
-      { menuKey: 'content', label: 'Konten', route: '/admin/konten', icon: 'DocumentTextIcon', parentKey: null, sortOrder: 30, requiredPermission: 'profile.view', scopeType: 'prodi' },
-      { menuKey: 'content.profile', label: 'Profil', route: '/admin/konten/profil', icon: 'UserIcon', parentKey: 'content', sortOrder: 31, requiredPermission: 'profile.view', scopeType: 'prodi' },
-      { menuKey: 'content.vision', label: 'Visi & Misi', route: '/admin/konten/visi-misi', icon: 'EyeIcon', parentKey: 'content', sortOrder: 32, requiredPermission: 'vision_mission.view', scopeType: 'prodi' },
-      { menuKey: 'content.curriculum', label: 'Kurikulum', route: '/admin/kurikulum', icon: 'BookOpenIcon', parentKey: 'content', sortOrder: 33, requiredPermission: 'curriculum.view', scopeType: 'prodi' },
-      { menuKey: 'content.documents', label: 'Dokumen', route: '/admin/dokumen', icon: 'FolderOpenIcon', parentKey: 'content', sortOrder: 34, requiredPermission: 'documents.view', scopeType: 'prodi' },
-      { menuKey: 'content.lecturers', label: 'Dosen', route: '/admin/dosen', icon: 'UserGroupIcon', parentKey: 'content', sortOrder: 35, requiredPermission: 'lecturers.view', scopeType: 'prodi' },
-      { menuKey: 'content.facilities', label: 'Sarpras', route: '/admin/sarpras', icon: 'BuildingOfficeIcon', parentKey: 'content', sortOrder: 36, requiredPermission: 'facilities.view', scopeType: 'prodi' },
-      { menuKey: 'content.posts', label: 'Berita', route: '/admin/berita', icon: 'NewspaperIcon', parentKey: 'content', sortOrder: 37, requiredPermission: 'posts.view', scopeType: 'prodi' },
-      { menuKey: 'content.galleries', label: 'Galeri', route: '/admin/galeri', icon: 'PhotoIcon', parentKey: 'content', sortOrder: 38, requiredPermission: 'galleries.view', scopeType: 'prodi' },
-      { menuKey: 'content.contact', label: 'Kontak', route: '/admin/kontak', icon: 'PhoneIcon', parentKey: 'content', sortOrder: 39, requiredPermission: 'contacts.view', scopeType: 'prodi' },
-      { menuKey: 'content.messages', label: 'Pesan Masuk', route: '/admin/pesan', icon: 'InboxIcon', parentKey: 'content', sortOrder: 40, requiredPermission: 'contact_messages.view', scopeType: 'prodi' },
-
-      { menuKey: 'management', label: 'Pengelolaan', route: '/admin/pengelolaan', icon: 'Cog6ToothIcon', parentKey: null, sortOrder: 50, requiredPermission: 'media.view', scopeType: 'prodi' },
-      { menuKey: 'management.media', label: 'Media Library', route: '/admin/media', icon: 'PhotoIcon', parentKey: 'management', sortOrder: 51, requiredPermission: 'media.view', scopeType: 'prodi' },
-      { menuKey: 'management.users', label: 'Pengguna & Editor', route: '/admin/pengguna', icon: 'UsersIcon', parentKey: 'management', sortOrder: 52, requiredPermission: 'users.view', scopeType: 'prodi' },
-
-      { menuKey: 'super.organization', label: 'Organisasi', route: '/admin/organisasi', icon: 'BuildingLibraryIcon', parentKey: null, sortOrder: 60, requiredPermission: 'organization.view', scopeType: 'global' },
-      { menuKey: 'super.domains', label: 'Domain', route: '/admin/domain', icon: 'LinkIcon', parentKey: null, sortOrder: 61, requiredPermission: 'domain.view', scopeType: 'global' },
-      { menuKey: 'super.audit', label: 'Audit Logs', route: '/admin/audit-logs', icon: 'ClipboardDocumentListIcon', parentKey: null, sortOrder: 62, requiredPermission: 'audit_logs.view', scopeType: 'global' },
-    ];
-
-    const visible = catalog.filter((item) => {
-      const allowed = isSuper || codes.has(item.requiredPermission);
-      if (!allowed) return false;
-      // Menu global hanya relevan untuk Super Admin.
-      if (item.scopeType === 'global' && !isSuper) return false;
-      return true;
-    });
-
-    // Menyusun hierarki dan membuang induk yang seluruh anaknya tidak terlihat.
-    const byParent = new Map<string | null, AdminMenuItem[]>();
-    for (const item of visible) {
-      const node: AdminMenuItem = {
-        menuKey: item.menuKey,
-        label: item.label,
-        route: item.route,
-        icon: item.icon,
-        parentKey: item.parentKey,
-        sortOrder: item.sortOrder,
-        children: [],
-      };
-      const list = byParent.get(item.parentKey) ?? [];
-      list.push(node);
-      byParent.set(item.parentKey, list);
+  async buildMenu(forceRefresh = false): Promise<AdminMenuItem[]> {
+    if (cachedMenu && !forceRefresh) {
+      return cachedMenu;
+    }
+    if (menuPromise && !forceRefresh) {
+      return menuPromise;
     }
 
-    for (const [parentKey, children] of byParent) {
-      if (parentKey === null) continue;
-      const parents = byParent.get(null) ?? [];
-      const parent = parents.find((node) => node.menuKey === parentKey);
-      if (parent) {
-        parent.children = children.sort((a, b) => a.sortOrder - b.sortOrder);
+    menuPromise = (async () => {
+      try {
+        const res = await api.get<{ user: AuthUser }>('/auth/me');
+        const user = res.data.user;
+        const codes = new Set(user.permissions);
+        const isSuper = user.permissions.includes('*');
+
+        // Katalog menu diambil dari backend lewat endpoint yang sama dengan settings
+        // agar isi menu tidak ditulis ulang di dua tempat.
+        const catalog: Array<Omit<AdminMenuItem, 'children'> & { requiredPermission: string; scopeType: string }> = [
+          // 1. UTAMA
+          {
+            menuKey: 'dashboard',
+            label: 'Dashboard',
+            desc: 'Ikhtisar & metrik website',
+            route: '/admin',
+            icon: 'Squares2X2Icon',
+            parentKey: null,
+            sortOrder: 1,
+            section: 'UTAMA',
+            requiredPermission: 'dashboard.view',
+            scopeType: 'prodi',
+          },
+
+          // 2. KONTEN & AKADEMIK PRODI
+          {
+            menuKey: 'content.curriculum',
+            label: 'Kurikulum & MK',
+            desc: 'Mata kuliah & bobot SKS',
+            route: '/admin/kurikulum',
+            icon: 'BookOpenIcon',
+            parentKey: null,
+            sortOrder: 10,
+            section: 'KONTEN',
+            requiredPermission: 'curriculum.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'content.lecturers',
+            label: 'Dosen & Tenaga Ahli',
+            desc: 'Profil dosen & staf pengajar',
+            route: '/admin/dosen',
+            icon: 'UserGroupIcon',
+            parentKey: null,
+            sortOrder: 11,
+            section: 'KONTEN',
+            requiredPermission: 'lecturers.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'content.documents',
+            label: 'Dokumen & SK',
+            desc: 'Arsip kurikulum & formulir',
+            route: '/admin/dokumen',
+            icon: 'FolderOpenIcon',
+            parentKey: null,
+            sortOrder: 12,
+            section: 'KONTEN',
+            requiredPermission: 'documents.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'content.facilities',
+            label: 'Sarana & Prasarana',
+            desc: 'Laboratorium & fasilitas prodi',
+            route: '/admin/sarpras',
+            icon: 'BuildingOfficeIcon',
+            parentKey: null,
+            sortOrder: 13,
+            section: 'KONTEN',
+            requiredPermission: 'facilities.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'content.posts',
+            label: 'Berita & Artikel',
+            desc: 'Warta kegiatan program studi',
+            route: '/admin/berita',
+            icon: 'NewspaperIcon',
+            parentKey: null,
+            sortOrder: 14,
+            section: 'KONTEN',
+            requiredPermission: 'posts.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'content.galleries',
+            label: 'Galeri Kegiatan',
+            desc: 'Dokumentasi foto & event',
+            route: '/admin/galeri',
+            icon: 'PhotoIcon',
+            parentKey: null,
+            sortOrder: 15,
+            section: 'KONTEN',
+            requiredPermission: 'galleries.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'content.contact',
+            label: 'Kontak & Pesan',
+            desc: 'Pusat bantuan & pesan masuk',
+            route: '/admin/kontak',
+            icon: 'InboxIcon',
+            parentKey: null,
+            sortOrder: 16,
+            section: 'KONTEN',
+            requiredPermission: 'contacts.view',
+            scopeType: 'prodi',
+          },
+
+          // 3. TATA KELOLA WEBSITE PRODI
+          {
+            menuKey: 'builder',
+            label: 'Visual Page Builder',
+            desc: 'Susun tata letak halaman',
+            route: '/admin/builder',
+            icon: 'AdjustmentsHorizontalIcon',
+            parentKey: null,
+            sortOrder: 20,
+            section: 'WEBSITE',
+            requiredPermission: 'builder.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'website.identity',
+            label: 'Identitas & Profil',
+            desc: 'Visi, misi, akreditasi prodi',
+            route: '/admin/website/identitas',
+            icon: 'IdentificationIcon',
+            parentKey: null,
+            sortOrder: 21,
+            section: 'WEBSITE',
+            requiredPermission: 'website.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'website.navigation',
+            label: 'Menu Navigasi',
+            desc: 'Struktur navbar & footer',
+            route: '/admin/website/navigasi',
+            icon: 'Bars3Icon',
+            parentKey: null,
+            sortOrder: 22,
+            section: 'WEBSITE',
+            requiredPermission: 'navigation.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'website.theme',
+            label: 'Tema & Visual',
+            desc: 'Warna identitas & tipografi',
+            route: '/admin/website/tema',
+            icon: 'SwatchIcon',
+            parentKey: null,
+            sortOrder: 23,
+            section: 'WEBSITE',
+            requiredPermission: 'theme.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'website.seo',
+            label: 'SEO & Meta Tag',
+            desc: 'Optimasi mesin pencari',
+            route: '/admin/website/seo',
+            icon: 'MagnifyingGlassIcon',
+            parentKey: null,
+            sortOrder: 24,
+            section: 'WEBSITE',
+            requiredPermission: 'seo.view',
+            scopeType: 'prodi',
+          },
+
+          // 4. AKSES & TATA KELOLA RBAC
+          {
+            menuKey: 'management.media',
+            label: 'Media Library',
+            desc: 'Manajemen berkas & gambar',
+            route: '/admin/media',
+            icon: 'PhotoIcon',
+            parentKey: null,
+            sortOrder: 30,
+            section: 'TATA KELOLA',
+            requiredPermission: 'media.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'management.users',
+            label: 'Manajemen Pengguna',
+            desc: 'Daftar akun & penugasan peran',
+            route: '/admin/pengguna',
+            icon: 'UsersIcon',
+            parentKey: null,
+            sortOrder: 31,
+            section: 'TATA KELOLA',
+            requiredPermission: 'users.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'management.roles',
+            label: 'Peran (Roles)',
+            desc: 'Alokasi peran 14 prodi',
+            route: '/admin/peran',
+            icon: 'ShieldCheckIcon',
+            parentKey: null,
+            sortOrder: 32,
+            section: 'TATA KELOLA',
+            requiredPermission: 'users.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'management.permissions',
+            label: 'Katalog Izin',
+            desc: 'Hak akses granular modul',
+            route: '/admin/izin',
+            icon: 'KeyIcon',
+            parentKey: null,
+            sortOrder: 33,
+            section: 'TATA KELOLA',
+            requiredPermission: 'users.view',
+            scopeType: 'prodi',
+          },
+
+          // 5. TATA KELOLA UNIVERSITAS (Hanya Super Admin)
+          {
+            menuKey: 'super.organization',
+            label: 'Struktur Organisasi',
+            desc: 'Fakultas & 14 Program Studi',
+            route: '/admin/organisasi',
+            icon: 'BuildingLibraryIcon',
+            parentKey: null,
+            sortOrder: 40,
+            section: 'UNIVERSITAS',
+            requiredPermission: 'organization.view',
+            scopeType: 'global',
+          },
+          {
+            menuKey: 'super.domains',
+            label: 'Routing & Domain',
+            desc: 'Subdomain hostname prodi',
+            route: '/admin/domain',
+            icon: 'LinkIcon',
+            parentKey: null,
+            sortOrder: 41,
+            section: 'UNIVERSITAS',
+            requiredPermission: 'domain.view',
+            scopeType: 'global',
+          },
+          {
+            menuKey: 'super.audit',
+            label: 'Audit Log Aktivitas',
+            desc: 'Rekam jejak tindakan admin',
+            route: '/admin/audit-logs',
+            icon: 'ClipboardDocumentListIcon',
+            parentKey: null,
+            sortOrder: 42,
+            section: 'UNIVERSITAS',
+            requiredPermission: 'audit_logs.view',
+            scopeType: 'global',
+          },
+        ];
+
+        const visible = catalog.filter((item) => {
+          const allowed = isSuper || codes.has(item.requiredPermission);
+          if (!allowed) return false;
+          // Menu global hanya relevan untuk Super Admin.
+          if (item.scopeType === 'global' && !isSuper) return false;
+          return true;
+        });
+
+        // Menyusun hierarki dan membuang induk yang seluruh anaknya tidak terlihat.
+        const byParent = new Map<string | null, AdminMenuItem[]>();
+        for (const item of visible) {
+          const node: AdminMenuItem = {
+            menuKey: item.menuKey,
+            label: item.label,
+            route: item.route,
+            icon: item.icon,
+            parentKey: item.parentKey,
+            sortOrder: item.sortOrder,
+            children: [],
+          };
+          const list = byParent.get(item.parentKey) ?? [];
+          list.push(node);
+          byParent.set(item.parentKey, list);
+        }
+
+        for (const [parentKey, children] of byParent) {
+          if (parentKey === null) continue;
+          const parents = byParent.get(null) ?? [];
+          const parent = parents.find((node) => node.menuKey === parentKey);
+          if (parent) {
+            parent.children = children.sort((a, b) => a.sortOrder - b.sortOrder);
+          }
+        }
+
+        const result = (byParent.get(null) ?? [])
+          .filter((node) => node.children.length > 0 || byParent.has(node.menuKey) === false)
+          .filter((node) => {
+            // Induk tanpa anak dan tanpa halaman sendiri tidak ditampilkan.
+            const isLeaf = (byParent.get(node.menuKey) ?? []).length === 0;
+            return !isLeaf || !['website', 'content', 'management'].includes(node.menuKey);
+          })
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+
+        cachedMenu = result;
+        return result;
+      } finally {
+        menuPromise = null;
       }
-    }
+    })();
 
-    return (byParent.get(null) ?? [])
-      .filter((node) => node.children.length > 0 || byParent.has(node.menuKey) === false)
-      .filter((node) => {
-        // Induk tanpa anak dan tanpa halaman sendiri tidak ditampilkan.
-        const isLeaf = (byParent.get(node.menuKey) ?? []).length === 0;
-        return !isLeaf || !['website', 'content', 'management'].includes(node.menuKey);
-      })
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+    return menuPromise;
   },
 };

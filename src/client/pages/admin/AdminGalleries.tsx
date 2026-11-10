@@ -150,7 +150,7 @@ export const AdminGalleries: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(listQuery.data ?? []).map((gallery) => (
-            <article key={gallery.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <article key={gallery.id} className="overflow-hidden rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs">
               <div className="flex h-36 items-center justify-center bg-slate-100">
                 {gallery.coverImageUrl ? (
                   <img

@@ -205,8 +205,8 @@ export const AdminCurriculum: React.FC = () => {
             );
 
             return (
-              <section key={curriculum.id} className="rounded-2xl border border-slate-200 bg-white">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+              <section key={curriculum.id} className="rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#CBD5E1]/70 px-5 py-4">
                   <button
                     type="button"
                     onClick={() => setExpanded((current) => ({ ...current, [curriculum.id]: !isOpen }))}

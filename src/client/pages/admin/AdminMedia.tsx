@@ -122,7 +122,7 @@ export const AdminMedia: React.FC = () => {
           {(listQuery.data ?? []).map((asset) => {
             const isImage = asset.mimeType.startsWith('image/');
             return (
-              <figure key={asset.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              <figure key={asset.id} className="overflow-hidden rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs">
                 <div className="flex h-32 items-center justify-center bg-slate-100">
                   {isImage ? (
                     <img

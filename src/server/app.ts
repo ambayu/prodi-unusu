@@ -20,6 +20,7 @@ import publicationRoutes from './modules/admin/publication.routes.js';
 import mediaRoutes from './modules/admin/media.routes.js';
 import usersRoutes from './modules/admin/users.routes.js';
 import organizationRoutes from './modules/admin/organization.routes.js';
+import rbacRoutes from './modules/admin/rbac.routes.js';
 
 import { authenticate, csrfProtection } from './middlewares/auth.js';
 import { attachScopedTenant } from './middlewares/tenantScope.js';
@@ -144,6 +145,7 @@ export function createApp() {
   adminRouter.use('/media', mediaRoutes);
   adminRouter.use('/users', usersRoutes);
   adminRouter.use('/', organizationRoutes);
+  adminRouter.use('/', rbacRoutes);
 
   app.use('/api/v1/admin', adminRouter);
 

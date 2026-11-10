@@ -101,6 +101,9 @@ export interface AdminMenuItem {
   icon: string | null;
   parentKey: string | null;
   sortOrder: number;
+  section?: 'UTAMA' | 'KONTEN' | 'WEBSITE' | 'TATA KELOLA' | 'UNIVERSITAS';
+  desc?: string;
+  badge?: string;
   children: AdminMenuItem[];
 }
 

@@ -44,6 +44,8 @@ import { AdminProfile } from './pages/admin/AdminProfile';
 import { AdminMyProfile } from './pages/admin/AdminMyProfile';
 import { AdminOrganization } from './pages/admin/AdminOrganization';
 import { AdminDomains } from './pages/admin/AdminDomains';
+import { AdminRoles } from './pages/admin/AdminRoles';
+import { AdminPermissions } from './pages/admin/AdminPermissions';
 
 import { useBootstrap, useTenant } from './hooks/useSite';
 import { useSiteStore } from './app/siteStore';
@@ -221,6 +223,26 @@ export const App: React.FC = () => {
           <RequireAuth>
             <RequirePermission anyOf={['users.view']}>
               <AdminUsers />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/peran"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['users.view']}>
+              <AdminRoles />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/izin"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['users.view']}>
+              <AdminPermissions />
             </RequirePermission>
           </RequireAuth>
         }

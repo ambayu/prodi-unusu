@@ -135,7 +135,7 @@ export const AdminPosts: React.FC = () => {
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs">
           <table className="table-base">
             <thead>
               <tr>
