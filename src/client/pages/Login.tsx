@@ -15,7 +15,7 @@ import { useSiteStore } from '../app/siteStore';
 import { api, toApiError } from '../services/api';
 
 const ONE_UNUSU_URL = import.meta.env.VITE_ONE_UNUSU_URL || 'http://localhost:5173';
-const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || 'prodi-unusu';
+const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || '70c76ea9b5d5d3a8';
 
 /**
  * Halaman masuk portal program studi.
