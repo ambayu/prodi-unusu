@@ -1,23 +1,75 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { api, toApiError } from '../services/api';
 import { useSiteStore } from '../app/siteStore';
+import { SsoLoadingScreen } from '../components/SsoLoadingScreen';
+import { SsoProblemScreen, type SsoProblemDetail } from '../components/SsoProblemScreen';
 
-/**
- * Penerima tiket SSO dari portal ONE UNUSU.
- *
- * Portal mengarahkan pengguna ke sini dengan `?client_id=...&token=...`.
- * Tiket bersifat sekali pakai dan berumur pendek, jadi langsung ditukar ke
- * backend lewat `POST /auth/sso`. Backend melakukan verifikasi server-ke-server
- * memakai client_key yang tidak pernah sampai ke browser.
- */
+function terjemahkanGagalSso(err: any): SsoProblemDetail {
+  const status = err?.response?.status;
+  const msg = String(err?.response?.data?.message || err?.message || '').toLowerCase();
+
+  if (status === 401 || msg.includes('token') || msg.includes('tiket')) {
+    return {
+      jenis: 'token',
+      judul: 'Waktu Tiket Masuk Berakhir',
+      penjelasan:
+        'Tautan otorisasi SSO bersifat sekali pakai dan berumur pendek. Tiket yang sudah pernah digunakan atau terlalu lama didiamkan tidak dapat dipakai kembali.',
+      langkah: [
+        'Tutup halaman ini dan kembali ke halaman login.',
+        'Klik tombol Masuk ONE UNUSU untuk mendapatkan tiket masuk baru.',
+        'Hindari membuka tautan login di beberapa tab sekaligus.',
+      ],
+      catatan: 'Akun Anda aman dan tidak terkunci. Cukup lakukan login ulang.',
+    };
+  }
+
+  if (status === 403 || msg.includes('peran') || msg.includes('izin') || msg.includes('scope')) {
+    return {
+      jenis: 'peran',
+      judul: 'Akun Belum Memiliki Akses Program Studi',
+      penjelasan:
+        'Akun ONE UNUSU Anda berhasil diverifikasi, namun belum diberikan hak akses (peran) sebagai Admin atau Editor pada Program Studi ini.',
+      langkah: [
+        'Hubungi Super Administrator UNUSU untuk mengalokasikan peran pada program studi Anda.',
+        'Pastikan email ONE UNUSU yang Anda gunakan sesuai dengan penugasan SK resmi.',
+      ],
+      catatan: 'Setelah administrator menambahkan peran Anda, silakan masuk kembali.',
+    };
+  }
+
+  if (!err?.response) {
+    return {
+      jenis: 'jaringan',
+      judul: 'Koneksi ke Portal SSO Terputus',
+      penjelasan:
+        'Aplikasi tidak dapat menghubungi server otorisasi ONE UNUSU. Hal ini dapat disebabkan oleh koneksi internet atau gangguan server gateway.',
+      langkah: [
+        'Periksa stabilitas koneksi internet perangkat Anda.',
+        'Muat ulang halaman ini atau coba beberapa saat lagi.',
+        'Bila masalah berlanjut, hubungi tim IT Kampus UNUSU.',
+      ],
+    };
+  }
+
+  return {
+    jenis: 'umum',
+    judul: 'Gagal Menghubungkan Sesi SSO',
+    penjelasan:
+      'Terjadi kendala saat menyinkronkan data login Anda dengan portal program studi.',
+    langkah: [
+      'Silakan coba masuk kembali dari halaman login.',
+      'Gunakan browser standar (Chrome/Firefox/Edge) versi terbaru.',
+    ],
+  };
+}
+
 export const SsoCallback: React.FC = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const refreshUser = useSiteStore((state) => state.refreshUser);
   const started = useRef(false);
-  const [error, setError] = useState<string | null>(null);
+  const [masalah, setMasalah] = useState<SsoProblemDetail | null>(null);
 
   useEffect(() => {
     if (started.current) return;
@@ -27,9 +79,16 @@ export const SsoCallback: React.FC = () => {
     const token = params.get('token');
 
     if (!clientId || !token) {
-      setError(
-        'Portal ONE UNUSU tidak mengirimkan tiket login yang lengkap. Silakan mulai login dari halaman masuk.',
-      );
+      setMasalah({
+        jenis: 'kosong',
+        judul: 'Tiket Masuk Tidak Ditemukan',
+        penjelasan:
+          'Portal ONE UNUSU tidak mengirimkan tiket login yang lengkap. Anda harus memulai proses login dari halaman masuk.',
+        langkah: [
+          'Kembali ke halaman masuk portal prodi.',
+          'Klik tombol Masuk ONE UNUSU untuk memulai otorisasi.',
+        ],
+      });
       return;
     }
 
@@ -40,41 +99,23 @@ export const SsoCallback: React.FC = () => {
         navigate('/admin', { replace: true });
       })
       .catch((requestError) => {
-        setError(toApiError(requestError).message);
+        setMasalah(terjemahkanGagalSso(requestError));
       });
   }, [params, navigate, refreshUser]);
 
+  if (masalah) {
+    return (
+      <SsoProblemScreen
+        masalah={masalah}
+        onCobaLagi={() => navigate('/login', { replace: true })}
+      />
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        {error ? (
-          <>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
-              <ExclamationTriangleIcon className="h-6 w-6" />
-            </div>
-            <h1 className="mt-4 text-lg font-bold text-slate-900">Login SSO gagal</h1>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">{error}</p>
-            <button
-              type="button"
-              onClick={() => navigate('/login', { replace: true })}
-              className="mt-6 w-full rounded-xl bg-[#1e3a8a] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#172f6e]"
-            >
-              Kembali ke halaman masuk
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#1e3a8a]" />
-            <h1 className="mt-4 text-lg font-bold text-slate-900">Memverifikasi tiket SSO</h1>
-            <p className="mt-2 text-sm text-slate-600">
-              Mohon tunggu, kami sedang menghubungkan sesi ONE UNUSU dengan portal prodi.
-            </p>
-          </>
-        )}
-      </div>
-    </div>
+    <SsoLoadingScreen
+      title="Memverifikasi Sesi ONE UNUSU"
+      description="Menghubungkan akun Anda dengan portal Program Studi UNUSU..."
+    />
   );
 };
-
-export default SsoCallback;
-

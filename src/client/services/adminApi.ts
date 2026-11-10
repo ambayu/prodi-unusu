@@ -623,6 +623,8 @@ export const adminMenuApi = {
           const node: AdminMenuItem = {
             menuKey: item.menuKey,
             label: item.label,
+            desc: item.desc,
+            section: item.section,
             route: item.route,
             icon: item.icon,
             parentKey: item.parentKey,

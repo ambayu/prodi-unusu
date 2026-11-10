@@ -10,6 +10,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { AnimatedFlatSsoLogo } from '../components/AnimatedFlatSsoLogo';
+import { SsoLoadingScreen } from '../components/SsoLoadingScreen';
 import { useTenant } from '../hooks/useSite';
 import { useSiteStore } from '../app/siteStore';
 import { api, toApiError } from '../services/api';
@@ -31,6 +32,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
 
   const [localOpen, setLocalOpen] = useState(false);
+  const [ssoRedirecting, setSsoRedirecting] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -44,6 +46,7 @@ export const Login: React.FC = () => {
   }, [user, navigate]);
 
   const handleSsoLogin = () => {
+    setSsoRedirecting(true);
     const target = `${ONE_UNUSU_URL}/authorize?client_id=${encodeURIComponent(SSO_CLIENT_ID)}`;
     window.location.href = target;
   };
@@ -65,7 +68,14 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-white font-sans lg:flex-row">
+    <>
+      {ssoRedirecting && (
+        <SsoLoadingScreen
+          title="Menghubungkan ke ONE UNUSU"
+          description="Mengalihkan Anda ke Portal Single Sign-On kampus. Jangan tutup halaman ini."
+        />
+      )}
+      <div className="flex min-h-screen w-full flex-col bg-white font-sans lg:flex-row">
       <div className="z-10 flex w-full flex-col justify-between p-6 sm:p-12 lg:w-1/2 lg:p-16 xl:p-20">
         <div>
           <button
@@ -236,6 +246,7 @@ export const Login: React.FC = () => {
         </div>
       </div>
     </div>
+  </>
   );
 };
 
