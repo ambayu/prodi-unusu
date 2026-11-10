@@ -19,6 +19,7 @@ import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { builderApi, type BuilderPage, type BuilderSection, type BuilderWidgetInstance } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
+import { WidgetVisualForm } from '../../components/builder/WidgetVisualForm';
 
 /** Membaca konfigurasi widget dari JSON tersimpan. */
 function parseConfig(raw: string): Record<string, unknown> {
@@ -59,6 +60,8 @@ export const AdminBuilder: React.FC = () => {
   const [widgetSectionId, setWidgetSectionId] = useState<number | null>(null);
   const [widgetDraft, setWidgetDraft] = useState({ widgetCode: 'about_prodi', variantCode: '' });
   const [configTarget, setConfigTarget] = useState<BuilderWidgetInstance | null>(null);
+  const [configFormState, setConfigFormState] = useState<Record<string, any>>({});
+  const [configMode, setConfigMode] = useState<'visual' | 'json'>('visual');
   const [configText, setConfigText] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'section' | 'widget'; id: number; label: string } | null>(
     null,
@@ -142,13 +145,17 @@ export const AdminBuilder: React.FC = () => {
 
   const saveConfig = useMutation({
     mutationFn: () => {
-      let parsed: Record<string, unknown>;
-      try {
-        parsed = JSON.parse(configText);
-      } catch {
-        throw new Error('Konfigurasi bukan JSON yang valid.');
+      let payload: Record<string, unknown>;
+      if (configMode === 'visual') {
+        payload = configFormState;
+      } else {
+        try {
+          payload = JSON.parse(configText);
+        } catch {
+          throw new Error('Konfigurasi bukan JSON yang valid.');
+        }
       }
-      return builderApi.updateWidget(configTarget!.id, { config: parsed });
+      return builderApi.updateWidget(configTarget!.id, { config: payload });
     },
     onSuccess: () => {
       toast.success('Konfigurasi widget berhasil disimpan.');
@@ -470,7 +477,9 @@ export const AdminBuilder: React.FC = () => {
                                           type="button"
                                           onClick={() => {
                                             setConfigTarget(widget);
+                                            setConfigFormState(config);
                                             setConfigText(JSON.stringify(config, null, 2));
+                                            setConfigMode('visual');
                                           }}
                                           className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100"
                                         >
@@ -595,8 +604,8 @@ export const AdminBuilder: React.FC = () => {
 
       <FormModal
         open={configTarget !== null}
-        title="Atur Konfigurasi Widget"
-        description={configTarget?.widget.name}
+        title={`Konfigurasi: ${configTarget?.widget.name || 'Widget'}`}
+        description="Sesuaikan konten dan tampilan seksi tanpa perlu mengedit kode JSON secara manual."
         busy={saveConfig.isPending}
         wide
         onClose={() => setConfigTarget(null)}
@@ -605,19 +614,67 @@ export const AdminBuilder: React.FC = () => {
           saveConfig.mutate();
         }}
       >
-        <Field
-          label="Konfigurasi JSON"
-          htmlFor="widget-config"
-          hint="Isi divalidasi sesuai tipe widget. Nilai yang tidak sesuai akan ditolak server."
-        >
-          <textarea
-            id="widget-config"
-            className="field-input min-h-[320px] font-mono text-[11px] leading-relaxed"
-            value={configText}
-            onChange={(event) => setConfigText(event.target.value)}
-            spellCheck={false}
-          />
-        </Field>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <span className="text-xs font-bold text-slate-700">Metode Pengisian</span>
+            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5">
+              <button
+                type="button"
+                onClick={() => setConfigMode('visual')}
+                className={`rounded-md px-3 py-1 text-xs font-bold transition-colors ${
+                  configMode === 'visual'
+                    ? 'bg-white text-emerald-800 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Form Visual &amp; Editor
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfigText(JSON.stringify(configFormState, null, 2));
+                  setConfigMode('json');
+                }}
+                className={`rounded-md px-3 py-1 text-xs font-bold transition-colors ${
+                  configMode === 'json'
+                    ? 'bg-white text-emerald-800 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Kode JSON (Teknis)
+              </button>
+            </div>
+          </div>
+
+          {configMode === 'visual' ? (
+            <WidgetVisualForm
+              widgetCode={configTarget?.widget.code || ''}
+              config={configFormState}
+              onChange={(updated) => setConfigFormState(updated)}
+            />
+          ) : (
+            <Field
+              label="Konfigurasi JSON"
+              htmlFor="widget-config"
+              hint="Format JSON divalidasi ketat oleh server."
+            >
+              <textarea
+                id="widget-config"
+                className="field-input min-h-[300px] font-mono text-xs leading-relaxed"
+                value={configText}
+                onChange={(event) => {
+                  setConfigText(event.target.value);
+                  try {
+                    setConfigFormState(JSON.parse(event.target.value));
+                  } catch {
+                    // Biarkan user menyelesaikan ketikan JSON
+                  }
+                }}
+                spellCheck={false}
+              />
+            </Field>
+          )}
+        </div>
       </FormModal>
 
       <ConfirmDialog

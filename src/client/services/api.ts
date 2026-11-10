@@ -31,6 +31,13 @@ api.interceptors.request.use((config) => {
       config.headers['X-CSRF-Token'] = csrf;
     }
   }
+
+  // Kirimkan tenant ID aktif jika disimpan di sessionStorage/localStorage
+  const activeTenantId = sessionStorage.getItem('active_tenant_id');
+  if (activeTenantId) {
+    config.headers['X-Tenant-Id'] = activeTenantId;
+  }
+
   return config;
 });
 

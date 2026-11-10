@@ -17,7 +17,11 @@ export async function resolveScopedTenantId(req: Request): Promise<number> {
     throw AppError.unauthorized();
   }
 
-  const requested = req.query.tenantId ? Number(req.query.tenantId) : null;
+  const requested = req.query.tenantId
+    ? Number(req.query.tenantId)
+    : req.headers['x-tenant-id']
+    ? Number(req.headers['x-tenant-id'])
+    : null;
 
   if (user.isSuperAdmin) {
     if (requested && Number.isInteger(requested) && requested > 0) {

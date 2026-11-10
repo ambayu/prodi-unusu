@@ -38,7 +38,7 @@ import {
 import type { AdminMenuItem } from '../../shared/types/index';
 import { useSiteStore } from '../app/siteStore';
 import { usePermission, useTenant } from '../hooks/useSite';
-import { adminMenuApi } from '../services/adminApi';
+import { adminMenuApi, organizationApi } from '../services/adminApi';
 import { useToast } from './ui/Toast';
 import { AdminPanelTemplate } from './ui/AdminPanelTemplate';
 
@@ -100,7 +100,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const location = useLocation();
   const toast = useToast();
 
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const setActiveTenant = useSiteStore((state) => state.setActiveTenant);
+  const activeTenantId = useSiteStore((state) => state.activeTenantId);
+  const [availablePrograms, setAvailablePrograms] = useState<Array<{ id: number; name: string; code: string }>>([]);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      organizationApi.studyPrograms().then((res) => {
+        setAvailablePrograms(res.data.studyPrograms);
+      }).catch(() => {});
+    }
+  }, [isSuperAdmin]);
   const [collapsed, setCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [menu, setMenu] = useState<AdminMenuItem[]>(() => adminMenuApi.getCachedMenu() ?? []);
@@ -284,23 +294,51 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </Link>
         </div>
 
-        {/* Tenant Scope Card (Jika bukan Superadmin) */}
-        {!isCollapsedView && tenant && (
+        {/* Tenant Scope Card / Pemilih Prodi Aktif */}
+        {!isCollapsedView && (
           <div className="px-3 pt-3 shrink-0">
-            <div className="rounded-[12px] border border-[#CBD5E1] bg-white/80 p-2.5 shadow-2xs">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
-                  {tenant.code || 'PRODI AKTIF'}
-                </span>
+            {isSuperAdmin ? (
+              <div className="rounded-[12px] border border-blue-200 bg-blue-50/80 p-2.5 shadow-2xs">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-900">
+                    PROGRAM STUDI AKTIF
+                  </span>
+                  <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+                </div>
+                <select
+                  value={activeTenantId ?? ''}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    if (id) void setActiveTenant(id);
+                  }}
+                  className="w-full rounded-lg border border-blue-300 bg-white px-2 py-1.5 text-xs font-bold text-slate-800 shadow-2xs focus:border-blue-600 focus:outline-none cursor-pointer"
+                >
+                  {availablePrograms.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.code} - {p.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-blue-700/80 leading-tight">
+                  Pilih prodi untuk mengelola konten dan tampilan websitenya.
+                </p>
               </div>
-              <p className="mt-1 text-xs font-bold text-slate-900 truncate">
-                {tenant.name}
-              </p>
-              <p className="text-[10px] text-slate-500 truncate">
-                {tenant.facultyName || 'Fakultas UNUSU'}
-              </p>
-            </div>
+            ) : tenant ? (
+              <div className="rounded-[12px] border border-[#CBD5E1] bg-white/80 p-2.5 shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
+                    {tenant.code || 'PRODI AKTIF'}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs font-bold text-slate-900 truncate">
+                  {tenant.name}
+                </p>
+                <p className="text-[10px] text-slate-500 truncate">
+                  {tenant.facultyName || 'Fakultas UNUSU'}
+                </p>
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -542,6 +580,29 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
           {/* Sisi Kanan: Action Buttons & Profile Dropdown */}
           <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
+            {/* Quick Switcher Program Studi untuk Admin di Topbar */}
+            {isSuperAdmin && availablePrograms.length > 0 && (
+              <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/90 px-2.5 py-1 text-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900 shrink-0">
+                  Prodi:
+                </span>
+                <select
+                  value={activeTenantId ?? ''}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    if (id) void setActiveTenant(id);
+                  }}
+                  className="rounded-lg border-0 bg-transparent py-0.5 text-xs font-bold text-blue-950 focus:outline-none cursor-pointer"
+                >
+                  {availablePrograms.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.code} - {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Tombol Lihat Website Publik */}
             <Link
               to="/"

@@ -94,10 +94,13 @@ export const useSiteStore = create<SiteState>((set, get) => ({
 
   /** Mengganti tenant aktif untuk Super Admin yang mengelola banyak prodi. */
   setActiveTenant: async (tenantId: number) => {
+    sessionStorage.setItem('active_tenant_id', String(tenantId));
     const res = await api.get<{ activeTenantId: number }>('/admin/access-context', {
       params: { tenantId },
     });
     set({ activeTenantId: res.data.activeTenantId });
+    // Reload halaman atau trigger invalidasi data global agar seluruh modul membaca tenant baru
+    window.location.reload();
   },
 
   hasPermission: (permission: string) => {

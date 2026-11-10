@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, TrashIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon, EyeIcon, EyeSlashIcon, PhotoIcon, ArrowUpTrayIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
+import { RichTextEditor } from '../../components/ui/RichTextEditor';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { postApi, type Post } from '../../services/contentApi';
+import { mediaApi } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 
 /** Membuat slug dari judul agar penulis tidak perlu mengetik slug manual. */
@@ -37,6 +39,7 @@ export const AdminPosts: React.FC = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Post | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Post | null>(null);
+  const [uploadingThumb, setUploadingThumb] = useState(false);
   const [draft, setDraft] = useState({
     title: '',
     slug: '',
@@ -45,6 +48,23 @@ export const AdminPosts: React.FC = () => {
     status: 'draft',
     thumbnailUrl: '',
   });
+
+  const handleThumbnailUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Mohon pilih file gambar (JPG, PNG, atau WebP).');
+      return;
+    }
+    setUploadingThumb(true);
+    try {
+      const res = await mediaApi.upload(file);
+      setDraft((curr) => ({ ...curr, thumbnailUrl: res.data.asset.url }));
+      toast.success('Gambar utama berhasil diunggah.');
+    } catch (err) {
+      toast.error(toApiError(err).message);
+    } finally {
+      setUploadingThumb(false);
+    }
+  };
 
   const listQuery = useQuery({
     queryKey: ['admin', 'posts'],
@@ -271,43 +291,73 @@ export const AdminPosts: React.FC = () => {
           />
         </Field>
 
-        <Field label="Ringkasan" htmlFor="post-excerpt" hint="Tampil pada daftar berita dan kartu widget beranda.">
+        <Field label="Ringkasan Singkat" htmlFor="post-excerpt" hint="Tampil pada daftar cuplikan berita dan kartu beranda.">
           <textarea
             id="post-excerpt"
             className="field-textarea"
+            rows={2}
             value={draft.excerpt}
             onChange={(event) => setDraft({ ...draft, excerpt: event.target.value })}
           />
         </Field>
 
-        <Field label="Isi berita" htmlFor="post-content" required>
-          <textarea
-            id="post-content"
-            className="field-input min-h-[220px] resize-y leading-relaxed"
-            required
+        <Field label="Isi Berita Lengkap" htmlFor="post-content" required hint="Gunakan toolbar di atas untuk format teks, sub-judul, kutipan, dan sisipkan foto.">
+          <RichTextEditor
             value={draft.content}
-            onChange={(event) => setDraft({ ...draft, content: event.target.value })}
+            onChange={(val) => setDraft({ ...draft, content: val })}
+            placeholder="Tuliskan isi warta atau artikel program studi selengkapnya di sini..."
+            minHeight="280px"
           />
         </Field>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Gambar utama" htmlFor="post-thumbnail" hint="URL gambar, contoh /uploads/media/foto.jpg">
-            <input
-              id="post-thumbnail"
-              className="field-input"
-              value={draft.thumbnailUrl}
-              onChange={(event) => setDraft({ ...draft, thumbnailUrl: event.target.value })}
-            />
+          <Field label="Gambar Utama / Thumbnail" htmlFor="post-thumbnail" hint="Gambar sampul berita pada kartu dan header artikel.">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50">
+                  <ArrowUpTrayIcon className="h-4 w-4 text-slate-500" />
+                  <span>{uploadingThumb ? 'Mengunggah...' : 'Unggah Sampul'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingThumb}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleThumbnailUpload(file);
+                    }}
+                  />
+                </label>
+                {draft.thumbnailUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setDraft({ ...draft, thumbnailUrl: '' })}
+                    className="inline-flex items-center gap-1 text-xs text-rose-600 hover:underline"
+                  >
+                    <XMarkIcon className="h-3.5 w-3.5" />
+                    <span>Hapus</span>
+                  </button>
+                )}
+              </div>
+
+              <input
+                id="post-thumbnail"
+                className="field-input text-xs font-mono"
+                placeholder="URL Gambar Sampul..."
+                value={draft.thumbnailUrl}
+                onChange={(event) => setDraft({ ...draft, thumbnailUrl: event.target.value })}
+              />
+            </div>
           </Field>
-          <Field label="Status" htmlFor="post-status">
+          <Field label="Status Publikasi" htmlFor="post-status">
             <select
               id="post-status"
               className="field-input"
               value={draft.status}
               onChange={(event) => setDraft({ ...draft, status: event.target.value })}
             >
-              <option value="draft">Draft</option>
-              <option value="published">Terbit</option>
+              <option value="draft">Draft (Disimpan)</option>
+              <option value="published">Terbit (Dapat dibaca publik)</option>
               <option value="archived">Arsip</option>
             </select>
           </Field>
