@@ -5,36 +5,40 @@ import { useSiteStore } from '../app/siteStore';
 import { SsoLoadingScreen } from '../components/SsoLoadingScreen';
 import { SsoProblemScreen, type SsoProblemDetail } from '../components/SsoProblemScreen';
 
-function terjemahkanGagalSso(err: any): SsoProblemDetail {
+function terjemahkanGagalSso(err: any, payload: any): SsoProblemDetail {
   const status = err?.response?.status;
-  const msg = String(err?.response?.data?.message || err?.message || '').toLowerCase();
+  const msg = String(payload?.message || err?.message || '').toLowerCase();
+  const appAccess = payload?.appAccess;
+
+  if (status === 403 || msg.includes('peran') || msg.includes('izin') || msg.includes('scope') || (appAccess && appAccess.allowed === false)) {
+    return {
+      jenis: 'peran',
+      judul: 'Akun ini belum memiliki akses ke Program Studi',
+      penjelasan:
+        'Akun ONE UNUSU Anda berhasil diverifikasi, namun belum terdaftar atau belum diberikan peran administratif (Admin Prodi / Editor) pada sistem program studi ini.',
+      langkah: [
+        'Pastikan email dan akun ONE UNUSU yang Anda gunakan sesuai dengan SK penugasan resmi.',
+        'Minta Super Administrator Universitas untuk mengalokasikan peran pada program studi Anda.',
+        'Setelah hak akses ditambahkan oleh administrator, silakan lakukan proses masuk ulang.',
+      ],
+      ssoRole: appAccess?.ssoRole || 'Pengguna Terverifikasi',
+      ssoRoleLabel: appAccess?.ssoRoleLabel || 'Belum ada alokasi prodi',
+      appName: 'Portal Program Studi UNUSU',
+    };
+  }
 
   if (status === 401 || msg.includes('token') || msg.includes('tiket')) {
     return {
       jenis: 'token',
       judul: 'Waktu Tiket Masuk Berakhir',
       penjelasan:
-        'Tautan otorisasi SSO bersifat sekali pakai dan berumur pendek. Tiket yang sudah pernah digunakan atau terlalu lama didiamkan tidak dapat dipakai kembali.',
+        'Tautan otorisasi SSO bersifat sekali pakai dan berumur pendek. Tiket yang sudah pernah digunakan, terbuka di tab lain, atau didiamkan terlalu lama tidak dapat dipakai kembali.',
       langkah: [
-        'Tutup halaman ini dan kembali ke halaman login.',
+        'Tutup tab ini dan kembali ke halaman login portal program studi.',
         'Klik tombol Masuk ONE UNUSU untuk mendapatkan tiket masuk baru.',
-        'Hindari membuka tautan login di beberapa tab sekaligus.',
+        'Hindari membuka tautan login di beberapa jendela browser sekaligus.',
       ],
-      catatan: 'Akun Anda aman dan tidak terkunci. Cukup lakukan login ulang.',
-    };
-  }
-
-  if (status === 403 || msg.includes('peran') || msg.includes('izin') || msg.includes('scope')) {
-    return {
-      jenis: 'peran',
-      judul: 'Akun Belum Memiliki Akses Program Studi',
-      penjelasan:
-        'Akun ONE UNUSU Anda berhasil diverifikasi, namun belum diberikan hak akses (peran) sebagai Admin atau Editor pada Program Studi ini.',
-      langkah: [
-        'Hubungi Super Administrator UNUSU untuk mengalokasikan peran pada program studi Anda.',
-        'Pastikan email ONE UNUSU yang Anda gunakan sesuai dengan penugasan SK resmi.',
-      ],
-      catatan: 'Setelah administrator menambahkan peran Anda, silakan masuk kembali.',
+      catatan: 'Akun Anda aman dan tidak terkunci. Cukup lakukan proses masuk ulang.',
     };
   }
 
@@ -43,9 +47,9 @@ function terjemahkanGagalSso(err: any): SsoProblemDetail {
       jenis: 'jaringan',
       judul: 'Koneksi ke Portal SSO Terputus',
       penjelasan:
-        'Aplikasi tidak dapat menghubungi server otorisasi ONE UNUSU. Hal ini dapat disebabkan oleh koneksi internet atau gangguan server gateway.',
+        'Perangkat tidak dapat menghubungi server otorisasi ONE UNUSU. Hal ini dapat disebabkan oleh koneksi internet atau gangguan server gateway.',
       langkah: [
-        'Periksa stabilitas koneksi internet perangkat Anda.',
+        'Periksa kestabilan koneksi internet perangkat Anda.',
         'Muat ulang halaman ini atau coba beberapa saat lagi.',
         'Bila masalah berlanjut, hubungi tim IT Kampus UNUSU.',
       ],
@@ -54,13 +58,15 @@ function terjemahkanGagalSso(err: any): SsoProblemDetail {
 
   return {
     jenis: 'umum',
-    judul: 'Gagal Menghubungkan Sesi SSO',
+    judul: 'Proses masuk belum berhasil diselesaikan',
     penjelasan:
-      'Terjadi kendala saat menyinkronkan data login Anda dengan portal program studi.',
+      'Terjadi kendala saat menyinkronkan data login Anda dengan portal program studi. Kejadian seperti ini umumnya bersifat sementara.',
     langkah: [
       'Silakan coba masuk kembali dari halaman login.',
       'Gunakan browser standar (Chrome/Firefox/Edge) versi terbaru.',
+      'Bila masih berulang, hubungi tim administrator kampus.',
     ],
+    catatan: 'Tidak ada data akun yang berubah selama proses ini.',
   };
 }
 
@@ -81,12 +87,13 @@ export const SsoCallback: React.FC = () => {
     if (!clientId || !token) {
       setMasalah({
         jenis: 'kosong',
-        judul: 'Tiket Masuk Tidak Ditemukan',
+        judul: 'Permintaan Masuk Belum Selesai',
         penjelasan:
-          'Portal ONE UNUSU tidak mengirimkan tiket login yang lengkap. Anda harus memulai proses login dari halaman masuk.',
+          'Halaman ini terbuka tanpa menyelesaikan langkah persetujuan tiket di portal SSO kampus. Biasanya ini terjadi karena proses sebelumnya dibatalkan atau tautan dimuat ulang di tengah jalan.',
         langkah: [
-          'Kembali ke halaman masuk portal prodi.',
-          'Klik tombol Masuk ONE UNUSU untuk memulai otorisasi.',
+          'Buka halaman masuk portal prodi dan tekan tombol Masuk ONE UNUSU.',
+          'Selesaikan seluruh langkah di portal kampus tanpa menutup tab.',
+          'Anda akan diarahkan kembali ke panel administrasi secara otomatis.',
         ],
       });
       return;
@@ -99,7 +106,8 @@ export const SsoCallback: React.FC = () => {
         navigate('/admin', { replace: true });
       })
       .catch((requestError) => {
-        setMasalah(terjemahkanGagalSso(requestError));
+        const payload = requestError.response?.data;
+        setMasalah(terjemahkanGagalSso(requestError, payload));
       });
   }, [params, navigate, refreshUser]);
 
@@ -114,8 +122,10 @@ export const SsoCallback: React.FC = () => {
 
   return (
     <SsoLoadingScreen
-      title="Memverifikasi Sesi ONE UNUSU"
-      description="Menghubungkan akun Anda dengan portal Program Studi UNUSU..."
+      title="Memverifikasi Tiket Masuk"
+      description="Aplikasi sedang memvalidasi token sekali pakai Anda dengan Portal ONE UNUSU. Jangan tutup halaman ini."
     />
   );
 };
+
+export default SsoCallback;

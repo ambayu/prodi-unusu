@@ -108,22 +108,28 @@ export const Login: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-3">
-            <AnimatedFlatSsoLogo size={190} onClick={handleSsoLogin} />
-            <span className="text-xl font-extrabold tracking-tight text-slate-900">
-              ONE <span className="text-[#1e3a8a]">UNUSU</span>
-            </span>
+          {/* Logo ONE UNUSU — Ikonik Resmi Hijau Emas UNUSU dengan Orbit 6 Satelit */}
+          <div className="flex flex-col items-center space-y-3">
+            <AnimatedFlatSsoLogo
+              size={210}
+              onClick={handleSsoLogin}
+            />
+            <div className="text-center">
+              <span className="font-extrabold text-xl text-slate-900 tracking-tight">
+                ONE <span className="text-[#166534]">UNUSU</span>
+              </span>
+            </div>
           </div>
 
           <button
             type="button"
             onClick={handleSsoLogin}
-            className="group flex w-full items-center justify-center gap-3 rounded-full bg-[#1e3a8a] px-6 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#172f6e] hover:shadow-lg"
+            className="w-full flex items-center justify-center gap-3 py-3.5 px-6 rounded-full bg-[#166534] hover:bg-[#14532D] text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all transform active:scale-98 cursor-pointer group"
             aria-label="Masuk dengan ONE UNUSU"
           >
-            <ArrowRightOnRectangleIcon className="h-5 w-5 shrink-0 text-white" />
+            <ArrowRightOnRectangleIcon className="w-5 h-5 text-white shrink-0" />
             <span className="font-bold">Masuk dengan ONE UNUSU</span>
-            <ChevronRightIcon className="h-4 w-4 shrink-0 text-white/80 transition-transform group-hover:translate-x-1" />
+            <ChevronRightIcon className="w-4 h-4 text-white/80 group-hover:translate-x-1 transition-transform shrink-0" />
           </button>
 
           {error ? (
@@ -136,7 +142,8 @@ export const Login: React.FC = () => {
             </div>
           ) : null}
 
-          <div className="space-y-3">
+          {/* Wrapper Rapat: Divider 'atau' & Opsi Masuk Alternatif */}
+          <div className="!mt-4 space-y-2">
             <div className="relative flex items-center justify-center">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-200" />
@@ -144,13 +151,25 @@ export const Login: React.FC = () => {
               <div className="relative bg-white px-3 text-xs text-slate-400">atau</div>
             </div>
 
+            <div className="text-center pt-0.5">
+              <a
+                href={ONE_UNUSU_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#166534] hover:text-[#14532D] hover:underline transition-colors cursor-pointer"
+              >
+                <span>Kunjungi Website ONE UNUSU</span>
+                <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5 shrink-0" />
+              </a>
+            </div>
+
             <button
               type="button"
               onClick={() => setLocalOpen((open) => !open)}
-              className="inline-flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 transition-colors hover:text-[#1e3a8a]"
+              className="inline-flex w-full items-center justify-center gap-1.5 pt-1 text-[11px] font-semibold text-slate-500 transition-colors hover:text-slate-800"
             >
               <KeyIcon className="h-3.5 w-3.5" />
-              {localOpen ? 'Tutup login kata sandi' : 'Login kata sandi (jalur darurat)'}
+              {localOpen ? 'Tutup login kata sandi' : 'Login kata sandi lokal (jalur darurat)'}
             </button>
 
             {localOpen ? (
@@ -175,7 +194,7 @@ export const Login: React.FC = () => {
                     required
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#166534] focus:outline-none focus:ring-2 focus:ring-emerald-100"
                   />
                 </div>
 
@@ -191,14 +210,14 @@ export const Login: React.FC = () => {
                     required
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#166534] focus:outline-none focus:ring-2 focus:ring-emerald-100"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={busy}
-                  className="w-full rounded-lg bg-[#1e3a8a] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#172f6e] disabled:opacity-60"
+                  className="w-full rounded-lg bg-[#166534] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#14532D] disabled:opacity-60"
                 >
                   {busy ? 'Memproses...' : 'Masuk'}
                 </button>
@@ -206,21 +225,9 @@ export const Login: React.FC = () => {
             ) : null}
           </div>
 
-          <div className="pt-1 text-center text-xs text-slate-500">
-            <a
-              href={ONE_UNUSU_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 font-semibold text-[#1e3a8a] transition-colors hover:underline"
-            >
-              <span>Kunjungi Website ONE UNUSU</span>
-              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 shrink-0" />
-            </a>
+          <div className="text-xs text-slate-500 text-center font-normal pt-1">
+            &copy; {new Date().getFullYear()} Portal Prodi &bull; Universitas Nahdlatul Ulama Sumatera Utara
           </div>
-
-          <p className="text-center text-[11px] text-slate-400">
-            &copy; {new Date().getFullYear()} Universitas Nahdlatul Ulama Sumatera Utara
-          </p>
         </div>
       </div>
 
