@@ -213,10 +213,13 @@ export async function seedPageBuilderAndThemes() {
             ctaUrl: '/kurikulum',
             secondaryCtaText: 'Profil Pengajar',
             secondaryCtaUrl: '/dosen',
+            // Banner awal memakai gambar yang sama dengan Portal Utama, sebagai
+            // isi sementara sebelum admin mengunggah banner khas prodi lewat
+            // menu "Hero Slider" (/admin/portal).
             slides: [
-              { imageUrl: '/heroslider-full.png', alt: `Kampus UNUSU Gaperta Medan` },
-              { imageUrl: '/hero-slide-generated.png', alt: `Laboratorium & Ruang Belajar ${name}` },
-              { imageUrl: '/assets/campus-login.png', alt: `Gedung Rektorat UNUSU` },
+              { imageUrl: '/hero-slide-split-1.png', alt: `Penerimaan Mahasiswa Baru — ${name}` },
+              { imageUrl: '/hero-slide-split-2.png', alt: `Ekosistem Digital ${name} UNUSU` },
+              { imageUrl: '/hero-slide-split-3.png', alt: `Kampus Inovatif dan Religius — ${name}` },
             ],
             autoplayMs: 6000,
             showDots: true,

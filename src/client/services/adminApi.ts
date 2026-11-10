@@ -150,26 +150,34 @@ export const settingsApi = {
 };
 
 // ---------------------------------------------------------
-// Portal Utama (website universitas — banner hero global)
+// Hero Slider Program Studi (dikelola per prodi aktif)
 // ---------------------------------------------------------
 
-export interface PortalHeroSlide {
-  id: number;
+/** Satu slide banner. Struktur mengikuti `config.slides` widget hero_slider. */
+export interface HeroSlide {
   imageUrl: string;
-  alt: string | null;
-  linkUrl: string | null;
-  sortOrder: number;
-  isActive: boolean;
+  alt: string;
+  linkUrl: string;
+}
+
+export interface HeroSliderConfig {
+  slides: HeroSlide[];
+  autoplayMs: number;
+  showDots: boolean;
+}
+
+export interface HeroSliderResponse {
+  studyProgram: { id: number; code: string; name: string; degree: string };
+  page: { id: number; slug: string };
+  config: HeroSliderConfig;
 }
 
 export const portalApi = {
-  heroSlides: () => api.get<{ slides: PortalHeroSlide[] }>('/admin/portal/hero-slides'),
-  createHeroSlide: (data: Partial<PortalHeroSlide>) => api.post('/admin/portal/hero-slides', data),
-  updateHeroSlide: (id: number, data: Partial<PortalHeroSlide>) =>
-    api.put(`/admin/portal/hero-slides/${id}`, data),
-  deleteHeroSlide: (id: number) => api.delete(`/admin/portal/hero-slides/${id}`),
-  reorderHeroSlides: (items: Array<{ id: number; sortOrder: number }>) =>
-    api.put('/admin/portal/hero-slides/reorder', { items }),
+  /** Slide hero milik prodi aktif (tenant ditentukan header/interceptor). */
+  heroSlides: () => api.get<HeroSliderResponse>('/admin/portal/hero-slides'),
+  /** Menyimpan seluruh daftar slide sekaligus. */
+  saveHeroSlides: (payload: { slides: HeroSlide[]; autoplayMs?: number; showDots?: boolean }) =>
+    api.put<{ slides: HeroSlide[] }>('/admin/portal/hero-slides', payload),
 };
 
 // ---------------------------------------------------------
@@ -498,15 +506,15 @@ export const adminMenuApi = {
           },
           {
             menuKey: 'portal.hero',
-            label: 'Hero Slider Portal Utama',
-            desc: 'Banner beranda website universitas',
+            label: 'Hero Slider',
+            desc: 'Banner beranda tiap program studi',
             route: '/admin/portal',
             icon: 'PhotoIcon',
             parentKey: null,
             sortOrder: 22,
             section: 'WEBSITE',
             requiredPermission: 'website.view',
-            scopeType: 'global',
+            scopeType: 'prodi',
           },
           {
             menuKey: 'website.settings',

@@ -112,6 +112,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const setActiveTenant = useSiteStore((state) => state.setActiveTenant);
   const activeTenantId = useSiteStore((state) => state.activeTenantId);
   const [availablePrograms, setAvailablePrograms] = useState<Array<{ id: number; name: string; code: string }>>([]);
+
+  /**
+   * Apakah scope "Portal Utama" sedang aktif.
+   *
+   * Nilai `<select>` tidak boleh diikat langsung ke `activeTenantId`, karena
+   * memilih Portal Utama tidak mengubah tenant (tidak ada tenant portal).
+   * Tanpa state ini, React langsung mengembalikan nilai select ke prodi aktif
+   * sehingga opsi Portal Utama tampak "tidak bisa dipilih".
+   */
+  const [portalScopeActive, setPortalScopeActive] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -316,15 +326,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
                 </div>
                 <select
-                  value={activeTenantId ?? ''}
+                  value={portalScopeActive ? PORTAL_SCOPE_VALUE : activeTenantId ?? ''}
                   onChange={(e) => {
                     const raw = e.target.value;
                     if (raw === PORTAL_SCOPE_VALUE) {
+                      setPortalScopeActive(true);
                       navigate('/admin/portal');
                       return;
                     }
                     const id = Number(raw);
-                    if (id) void setActiveTenant(id);
+                    if (id) {
+                      setPortalScopeActive(false);
+                      void setActiveTenant(id);
+                    }
                   }}
                   className="w-full rounded-lg border border-blue-300 bg-white px-2 py-1.5 text-xs font-bold text-slate-800 shadow-2xs focus:border-blue-600 focus:outline-none cursor-pointer"
                 >
@@ -607,15 +621,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   Prodi:
                 </span>
                 <select
-                  value={activeTenantId ?? ''}
+                  value={portalScopeActive ? PORTAL_SCOPE_VALUE : activeTenantId ?? ''}
                   onChange={(e) => {
                     const raw = e.target.value;
                     if (raw === PORTAL_SCOPE_VALUE) {
+                      setPortalScopeActive(true);
                       navigate('/admin/portal');
                       return;
                     }
                     const id = Number(raw);
-                    if (id) void setActiveTenant(id);
+                    if (id) {
+                      setPortalScopeActive(false);
+                      void setActiveTenant(id);
+                    }
                   }}
                   className="rounded-lg border-0 bg-transparent py-0.5 text-xs font-bold text-blue-950 focus:outline-none cursor-pointer"
                 >

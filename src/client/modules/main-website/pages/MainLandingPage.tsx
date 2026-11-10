@@ -82,12 +82,10 @@ const HERO_SLIDES = [
   { id: 3, image: '/hero-slide-split-3.png', alt: 'Kampus Inovatif dan Religius UNUSU' },
 ];
 
-interface PortalHeroSlidePublic {
-  id: number;
+interface PublicHeroSlide {
   imageUrl: string;
-  alt: string | null;
-  linkUrl: string | null;
-  sortOrder: number;
+  alt: string;
+  linkUrl: string;
 }
 
 /** Jeda perpindahan slide otomatis. */
@@ -109,15 +107,14 @@ export const MainLandingPage: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
-  // Banner portal dibaca dari database agar dapat dikelola admin. Bila tabel
-  // masih kosong atau API gagal, tampilan memakai HERO_SLIDES statis sebagai
-  // cadangan sehingga beranda tidak pernah kosong.
+  // Banner hero dibaca dari widget hero_slider milik PROGRAM STUDI AKTIF
+  // (endpoint publik per-hostname). Bila prodi belum mengatur slide atau API
+  // gagal, tampilan memakai HERO_SLIDES statis sebagai cadangan sehingga
+  // beranda tidak pernah kosong.
   const heroQuery = useQuery({
-    queryKey: ['public', 'portal', 'hero-slides'],
+    queryKey: ['public', 'hero-slides'],
     queryFn: () =>
-      api
-        .get<{ slides: PortalHeroSlidePublic[] }>('/public/portal/hero-slides')
-        .then((res) => res.data.slides),
+      api.get<{ slides: PublicHeroSlide[] }>('/public/hero-slides').then((res) => res.data.slides),
     staleTime: 60_000,
   });
 
@@ -125,17 +122,17 @@ export const MainLandingPage: React.FC = () => {
     const remote = heroQuery.data ?? [];
     if (remote.length === 0) {
       return HERO_SLIDES.map((slide) => ({
-        id: slide.id,
+        id: `fallback-${slide.id}`,
         image: slide.image,
         alt: slide.alt,
         linkUrl: null as string | null,
       }));
     }
-    return remote.map((slide) => ({
-      id: slide.id,
+    return remote.map((slide, index) => ({
+      id: `remote-${index}`,
       image: slide.imageUrl,
-      alt: slide.alt ?? 'Banner Portal Utama UNUSU',
-      linkUrl: slide.linkUrl,
+      alt: slide.alt || 'Banner Program Studi UNUSU',
+      linkUrl: slide.linkUrl ? slide.linkUrl : null,
     }));
   }, [heroQuery.data]);
 

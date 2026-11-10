@@ -1,190 +1,238 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../prisma.js';
-import { asyncHandler, getBody, getParams, validate } from '../../utils/validation.js';
+import { asyncHandler, getBody, validate } from '../../utils/validation.js';
 import { requirePermission } from '../../middlewares/auth.js';
+import { scopedTenantId } from '../../middlewares/tenantScope.js';
 import { recordAudit } from '../../services/auditService.js';
 import { AppError } from '../../utils/errors.js';
-import { idParamSchema } from '../../../shared/schemas/common.js';
 
 /**
- * Pengelolaan Portal Utama (website universitas).
+ * Pengelolaan Hero Slider per Program Studi.
  *
- * Portal bersifat global — tidak terikat program studi — sehingga seluruh
- * endpoint di sini sengaja tidak memakai `scopedTenantId`. Akses dibatasi
- * oleh permission `website.update` agar hanya pengelola website universitas
- * yang dapat mengubah banner beranda utama.
+ * Slider tinggal di dalam `configJson` widget `hero_slider` pada halaman
+ * beranda prodi (Page Builder), sehingga datanya otomatis terikat tenant.
+ * Endpoint di sini memakai `scopedTenantId` agar Super Admin dapat berpindah
+ * prodi dan mengubah banner prodi tersebut, sementara Admin Prodi hanya bisa
+ * menyentuh prodi miliknya sendiri.
+ *
+ * Slide TIDAK disimpan pada tabel terpisah: satu-satunya sumber kebenaran
+ * adalah widget Page Builder, sehingga perubahan di sini langsung tampil di
+ * website prodi tanpa sinkronisasi tambahan.
  */
 const router = Router();
 
-const heroSlideSchema = z.object({
+const slideSchema = z.object({
   imageUrl: z.string().trim().min(1, 'Gambar slide wajib diunggah.').max(500),
   alt: z.string().trim().max(255).optional().nullable(),
   linkUrl: z.string().trim().max(500).optional().nullable(),
-  sortOrder: z.number().int().min(0).optional(),
-  isActive: z.boolean().optional(),
 });
 
-const reorderHeroSlidesSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        id: z.number().int().positive(),
-        sortOrder: z.number().int().min(0),
-      }),
-    )
-    .min(1, 'Minimal satu slide harus dikirim.'),
+const slidesPayloadSchema = z.object({
+  slides: z.array(slideSchema).max(20, 'Maksimal 20 slide per prodi.'),
+  autoplayMs: z.number().int().min(1000).max(60000).optional(),
+  showDots: z.boolean().optional(),
 });
 
-/** GET /api/v1/admin/portal/hero-slides: daftar slide banner portal utama. */
-router.get(
-  '/portal/hero-slides',
-  requirePermission('website.view'),
-  asyncHandler(async (_req, res) => {
-    const slides = await prisma.portalHeroSlide.findMany({
-      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+type HeroConfig = {
+  slides?: Array<{ imageUrl: string; alt?: string | null; linkUrl?: string | null }>;
+  autoplayMs?: number;
+  showDots?: boolean;
+  [key: string]: unknown;
+};
+
+/**
+ * Cari widget hero_slider pada beranda prodi aktif beserta halaman induknya.
+ *
+ * Bila belum ada, dibuatkan: halaman `beranda` (bila prodi baru belum punya),
+ * section pembungkus, lalu widget hero_slider dengan konfigurasi kosong.
+ */
+async function resolveHeroWidget(studyProgramId: number) {
+  const existing = await prisma.sectionWidget.findFirst({
+    where: {
+      widget: { code: 'hero_slider' },
+      pageSection: { page: { studyProgramId } },
+    },
+    include: { pageSection: { include: { page: true } } },
+    orderBy: [{ pageSection: { page: { slug: 'asc' } } }, { id: 'asc' }],
+  });
+
+  if (existing) {
+    return { widget: existing, created: false as const };
+  }
+
+  // Urutkan agar beranda diprioritaskan: ambil halaman beranda lebih dulu.
+  const berandaFirst = await prisma.sectionWidget.findFirst({
+    where: {
+      widget: { code: 'hero_slider' },
+      pageSection: { page: { studyProgramId, slug: 'beranda' } },
+    },
+    include: { pageSection: { include: { page: true } } },
+  });
+  if (berandaFirst) {
+    return { widget: berandaFirst, created: false as const };
+  }
+
+  const widgetMaster = await prisma.widget.findUnique({ where: { code: 'hero_slider' } });
+  if (!widgetMaster) {
+    throw AppError.badRequest('Widget hero_slider belum terdaftar pada registri widget.');
+  }
+
+  // Pastikan halaman beranda prodi tersedia.
+  let page = await prisma.page.findFirst({ where: { studyProgramId, slug: 'beranda' } });
+  if (!page) {
+    page = await prisma.page.create({
+      data: {
+        studyProgramId,
+        slug: 'beranda',
+        title: 'Beranda',
+        layout: 'default',
+        isPublished: true,
+        isSystem: true,
+      },
     });
-    res.json({ success: true, slides });
-  }),
-);
+  }
 
-/** POST /api/v1/admin/portal/hero-slides: menambah slide banner portal. */
-router.post(
-  '/portal/hero-slides',
-  requirePermission('website.update'),
-  validate({ body: heroSlideSchema }),
-  asyncHandler(async (req, res) => {
-    const body = getBody<z.infer<typeof heroSlideSchema>>(req);
-
-    const lastSlide = await prisma.portalHeroSlide.findFirst({
+  let section = await prisma.pageSection.findFirst({
+    where: { pageId: page.id, sectionKey: 'hero' },
+  });
+  if (!section) {
+    const lastSection = await prisma.pageSection.findFirst({
+      where: { pageId: page.id },
       orderBy: { sortOrder: 'desc' },
       select: { sortOrder: true },
     });
-
-    const slide = await prisma.portalHeroSlide.create({
+    section = await prisma.pageSection.create({
       data: {
-        imageUrl: body.imageUrl,
-        alt: body.alt ?? null,
-        linkUrl: body.linkUrl ?? null,
-        sortOrder: body.sortOrder ?? (lastSlide ? lastSlide.sortOrder + 1 : 1),
-        isActive: body.isActive ?? true,
+        pageId: page.id,
+        sectionKey: 'hero',
+        title: 'Hero Slider',
+        // Hero selalu di paling atas halaman beranda.
+        sortOrder: lastSection ? Math.min(lastSection.sortOrder, 0) - 1 : 0,
       },
     });
+  }
 
-    await recordAudit({
-      req,
-      action: 'CREATE',
-      module: 'NAVIGATION',
-      targetType: 'portal_hero_slide',
-      targetId: slide.id,
+  const lastWidget = await prisma.sectionWidget.findFirst({
+    where: { pageSectionId: section.id },
+    orderBy: { sortOrder: 'desc' },
+    select: { sortOrder: true },
+  });
+
+  const created = await prisma.sectionWidget.create({
+    data: {
+      pageSectionId: section.id,
+      widgetId: widgetMaster.id,
+      sortOrder: lastWidget ? lastWidget.sortOrder + 1 : 1,
+      isActive: true,
+      configJson: JSON.stringify({
+        slides: [],
+        autoplayMs: 6000,
+        showDots: true,
+      }),
+    },
+    include: { pageSection: { include: { page: true } } },
+  });
+
+  return { widget: created, created: true as const };
+}
+
+function parseHeroConfig(configJson: string | null): HeroConfig {
+  try {
+    const parsed = JSON.parse(configJson ?? '{}');
+    return typeof parsed === 'object' && parsed !== null ? (parsed as HeroConfig) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * GET /api/v1/admin/portal/hero-slides
+ *
+ * Mengembalikan slide hero milik PROGRAM STUDI AKTIF (tenant dari header/query),
+ * beserta nama prodi agar UI dapat menegaskan konteks yang sedang diubah.
+ */
+router.get(
+  '/portal/hero-slides',
+  requirePermission('website.view'),
+  asyncHandler(async (req, res) => {
+    const studyProgramId = scopedTenantId(req);
+
+    const studyProgram = await prisma.studyProgram.findUnique({
+      where: { id: studyProgramId },
+      select: { id: true, code: true, name: true, degree: true },
     });
+    if (!studyProgram) {
+      throw AppError.notFound('Program studi aktif tidak ditemukan.');
+    }
 
-    res.status(201).json({
+    const { widget } = await resolveHeroWidget(studyProgramId);
+    const config = parseHeroConfig(widget.configJson);
+
+    res.json({
       success: true,
-      message: 'Slide banner portal berhasil ditambahkan.',
-      slide,
-    });
-  }),
-);
-
-/** PUT /api/v1/admin/portal/hero-slides/:id: mengubah satu slide banner portal. */
-router.put(
-  '/portal/hero-slides/:id',
-  requirePermission('website.update'),
-  validate({ body: heroSlideSchema.partial(), params: idParamSchema }),
-  asyncHandler(async (req, res) => {
-    const { id } = getParams<{ id: number }>(req);
-    const body = getBody<Partial<z.infer<typeof heroSlideSchema>>>(req);
-
-    const existing = await prisma.portalHeroSlide.findUnique({ where: { id } });
-    if (!existing) {
-      throw AppError.notFound('Slide banner portal tidak ditemukan.');
-    }
-
-    const slide = await prisma.portalHeroSlide.update({
-      where: { id },
-      data: {
-        ...(body.imageUrl !== undefined ? { imageUrl: body.imageUrl } : {}),
-        ...(body.alt !== undefined ? { alt: body.alt ?? null } : {}),
-        ...(body.linkUrl !== undefined ? { linkUrl: body.linkUrl ?? null } : {}),
-        ...(body.sortOrder !== undefined ? { sortOrder: body.sortOrder } : {}),
-        ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
+      studyProgram,
+      page: { id: widget.pageSection.page.id, slug: widget.pageSection.page.slug },
+      config: {
+        slides: Array.isArray(config.slides) ? config.slides : [],
+        autoplayMs: typeof config.autoplayMs === 'number' ? config.autoplayMs : 6000,
+        showDots: config.showDots !== false,
       },
     });
-
-    await recordAudit({
-      req,
-      action: 'UPDATE',
-      module: 'NAVIGATION',
-      targetType: 'portal_hero_slide',
-      targetId: id,
-      details: body,
-    });
-
-    res.json({ success: true, message: 'Slide banner portal berhasil diperbarui.', slide });
   }),
 );
 
-/** DELETE /api/v1/admin/portal/hero-slides/:id: menghapus slide banner portal. */
-router.delete(
-  '/portal/hero-slides/:id',
-  requirePermission('website.update'),
-  validate({ params: idParamSchema }),
-  asyncHandler(async (req, res) => {
-    const { id } = getParams<{ id: number }>(req);
-
-    const existing = await prisma.portalHeroSlide.findUnique({ where: { id } });
-    if (!existing) {
-      throw AppError.notFound('Slide banner portal tidak ditemukan.');
-    }
-
-    await prisma.portalHeroSlide.delete({ where: { id } });
-    await recordAudit({
-      req,
-      action: 'DELETE',
-      module: 'NAVIGATION',
-      targetType: 'portal_hero_slide',
-      targetId: id,
-    });
-
-    res.json({ success: true, message: 'Slide banner portal berhasil dihapus.' });
-  }),
-);
-
-/** PUT /api/v1/admin/portal/hero-slides/reorder: menyimpan urutan slide portal. */
+/**
+ * PUT /api/v1/admin/portal/hero-slides
+ *
+ * Menyimpan SELURUH daftar slide sekaligus (pola "save all"). Ini sengaja
+ * dipilih agar pengurutan, penambahan, dan penghapusan slide tidak perlu
+ * endpoint terpisah dan selalu konsisten dalam satu transaksi logis.
+ */
 router.put(
-  '/portal/hero-slides/reorder',
+  '/portal/hero-slides',
   requirePermission('website.update'),
-  validate({ body: reorderHeroSlidesSchema }),
+  validate({ body: slidesPayloadSchema }),
   asyncHandler(async (req, res) => {
-    const { items } = getBody<{ items: Array<{ id: number; sortOrder: number }> }>(req);
+    const studyProgramId = scopedTenantId(req);
+    const body = getBody<z.infer<typeof slidesPayloadSchema>>(req);
 
-    const owned = await prisma.portalHeroSlide.findMany({
-      where: { id: { in: items.map((item) => item.id) } },
-      select: { id: true },
+    const { widget } = await resolveHeroWidget(studyProgramId);
+    const config = parseHeroConfig(widget.configJson);
+
+    const normalizedSlides = body.slides.map((slide) => ({
+      imageUrl: slide.imageUrl,
+      alt: slide.alt?.trim() || '',
+      linkUrl: slide.linkUrl?.trim() || '',
+    }));
+
+    const nextConfig: HeroConfig = {
+      ...config,
+      slides: normalizedSlides,
+      ...(body.autoplayMs !== undefined ? { autoplayMs: body.autoplayMs } : {}),
+      ...(body.showDots !== undefined ? { showDots: body.showDots } : {}),
+    };
+
+    const updated = await prisma.sectionWidget.update({
+      where: { id: widget.id },
+      data: { configJson: JSON.stringify(nextConfig) },
     });
-
-    if (owned.length !== items.length) {
-      throw AppError.notFound('Ada slide banner portal yang tidak ditemukan.');
-    }
-
-    await prisma.$transaction(
-      items.map((item) =>
-        prisma.portalHeroSlide.update({
-          where: { id: item.id },
-          data: { sortOrder: item.sortOrder },
-        }),
-      ),
-    );
 
     await recordAudit({
       req,
       action: 'UPDATE',
       module: 'NAVIGATION',
-      details: { reorder: items },
+      targetType: 'hero_slider',
+      targetId: widget.id,
+      details: { studyProgramId, slideCount: normalizedSlides.length },
     });
 
-    res.json({ success: true, message: 'Urutan slide banner portal berhasil disimpan.' });
+    res.json({
+      success: true,
+      message: `Hero slider program studi berhasil disimpan (${normalizedSlides.length} slide).`,
+      widgetId: updated.id,
+      slides: normalizedSlides,
+    });
   }),
 );
 

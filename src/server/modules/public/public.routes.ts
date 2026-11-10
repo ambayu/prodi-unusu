@@ -466,20 +466,49 @@ router.get(
 );
 
 /**
- * GET /api/v1/public/portal/hero-slides
+ * GET /api/v1/public/hero-slides
  *
- * Banner hero Portal Utama (website universitas). Tidak memakai `requireTenant`
- * karena portal bersifat global dan halaman beranda utama diakses tanpa tenant.
+ * Hero slider program studi untuk beranda portal. Membaca widget `hero_slider`
+ * milik tenant aktif (ditentukan dari hostname lewat `requireTenant`), sehingga
+ * banner yang tampil selalu sesuai prodi yang sedang dibuka.
+ *
+ * Mengembalikan array kosong bila prodi belum mengatur slide; pemanggil
+ * bertanggung jawab menyiapkan tampilan cadangan.
  */
 router.get(
-  '/portal/hero-slides',
-  asyncHandler(async (_req, res) => {
-    const slides = await prisma.portalHeroSlide.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
-      select: { id: true, imageUrl: true, alt: true, linkUrl: true, sortOrder: true },
+  '/hero-slides',
+  requireTenant,
+  asyncHandler(async (req, res) => {
+    const widget = await prisma.sectionWidget.findFirst({
+      where: {
+        widget: { code: 'hero_slider' },
+        pageSection: { page: { studyProgramId: req.tenant!.id } },
+      },
+      orderBy: { id: 'asc' },
+      select: { configJson: true },
     });
-    res.json({ success: true, slides });
+
+    let slides: Array<{ imageUrl: string; alt: string; linkUrl: string }> = [];
+    if (widget?.configJson) {
+      try {
+        const config = JSON.parse(widget.configJson) as {
+          slides?: Array<{ imageUrl?: string; alt?: string; linkUrl?: string }>;
+        };
+        if (Array.isArray(config.slides)) {
+          slides = config.slides
+            .filter((slide) => typeof slide?.imageUrl === 'string' && slide.imageUrl.trim())
+            .map((slide) => ({
+              imageUrl: slide.imageUrl as string,
+              alt: slide.alt ?? '',
+              linkUrl: slide.linkUrl ?? '',
+            }));
+        }
+      } catch {
+        slides = [];
+      }
+    }
+
+    res.json({ success: true, studyProgramId: req.tenant!.id, slides });
   }),
 );
 
