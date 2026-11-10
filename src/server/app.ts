@@ -55,7 +55,20 @@ export function createApp() {
       origin(origin, callback) {
         // Permintaan tanpa Origin (server-to-server, curl) tetap dilayani.
         if (!origin) return callback(null, true);
-        if (config.cors.origins.includes(origin)) return callback(null, true);
+        try {
+          const parsed = new URL(origin);
+          if (
+            parsed.hostname === 'unusu.ac.id' ||
+            parsed.hostname.endsWith('.unusu.ac.id') ||
+            parsed.hostname === 'localhost' ||
+            parsed.hostname === '127.0.0.1' ||
+            config.cors.origins.includes(origin)
+          ) {
+            return callback(null, true);
+          }
+        } catch {
+          // ignore parsing error
+        }
         return callback(new Error(`Origin ${origin} tidak diizinkan.`));
       },
       credentials: true,
