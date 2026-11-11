@@ -17,6 +17,10 @@ import { useToast } from '../../components/ui/Toast';
 import { usePermission, useTenant } from '../../hooks/useSite';
 import { mediaApi, portalApi, type HeroSlide } from '../../services/adminApi';
 import { firstFieldError, toApiError } from '../../services/api';
+import { useSiteStore } from '../../app/siteStore';
+
+/** Format berkas gambar yang diterima seluruh unggahan gambar di panel admin. */
+const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
 
 /**
  * Pengelola Hero Slider Program Studi.
@@ -34,6 +38,8 @@ export const AdminPortalHero: React.FC = () => {
   const toast = useToast();
   const { has } = usePermission();
   const { tenant } = useTenant();
+  const activeTenantId = useSiteStore((state) => state.activeTenantId);
+  const portalScope = useSiteStore((state) => state.portalScope);
 
   const [draftSlides, setDraftSlides] = useState<HeroSlide[]>([]);
   const [autoplayMs, setAutoplayMs] = useState(6000);
@@ -42,13 +48,29 @@ export const AdminPortalHero: React.FC = () => {
   const [dirty, setDirty] = useState(false);
 
   const canEdit = has('website.update');
+
+  /**
+   * Banner yang sedang dikelola.
+   *
+   * - Scope portal (`portalScope`, atau tidak ada prodi aktif): banner milik
+   *   PORTAL PUSAT — widget `hero_slider` tanpa tenant yang tampil di beranda
+   *   `prodi.unusu.ac.id`.
+   * - Scope prodi: banner milik prodi aktif.
+   *
+   * Server membedakan keduanya lewat parameter `scope=portal`, bukan lewat
+   * ketiadaan tenant (yang akan membuat Super Admin tanpa penugasan jatuh ke
+   * prodi pertama secara tidak terduga).
+   */
+  const heroScope: 'portal' | 'prodi' = portalScope || activeTenantId === null ? 'portal' : 'prodi';
+  const isPortalHero = heroScope === 'portal';
+
   // Ikut berganti saat tenant aktif berubah -> query otomatis memuat prodi lain.
-  const tenantKey = tenant?.id ?? 'none';
+  const tenantKey = isPortalHero ? 'portal' : tenant?.id ?? activeTenantId ?? 'none';
 
   const heroQuery = useQuery({
     queryKey: ['admin', 'hero-slides', tenantKey],
-    queryFn: () => portalApi.heroSlides().then((res) => res.data),
-    enabled: Boolean(tenant?.id),
+    queryFn: () => portalApi.heroSlides(heroScope).then((res) => res.data),
+    enabled: isPortalHero || Boolean(tenant?.id ?? activeTenantId),
   });
 
   // Sinkronkan server -> draft lokal setiap kali data (atau prodi) berganti.
@@ -73,10 +95,14 @@ export const AdminPortalHero: React.FC = () => {
       if (cleaned.length === 0) {
         throw new Error('Tambahkan minimal satu gambar banner sebelum menyimpan.');
       }
-      return portalApi.saveHeroSlides({ slides: cleaned, autoplayMs, showDots });
+      return portalApi.saveHeroSlides({ slides: cleaned, autoplayMs, showDots }, heroScope);
     },
     onSuccess: () => {
-      toast.success(`Hero slider ${tenant?.name ?? 'prodi'} berhasil disimpan.`);
+      toast.success(
+        isPortalHero
+          ? 'Hero slider beranda portal pusat berhasil disimpan.'
+          : `Hero slider ${tenant?.name ?? 'prodi'} berhasil disimpan.`,
+      );
       setDirty(false);
       void queryClient.invalidateQueries({ queryKey: ['admin', 'hero-slides'] });
       void queryClient.invalidateQueries({ queryKey: ['public', 'hero-slides'] });
@@ -133,8 +159,12 @@ export const AdminPortalHero: React.FC = () => {
 
   return (
     <AdminLayout
-      title="Hero Slider Program Studi"
-      description="Kelola banner beranda untuk program studi yang sedang aktif. Ganti prodi pada pemilih Program Studi Aktif untuk mengatur banner prodi lain."
+      title={isPortalHero ? 'Hero Slider Beranda Portal' : 'Hero Slider Program Studi'}
+      description={
+        isPortalHero
+          ? 'Kelola banner gambar yang tampil pada beranda portal pusat (website universitas).'
+          : 'Kelola banner beranda untuk program studi yang sedang aktif. Ganti prodi pada pemilih Program Studi Aktif untuk mengatur banner prodi lain.'
+      }
       actions={
         canEdit ? (
           <button
@@ -149,16 +179,18 @@ export const AdminPortalHero: React.FC = () => {
         ) : null
       }
     >
-      {/* Pita konteks: menegaskan banner milik prodi mana yang sedang diubah */}
+      {/* Pita konteks: menegaskan banner milik prodi/portal mana yang sedang diubah */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-blue-200 bg-blue-50/80 px-4 py-3">
         <div className="flex items-center gap-2.5">
           <BuildingLibraryIcon className="h-5 w-5 shrink-0 text-blue-700" />
           <div>
             <p className="text-[10px] font-black uppercase tracking-wider text-blue-900">
-              Banner untuk Program Studi
+              {isPortalHero ? 'Banner Beranda Portal Pusat' : 'Banner untuk Program Studi'}
             </p>
             <p className="text-sm font-bold text-slate-900">
-              {hero?.studyProgram
+              {isPortalHero
+                ? 'Universitas Nahdlatul Ulama Sumatera Utara'
+                : hero?.studyProgram
                 ? `${hero.studyProgram.degree} ${hero.studyProgram.name} (${hero.studyProgram.code})`
                 : tenant?.name ?? 'Belum ada prodi aktif'}
             </p>
@@ -175,13 +207,13 @@ export const AdminPortalHero: React.FC = () => {
         )}
       </div>
 
-      {!tenant?.id ? (
+      {!isPortalHero && !tenant?.id && activeTenantId === null ? (
         <EmptyState
           title="Belum ada program studi aktif"
           description="Pilih salah satu program studi pada pemilih Program Studi Aktif untuk mengelola banner berandanya."
         />
       ) : heroQuery.isLoading ? (
-        <LoadingState label="Memuat banner prodi" />
+        <LoadingState label={isPortalHero ? 'Memuat banner portal' : 'Memuat banner prodi'} />
       ) : heroQuery.isError ? (
         <ErrorState
           message={toApiError(heroQuery.error).message}
@@ -330,7 +362,7 @@ export const AdminPortalHero: React.FC = () => {
                             </span>
                             <input
                               type="file"
-                              accept="image/*"
+                              accept={IMAGE_ACCEPT}
                               disabled={!canEdit || uploadingIndex === index}
                               className="hidden"
                               onChange={(event) => {

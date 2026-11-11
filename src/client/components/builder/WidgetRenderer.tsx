@@ -12,7 +12,7 @@ import {
   EnvelopeIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
-import { postApi, galleryApi, lecturerApi, curriculumApi, facilityApi, documentApi } from '../../services/contentApi';
+import { postApi, galleryApi, lecturerApi, curriculumApi, facilityApi, documentApi, profileApi } from '../../services/contentApi';
 import { useTenant } from '../../hooks/useSite';
 
 interface WidgetInstanceProps {
@@ -92,121 +92,24 @@ export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({
 
   // 2. ABOUT PRODI
   if (widgetCode === 'about_prodi') {
-    const isImageRight = config.alignment === 'right';
     return (
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#eef4ff] via-white to-white py-16 lg:py-24">
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-            {/* Teks Uraian */}
-            <div className={`space-y-6 ${isImageRight ? 'lg:col-span-7 lg:order-1' : 'lg:col-span-7 lg:order-2'}`}>
-              <div className="space-y-2">
-                <span
-                  className="inline-block py-1 px-3.5 rounded-full text-xs font-black tracking-widest uppercase shadow-2xs"
-                  style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
-                >
-                  {config.eyebrow || 'Mengenal Program Studi'}
-                </span>
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 leading-tight">
-                  {config.title || `Program Studi Unggulan ${tenant?.name || 'UNUSU'}`}
-                </h2>
-              </div>
-
-              {config.body ? (
-                <div
-                  className="prose prose-slate max-w-none text-sm sm:text-base text-slate-600 leading-relaxed space-y-3"
-                  dangerouslySetInnerHTML={{ __html: config.body }}
-                />
-              ) : (
-                <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-                  Program studi berfokus pada pendidikan berkualitas tinggi yang menggabungkan keunggulan akademik,
-                  nilai-nilai Islam Ahlussunnah wal Jama'ah, dan kesiapan berkarier di era transformasi global.
-                </p>
-              )}
-
-              <div className="pt-2">
-                <Link
-                  to="/profil"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <span>Lihat Profil Lengkap</span>
-                  <ArrowRightIcon className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Gambar Ilustrasi */}
-            <div className={`relative ${isImageRight ? 'lg:col-span-5 lg:order-2' : 'lg:col-span-5 lg:order-1'}`}>
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-slate-100">
-                <img
-                  src={config.imageUrl || '/rektorat-unusu.jpg'}
-                  alt={config.title || 'Profil Prodi'}
-                  className="w-full h-80 sm:h-96 object-cover object-center"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                <div className="absolute bottom-5 left-5 right-5 text-white">
-                  <p className="text-xs font-black uppercase tracking-wider text-amber-400">Terakreditasi Baik</p>
-                  <p className="text-sm sm:text-base font-bold leading-tight">{tenant?.name || 'Program Studi UNUSU'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <AboutProdiWidget
+        primaryColor={primaryColor}
+        tenantName={tenant?.name}
+        alignment={config.alignment}
+        fallbackImage={typeof config.imageUrl === 'string' ? config.imageUrl : ''}
+      />
     );
   }
 
   // 3. VISION & MISSION
   if (widgetCode === 'vision_mission') {
-    const rawMissions: string[] = Array.isArray(config.missions) ? config.missions : [];
     return (
-      <section className="py-16 sm:py-20 bg-slate-50 border-t border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span
-              className="inline-block py-1 px-3.5 rounded-full text-xs font-black tracking-widest uppercase mb-2"
-              style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
-            >
-              Komitmen Akademik
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Visi &amp; Misi Program Studi
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Visi */}
-            <div className="lg:col-span-5 rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden" style={{ backgroundColor: primaryColor }}>
-              <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Visi Utama</span>
-              <div
-                className="mt-4 text-base sm:text-lg font-medium leading-relaxed"
-                dangerouslySetInnerHTML={{
-                  __html: config.vision || 'Menjadi program studi unggul dalam pengembangan ilmu dan teknologi berkarakter nilai luhur.',
-                }}
-              />
-            </div>
-
-            {/* Misi */}
-            <div className="lg:col-span-7 bg-white rounded-3xl p-8 sm:p-10 border border-slate-200 shadow-sm space-y-4">
-              <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Misi Kami</span>
-              <div className="space-y-3">
-                {rawMissions.length > 0 ? (
-                  rawMissions.map((m: string, idx: number) => (
-                    <div key={idx} className="flex items-start gap-3.5">
-                      <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold grid place-items-center mt-0.5 border border-emerald-200">
-                        {idx + 1}
-                      </span>
-                      <p className="text-sm text-slate-700 leading-relaxed">{m}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-slate-500 italic">Misi program studi sedang diselaraskan.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <VisionMissionWidget
+        primaryColor={primaryColor}
+        fallbackVision={typeof config.vision === 'string' ? config.vision : ''}
+        fallbackMissions={Array.isArray(config.missions) ? config.missions : []}
+      />
     );
   }
 
@@ -331,6 +234,188 @@ export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({
   }
 
   return null;
+};
+
+// Sub-komponen Widget Profil Program Studi (About Prodi)
+/**
+ * Section "Profil Program Studi" pada beranda.
+ *
+ * Isi uraian dan gambar diambil dari tabel `profile_contents` lewat
+ * `/api/v1/public/profile`, sehingga penyuntingan pada halaman
+ * Profil Program Studi langsung terlihat di beranda. Judul section sengaja
+ * statis karena tabel tersebut tidak menyimpan kolom judul kampanye.
+ *
+ * Bila tabel prodi belum diisi, nilai dari konfigurasi Page Builder dipakai
+ * sebagai cadangan agar beranda tidak kosong.
+ */
+const AboutProdiWidget: React.FC<{
+  primaryColor: string;
+  tenantName?: string;
+  alignment?: string;
+  fallbackImage: string;
+}> = ({ primaryColor, tenantName, alignment, fallbackImage }) => {
+  const { tenant } = useTenant();
+  const isImageRight = alignment === 'right';
+
+  const profileQuery = useQuery({
+    queryKey: ['public', 'profile', tenant?.id ?? null],
+    queryFn: () => profileApi.public().then((res) => res.data),
+  });
+
+  const stored = profileQuery.data?.profile as Record<string, unknown> | null;
+
+  const overview = typeof stored?.overview === 'string' ? stored.overview.trim() : '';
+  const heroImageUrl = typeof stored?.heroImageUrl === 'string' ? stored.heroImageUrl.trim() : '';
+
+  const imageUrl = heroImageUrl || fallbackImage || '/rektorat-unusu.jpg';
+
+  return (
+    <section className="relative overflow-hidden bg-gradient-to-b from-[#eef4ff] via-white to-white py-16 lg:py-24">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+          {/* Teks Uraian */}
+          <div className={`space-y-6 ${isImageRight ? 'lg:col-span-7 lg:order-1' : 'lg:col-span-7 lg:order-2'}`}>
+            <div className="space-y-2">
+              <span
+                className="inline-block py-1 px-3.5 rounded-full text-xs font-black tracking-widest uppercase shadow-2xs"
+                style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+              >
+                Profil Program Studi
+              </span>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 leading-tight">
+                {tenantName || tenant?.name || 'Program Studi UNUSU'}
+              </h2>
+            </div>
+
+            {overview ? (
+              <div
+                className="prose prose-slate max-w-none text-sm sm:text-base text-slate-600 leading-relaxed space-y-3"
+                dangerouslySetInnerHTML={{ __html: overview }}
+              />
+            ) : (
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                Program studi berfokus pada pendidikan berkualitas tinggi yang menggabungkan keunggulan akademik,
+                nilai-nilai Islam Ahlussunnah wal Jama'ah, dan kesiapan berkarier di era transformasi global.
+              </p>
+            )}
+
+            <div className="pt-2">
+              <Link
+                to="/profil"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <span>Lihat Profil Lengkap</span>
+                <ArrowRightIcon className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Gambar Ilustrasi */}
+          <div className={`relative ${isImageRight ? 'lg:col-span-5 lg:order-2' : 'lg:col-span-5 lg:order-1'}`}>
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-slate-100">
+              <img
+                src={imageUrl}
+                alt={`Gambar profil ${tenantName || tenant?.name || 'Program Studi'}`}
+                className="w-full h-80 sm:h-96 object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <div className="absolute bottom-5 left-5 right-5 text-white">
+                <p className="text-xs font-black uppercase tracking-wider text-amber-400">Terakreditasi Baik</p>
+                <p className="text-sm sm:text-base font-bold leading-tight">{tenant?.name || 'Program Studi UNUSU'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// Sub-komponen Widget Komitmen Akademik & Visi Misi
+/**
+ * Visi dan misi pada beranda.
+ *
+ * Sumber utama adalah tabel `visions_missions` (`/api/v1/public/profile`), yang
+ * selalu difilter per program studi pemilik domain sehingga isi tiap prodi
+ * tidak pernah tercampur. `fallback` berisi konfigurasi lama pada widget
+ * Builder; nilai itu hanya dipakai bila tabel prodi tersebut masih kosong, agar
+ * beranda prodi yang datanya belum diisi tidak mendadak hilang.
+ */
+const VisionMissionWidget: React.FC<{
+  primaryColor: string;
+  fallbackVision: string;
+  fallbackMissions: string[];
+}> = ({ primaryColor, fallbackVision, fallbackMissions }) => {
+  const { tenant } = useTenant();
+
+  const profileQuery = useQuery({
+    queryKey: ['public', 'profile', tenant?.id ?? null],
+    queryFn: () => profileApi.public().then((res) => res.data),
+  });
+
+  const stored = profileQuery.data?.visionMission as Record<string, unknown> | null;
+
+  const storedVision = typeof stored?.vision === 'string' ? stored.vision.trim() : '';
+
+  // Misi disimpan satu butir per baris pada kolom `missions`.
+  const storedMissions = (typeof stored?.missions === 'string' ? stored.missions : '')
+    .split('\n')
+    .map((line) => line.replace(/^[-•*\d.)\s]+/, '').trim())
+    .filter(Boolean);
+
+  const vision = storedVision || fallbackVision;
+  const missions = storedMissions.length > 0 ? storedMissions : fallbackMissions;
+
+  return (
+    <section className="py-16 sm:py-20 bg-slate-50 border-t border-slate-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <span
+            className="inline-block py-1 px-3.5 rounded-full text-xs font-black tracking-widest uppercase mb-2"
+            style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+          >
+            Visi &amp; Misi Program Studi
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Komitmen Akademik &amp; Visi Misi
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Visi */}
+          <div className="lg:col-span-5 rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden" style={{ backgroundColor: primaryColor }}>
+            <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Visi Utama</span>
+            <div
+              className="mt-4 text-base sm:text-lg font-medium leading-relaxed"
+              dangerouslySetInnerHTML={{
+                __html: vision || 'Menjadi program studi unggul dalam pengembangan ilmu dan teknologi berkarakter nilai luhur.',
+              }}
+            />
+          </div>
+
+          {/* Misi */}
+          <div className="lg:col-span-7 bg-white rounded-3xl p-8 sm:p-10 border border-slate-200 shadow-sm space-y-4">
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Misi Kami</span>
+            <div className="space-y-3">
+              {missions.length > 0 ? (
+                missions.map((mission, idx) => (
+                  <div key={idx} className="flex items-start gap-3.5">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold grid place-items-center mt-0.5 border border-emerald-200">
+                      {idx + 1}
+                    </span>
+                    <p className="text-sm text-slate-700 leading-relaxed">{mission}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500 italic">Misi program studi sedang diselaraskan.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 };
 
 // Sub-komponen Widget Berita

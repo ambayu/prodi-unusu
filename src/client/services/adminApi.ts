@@ -167,17 +167,37 @@ export interface HeroSliderConfig {
 }
 
 export interface HeroSliderResponse {
-  studyProgram: { id: number; code: string; name: string; degree: string };
-  page: { id: number; slug: string };
+  /** `null` saat yang dikelola adalah banner Portal Pusat (bukan prodi). */
+  studyProgram: { id: number; code: string; name: string; degree: string } | null;
+  /** `null` saat scope portal, karena halaman portal tidak berasal dari Page Builder. */
+  page: { id: number; slug: string } | null;
   config: HeroSliderConfig;
 }
 
+/** Pilihan banner hero: milik Portal Pusat atau milik satu program studi. */
+export type HeroScope = 'portal' | 'prodi';
+
 export const portalApi = {
-  /** Slide hero milik prodi aktif (tenant ditentukan header/interceptor). */
-  heroSlides: () => api.get<HeroSliderResponse>('/admin/portal/hero-slides'),
+  /**
+   * Slide hero milik scope terpilih.
+   *
+   * `scope=portal` membaca banner beranda portal pusat; `scope=prodi` membaca
+   * banner prodi aktif (tenant ditentukan header/interceptor).
+   */
+  heroSlides: (scope: HeroScope = 'prodi') =>
+    api.get<HeroSliderResponse>('/admin/portal/hero-slides', {
+      params: scope === 'portal' ? { scope: 'portal' } : {},
+    }),
   /** Menyimpan seluruh daftar slide sekaligus. */
-  saveHeroSlides: (payload: { slides: HeroSlide[]; autoplayMs?: number; showDots?: boolean }) =>
-    api.put<{ slides: HeroSlide[] }>('/admin/portal/hero-slides', payload),
+  saveHeroSlides: (
+    payload: { slides: HeroSlide[]; autoplayMs?: number; showDots?: boolean },
+    scope: HeroScope = 'prodi',
+  ) =>
+    api.put<{ slides: HeroSlide[] }>(
+      '/admin/portal/hero-slides',
+      payload,
+      { params: scope === 'portal' ? { scope: 'portal' } : {} },
+    ),
 };
 
 // ---------------------------------------------------------
@@ -238,6 +258,7 @@ export const dashboardApi = {
       }>;
       recentAudit: AuditEntry[];
     }>('/admin/dashboard/super'),
+  auditLogs: () => api.get<{ logs: AuditEntry[] }>('/admin/audit-logs'),
 };
 
 // ---------------------------------------------------------
@@ -359,29 +380,143 @@ export const mediaApi = {
 // Menu admin & sesi
 // ---------------------------------------------------------
 
-let cachedMenu: AdminMenuItem[] | null = null;
-let menuPromise: Promise<AdminMenuItem[]> | null = null;
+/**
+ * Scope panel admin.
+ *
+ * - `portal` — Portal Utama / website universitas. Tidak punya tenant, jadi
+ *   TIDAK boleh menampilkan menu konten program studi (Profil, Visi & Misi,
+ *   Kurikulum, Dosen, Sarpras, Berita, Galeri, Kontak, Pesan Masuk), karena
+ *   landing page portal tidak memuat konten tersebut.
+ * - `prodi` — Satu program studi. Semua menu konten tersedia.
+ */
+export type AdminMenuScope = 'portal' | 'prodi';
+
+/** Satu baris katalog menu sebelum disusun menjadi hierarki. */
+type MenuEntry = Omit<AdminMenuItem, 'children'> & { requiredPermission: string; scopeType: string };
+
+/**
+ * Katalog menu scope PORTAL UTAMA.
+ *
+ * Sengaja hanya berisi modul tata kelola universitas: dashboard portal, banner
+ * beranda portal, registri website prodi, domain, struktur organisasi, akses
+ * pengguna, dan audit. Tidak ada satu pun menu konten prodi di sini.
+ */
+const CATALOG_PORTAL: MenuEntry[] = [
+  {
+    menuKey: 'portal.dashboard',
+    label: 'Dashboard Portal',
+    desc: 'Ringkasan website universitas',
+    route: '/admin/portal-utama',
+    icon: 'Squares2X2Icon',
+    parentKey: null,
+    sortOrder: 1,
+    section: 'UTAMA',
+    requiredPermission: 'dashboard.view',
+    scopeType: 'global',
+  },
+  {
+    menuKey: 'portal.hero',
+    label: 'Hero Slider Beranda',
+    desc: 'Banner beranda portal pusat',
+    route: '/admin/portal',
+    icon: 'PhotoIcon',
+    parentKey: null,
+    sortOrder: 5,
+    section: 'WEBSITE',
+    requiredPermission: 'website.view',
+    scopeType: 'global',
+  },
+  {
+    menuKey: 'super.websites',
+    label: 'Website Prodi',
+    desc: 'Daftar 14 portal program studi',
+    route: '/admin/website-list',
+    icon: 'GlobeAltIcon',
+    parentKey: null,
+    sortOrder: 10,
+    section: 'UNIVERSITAS',
+    requiredPermission: 'tenant.view',
+    scopeType: 'global',
+  },
+  {
+    menuKey: 'super.domains',
+    label: 'Domain & Routing',
+    desc: 'Hostname tiap subdomain prodi',
+    route: '/admin/domain',
+    icon: 'LinkIcon',
+    parentKey: null,
+    sortOrder: 11,
+    section: 'UNIVERSITAS',
+    requiredPermission: 'domain.view',
+    scopeType: 'global',
+  },
+  {
+    menuKey: 'super.organization',
+    label: 'Struktur Organisasi',
+    desc: 'Fakultas & program studi',
+    route: '/admin/organisasi',
+    icon: 'BuildingLibraryIcon',
+    parentKey: null,
+    sortOrder: 12,
+    section: 'UNIVERSITAS',
+    requiredPermission: 'organization.view',
+    scopeType: 'global',
+  },
+  {
+    menuKey: 'management.access',
+    label: 'Akses & Pengguna',
+    desc: 'Akun, peran & katalog izin',
+    route: '/admin/pengguna',
+    icon: 'UsersIcon',
+    parentKey: null,
+    sortOrder: 20,
+    section: 'TATA KELOLA',
+    requiredPermission: 'users.view',
+    scopeType: 'global',
+  },
+  {
+    menuKey: 'super.audit',
+    label: 'Audit Aktivitas',
+    desc: 'Rekam jejak tindakan admin',
+    route: '/admin/audit-logs',
+    icon: 'ClipboardDocumentListIcon',
+    parentKey: null,
+    sortOrder: 21,
+    section: 'TATA KELOLA',
+    requiredPermission: 'audit_logs.view',
+    scopeType: 'global',
+  },
+];
+
+let cachedMenu: Record<AdminMenuScope, AdminMenuItem[] | null> = { portal: null, prodi: null };
+let menuPromise: Record<AdminMenuScope, Promise<AdminMenuItem[]> | null> = { portal: null, prodi: null };
 
 export const adminMenuApi = {
-  getCachedMenu(): AdminMenuItem[] | null {
-    return cachedMenu;
+  /** Menu yang sudah dibangun untuk scope tertentu (dipakai agar sidebar tidak berkedip). */
+  getCachedMenu(scope: AdminMenuScope = 'prodi'): AdminMenuItem[] | null {
+    return cachedMenu[scope];
   },
 
   clearCache(): void {
-    cachedMenu = null;
-    menuPromise = null;
+    cachedMenu = { portal: null, prodi: null };
+    menuPromise = { portal: null, prodi: null };
   },
 
-  /** Menu dibangun dari kombinasi permission pengguna dan katalog database. */
-  async buildMenu(forceRefresh = false): Promise<AdminMenuItem[]> {
-    if (cachedMenu && !forceRefresh) {
-      return cachedMenu;
+  /**
+   * Menu dibangun dari kombinasi permission pengguna dan katalog scope.
+   *
+   * Katalog berbeda untuk `portal` dan `prodi`; cache disimpan per scope agar
+   * berpindah scope tidak menampilkan menu scope sebelumnya.
+   */
+  async buildMenu(scope: AdminMenuScope = 'prodi', forceRefresh = false): Promise<AdminMenuItem[]> {
+    if (cachedMenu[scope] && !forceRefresh) {
+      return cachedMenu[scope];
     }
-    if (menuPromise && !forceRefresh) {
-      return menuPromise;
+    if (menuPromise[scope] && !forceRefresh) {
+      return menuPromise[scope];
     }
 
-    menuPromise = (async () => {
+    menuPromise[scope] = (async () => {
       try {
         const res = await api.get<{ user: AuthUser }>('/auth/me');
         const user = res.data.user;
@@ -390,7 +525,10 @@ export const adminMenuApi = {
 
         // Katalog menu diambil dari backend lewat endpoint yang sama dengan settings
         // agar isi menu tidak ditulis ulang di dua tempat.
-        const catalog: Array<Omit<AdminMenuItem, 'children'> & { requiredPermission: string; scopeType: string }> = [
+        //
+        // Scope portal memakai katalog sendiri (CATALOG_PORTAL) yang tidak memuat
+        // menu konten prodi sama sekali.
+        const catalog: MenuEntry[] = scope === 'portal' ? CATALOG_PORTAL : [
           // 1. UTAMA
           {
             menuKey: 'dashboard',
@@ -407,8 +545,32 @@ export const adminMenuApi = {
 
           // 2. KONTEN & AKADEMIK PRODI
           {
+            menuKey: 'content.profile',
+            label: 'Profil Program Studi',
+            desc: 'Sejarah, deskripsi & sasaran',
+            route: '/admin/konten/profil',
+            icon: 'UserIcon',
+            parentKey: null,
+            sortOrder: 9,
+            section: 'KONTEN',
+            requiredPermission: 'profile.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'content.vision',
+            label: 'Visi & Misi Program Studi',
+            desc: 'Visi, misi & sasaran strategis',
+            route: '/admin/konten/visi-misi',
+            icon: 'EyeIcon',
+            parentKey: null,
+            sortOrder: 9.5,
+            section: 'KONTEN',
+            requiredPermission: 'vision_mission.view',
+            scopeType: 'prodi',
+          },
+          {
             menuKey: 'content.curriculum',
-            label: 'Kurikulum & MK',
+            label: 'Kurikulum',
             desc: 'Mata kuliah & bobot SKS',
             route: '/admin/kurikulum',
             icon: 'BookOpenIcon',
@@ -420,7 +582,7 @@ export const adminMenuApi = {
           },
           {
             menuKey: 'content.lecturers',
-            label: 'Dosen & Tenaga Ahli',
+            label: 'Dosen',
             desc: 'Profil dosen & staf pengajar',
             route: '/admin/dosen',
             icon: 'UserGroupIcon',
@@ -432,7 +594,7 @@ export const adminMenuApi = {
           },
           {
             menuKey: 'content.documents',
-            label: 'Dokumen & SK',
+            label: 'Dokumen',
             desc: 'Arsip kurikulum & formulir',
             route: '/admin/dokumen',
             icon: 'FolderOpenIcon',
@@ -456,7 +618,7 @@ export const adminMenuApi = {
           },
           {
             menuKey: 'content.posts',
-            label: 'Berita & Artikel',
+            label: 'Berita',
             desc: 'Warta kegiatan program studi',
             route: '/admin/berita',
             icon: 'NewspaperIcon',
@@ -468,7 +630,7 @@ export const adminMenuApi = {
           },
           {
             menuKey: 'content.galleries',
-            label: 'Galeri Kegiatan',
+            label: 'Galeri',
             desc: 'Dokumentasi foto & event',
             route: '/admin/galeri',
             icon: 'PhotoIcon',
@@ -480,14 +642,26 @@ export const adminMenuApi = {
           },
           {
             menuKey: 'content.contact',
-            label: 'Kontak & Pesan',
-            desc: 'Pusat bantuan & pesan masuk',
+            label: 'Kontak',
+            desc: 'Alamat, telepon & media sosial',
             route: '/admin/kontak',
-            icon: 'InboxIcon',
+            icon: 'PhoneIcon',
             parentKey: null,
             sortOrder: 16,
             section: 'KONTEN',
             requiredPermission: 'contacts.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'content.messages',
+            label: 'Pesan Masuk',
+            desc: 'Pesan dari formulir kontak',
+            route: '/admin/pesan',
+            icon: 'InboxIcon',
+            parentKey: null,
+            sortOrder: 17,
+            section: 'KONTEN',
+            requiredPermission: 'contact_messages.view',
             scopeType: 'prodi',
           },
 
@@ -621,7 +795,7 @@ export const adminMenuApi = {
         const visible = catalog.filter((item) => {
           const allowed = isSuper || codes.has(item.requiredPermission);
           if (!allowed) return false;
-          // Menu global hanya relevan untuk Super Admin.
+          // Menu global (tata kelola universitas) hanya relevan untuk Super Admin.
           if (item.scopeType === 'global' && !isSuper) return false;
           return true;
         });
@@ -663,13 +837,13 @@ export const adminMenuApi = {
           })
           .sort((a, b) => a.sortOrder - b.sortOrder);
 
-        cachedMenu = result;
+        cachedMenu[scope] = result;
         return result;
       } finally {
-        menuPromise = null;
+        menuPromise[scope] = null;
       }
     })();
 
-    return menuPromise;
+    return menuPromise[scope];
   },
 };

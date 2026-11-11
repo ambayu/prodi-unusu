@@ -336,7 +336,9 @@ model Menu {
 
 model Page {
   id             Int       @id @default(autoincrement())
-  studyProgramId Int       @map("study_program_id")
+  // Null hanya untuk halaman milik PORTAL PUSAT (tanpa tenant), misalnya
+  // halaman sistem `__portal_hero__` tempat banner beranda portal disimpan.
+  studyProgramId Int?      @map("study_program_id")
   slug           String    @db.VarChar(150)
   title          String    @db.VarChar(200)
   layout         String    @default("default") @db.VarChar(50)
@@ -348,7 +350,7 @@ model Page {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram  @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
   sections     PageSection[]
   versions     PageVersion[]
 

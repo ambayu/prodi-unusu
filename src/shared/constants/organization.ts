@@ -144,7 +144,7 @@ export const WIDGETS: WidgetSeed[] = [
   },
   {
     code: 'vision_mission',
-    name: 'Visi & Misi',
+    name: 'Komitmen Akademik & Visi Misi',
     category: 'Profile & Information',
     description: 'Kartu visi dan daftar misi program studi.',
     defaultConfig: { vision: '', missions: [] },
@@ -288,7 +288,7 @@ export const ADMIN_MENUS: Array<{
 
   { menuKey: 'content', label: 'Konten', route: '/admin/konten', icon: 'DocumentTextIcon', sortOrder: 30, requiredPermission: 'profile.view', scopeType: 'prodi' },
   { menuKey: 'content.profile', label: 'Profil', route: '/admin/konten/profil', icon: 'UserIcon', parentKey: 'content', sortOrder: 31, requiredPermission: 'profile.view', scopeType: 'prodi' },
-  { menuKey: 'content.vision', label: 'Visi & Misi', route: '/admin/konten/visi-misi', icon: 'EyeIcon', parentKey: 'content', sortOrder: 32, requiredPermission: 'vision_mission.view', scopeType: 'prodi' },
+  { menuKey: 'content.vision', label: 'Visi & Misi Program Studi', route: '/admin/konten/visi-misi', icon: 'EyeIcon', parentKey: 'content', sortOrder: 32, requiredPermission: 'vision_mission.view', scopeType: 'prodi' },
   { menuKey: 'content.curriculum', label: 'Kurikulum', route: '/admin/kurikulum', icon: 'BookOpenIcon', parentKey: 'content', sortOrder: 33, requiredPermission: 'curriculum.view', scopeType: 'prodi' },
   { menuKey: 'content.documents', label: 'Dokumen', route: '/admin/dokumen', icon: 'FolderOpenIcon', parentKey: 'content', sortOrder: 34, requiredPermission: 'documents.view', scopeType: 'prodi' },
   { menuKey: 'content.lecturers', label: 'Dosen', route: '/admin/dosen', icon: 'UserGroupIcon', parentKey: 'content', sortOrder: 35, requiredPermission: 'lecturers.view', scopeType: 'prodi' },

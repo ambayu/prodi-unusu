@@ -99,11 +99,18 @@ export const AdminCurriculum: React.FC = () => {
 
   const saveCourse = useMutation({
     mutationFn: async () => {
+      // Isian SKS dinormalisasi di sini, bukan saat mengetik, supaya pengguna
+      // bebas mengosongkan kolom tanpa angka 0 muncul kembali.
+      const credits = Number(courseDraft.credits);
+      if (!Number.isInteger(credits) || credits < 0) {
+        throw new Error('SKS wajib diisi dengan angka 0 sampai 12.');
+      }
+
       if (courseEditing) {
         await curriculumApi.updateCourse(courseEditing.id, {
           code: courseDraft.code,
           name: courseDraft.name,
-          credits: courseDraft.credits,
+          credits,
           courseType: courseDraft.courseType,
           description: courseDraft.description || null,
         });
@@ -114,7 +121,7 @@ export const AdminCurriculum: React.FC = () => {
         semesterId: courseTarget!,
         code: courseDraft.code,
         name: courseDraft.name,
-        credits: courseDraft.credits,
+        credits,
         courseType: courseDraft.courseType,
         description: courseDraft.description || null,
       });
@@ -484,7 +491,17 @@ export const AdminCurriculum: React.FC = () => {
               className="field-input"
               required
               value={courseDraft.credits}
-              onChange={(event) => setCourseDraft({ ...courseDraft, credits: Number(event.target.value) })}
+              onChange={(event) => {
+                const raw = event.target.value;
+                // Biarkan kosong saat pengguna menghapus isi; jangan paksa jadi 0,
+                // karena `Number('')` adalah 0 dan angka 0 langsung menempel lagi
+                // sehingga kursor terasa melompat. Normalisasi dilakukan saat simpan.
+                if (raw === '') {
+                  setCourseDraft({ ...courseDraft, credits: ('' as unknown) as number });
+                  return;
+                }
+                setCourseDraft({ ...courseDraft, credits: Number(raw) });
+              }}
             />
           </Field>
           <Field label="Jenis" htmlFor="course-type" required>

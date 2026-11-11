@@ -247,11 +247,12 @@ export async function seedPageBuilderAndThemes() {
           variantCode: 'image-right',
           sortOrder: 1,
           isActive: true,
+          // Uraian dan gambar section Profil dibaca dari tabel `profile_contents`
+          // (menu Profil Program Studi). Konfigurasi ini hanya menyimpan pilihan
+          // tata letak serta gambar cadangan bila tabel prodi masih kosong.
           configJson: JSON.stringify({
             eyebrow: 'Profil Program Studi',
-            title: `Unggul & Profesional di Bidang ${name}`,
-            body: `<p>Program Studi ${name} UNUSU membekali mahasiswa dengan penguasaan keilmuan mutakhir, kepemimpinan adaptif, dan integritas etika berlandaskan nilai-nilai Ahlussunnah wal Jama'ah an-Nahdliyyah.</p>`,
-            imageUrl: '/assets/campus-login.png',
+            imageUrl: '', // dikosongkan: gambar berasal dari profile_contents.heroImageUrl
             alignment: 'left',
           }),
         },
@@ -266,14 +267,11 @@ export async function seedPageBuilderAndThemes() {
           variantCode: 'stacked',
           sortOrder: 2,
           isActive: true,
+          // Visi & misi dibaca dari tabel `visions_missions` (menu Visi & Misi).
+          // Kolom cadangan sengaja dikosongkan agar data resmi yang dipakai.
           configJson: JSON.stringify({
-            vision: `Menjadi Program Studi ${name} yang unggul, inovatif, dan berdaya saing nasional berbasis nilai Aswaja pada tahun 2030.`,
-            missions: [
-              `Menyelenggarakan pendidikan sarjana berkualitas dengan kurikulum adaptif industri 4.0 dan Society 5.0.`,
-              `Mengembangkan penelitian inovatif dan publikasi ilmiah bereputasi nasional dan internasional.`,
-              `Melaksanakan pengabdian kepada masyarakat berbasis pemberdayaan umat dan kemandirian pesantren.`,
-              `Membangun jejaring kemitraan strategis dengan dunia usaha, dunia industri, dan instansi pemerintahan.`,
-            ],
+            vision: '',
+            missions: [],
           }),
         },
       });
@@ -484,11 +482,10 @@ export async function seedPageBuilderAndThemes() {
         seoDescription: `Profil lengkap, sejarah, dan keunggulan Program Studi ${name} Fakultas ${facName} Universitas Nahdlatul Ulama Sumatera Utara.`,
         sectionTitle: 'Profil & Identitas Keilmuan',
         widget: 'about_prodi',
+        // Uraian dibaca dari tabel profile_contents (menu Profil Program Studi).
         widgetConfig: {
           eyebrow: 'Profil Program Studi',
-          title: `Keunggulan & Identitas ${name}`,
-          body: `<p>Program Studi ${name} Fakultas ${facName} Universitas Nahdlatul Ulama Sumatera Utara berdiri sebagai wadah pencetak generasi cendekia yang berintegritas dan profesional.</p>`,
-          imageUrl: '/rektorat-unusu.jpg',
+          imageUrl: '',
           alignment: 'left',
         },
       },
@@ -500,14 +497,10 @@ export async function seedPageBuilderAndThemes() {
         seoDescription: `Visi, misi, dan sasaran strategis Program Studi ${name} Universitas Nahdlatul Ulama Sumatera Utara.`,
         sectionTitle: 'Visi & Misi Utama',
         widget: 'vision_mission',
+        // Visi & misi dibaca dari tabel visions_missions (menu Visi & Misi Program Studi).
         widgetConfig: {
-          vision: `Menjadi Program Studi ${name} yang unggul, inovatif, dan berdaya saing nasional berbasis nilai Aswaja pada tahun 2030.`,
-          missions: [
-            `Menyelenggarakan pendidikan sarjana berkualitas dengan kurikulum adaptif industri 4.0 dan Society 5.0.`,
-            `Mengembangkan penelitian inovatif dan publikasi ilmiah bereputasi nasional dan internasional.`,
-            `Melaksanakan pengabdian kepada masyarakat berbasis pemberdayaan umat dan kemandirian pesantren.`,
-            `Membangun jejaring kemitraan strategis dengan dunia usaha, dunia industri, dan instansi pemerintahan.`,
-          ],
+          vision: '',
+          missions: [],
         },
       },
       {
@@ -610,9 +603,7 @@ export async function seedPageBuilderAndThemes() {
         widget: 'about_prodi',
         widgetConfig: {
           eyebrow: 'Mengenal Lebih Dekat',
-          title: `Sejarah Pendirian & Dinamika ${name}`,
-          body: `<p>Halaman resmi yang memuat rekam jejak dedikasi Program Studi ${name} ${facName} Universitas Nahdlatul Ulama Sumatera Utara dalam mewujudkan tridharma perguruan tinggi yang berdaya saing.</p>`,
-          imageUrl: '/gedung-unusu.jpg',
+          imageUrl: '',
           alignment: 'left',
         },
       },

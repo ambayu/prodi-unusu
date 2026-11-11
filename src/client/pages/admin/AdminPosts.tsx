@@ -12,6 +12,9 @@ import { postApi, type Post } from '../../services/contentApi';
 import { mediaApi } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 
+/** Format berkas gambar yang diterima seluruh unggahan gambar di panel admin. */
+const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
+
 /** Membuat slug dari judul agar penulis tidak perlu mengetik slug manual. */
 function toSlug(value: string): string {
   return value
@@ -319,7 +322,7 @@ export const AdminPosts: React.FC = () => {
                   <span>{uploadingThumb ? 'Mengunggah...' : 'Pilih & Unggah Sampul'}</span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept={IMAGE_ACCEPT}
                     disabled={uploadingThumb}
                     className="hidden"
                     onChange={(e) => {

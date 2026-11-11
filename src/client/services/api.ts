@@ -67,7 +67,9 @@ api.interceptors.response.use(
  * Menerjemahkan error axios menjadi pesan yang layak ditampilkan.
  *
  * Pesan dari backend dipakai apa adanya karena sudah ditulis dalam bahasa
- * Indonesia dan tidak membocorkan detail internal.
+ * Indonesia dan tidak membocorkan detail internal. Hanya bila backend tidak
+ * menyertakan pesan, status HTTP yang diterjemahkan ke kalimat yang dapat
+ * ditindaklanjuti pengguna.
  */
 export function toApiError(error: unknown): ApiError {
   if (axios.isAxiosError(error)) {
@@ -88,8 +90,26 @@ export function toApiError(error: unknown): ApiError {
       };
     }
 
+    const status = error.response.status;
+
+    if (status >= 500) {
+      return {
+        message: 'Server sedang mengalami kendala. Coba lagi beberapa saat lagi.',
+        code: 'SERVER_ERROR',
+      };
+    }
+
+    const pesanStatus: Record<number, string> = {
+      400: 'Permintaan tidak dapat diproses. Periksa kembali data yang dikirim.',
+      401: 'Sesi Anda sudah berakhir. Silakan masuk kembali.',
+      403: 'Anda tidak berwenang melakukan tindakan ini.',
+      404: 'Data yang diminta tidak ditemukan.',
+      413: 'Ukuran data atau berkas terlalu besar.',
+      429: 'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.',
+    };
+
     return {
-      message: `Permintaan gagal dengan status ${error.response.status}.`,
+      message: pesanStatus[status] ?? `Permintaan gagal (status ${status}).`,
       code: 'HTTP_ERROR',
     };
   }
@@ -98,14 +118,90 @@ export function toApiError(error: unknown): ApiError {
     return { message: error.message };
   }
 
-  return { message: 'Terjadi kesalahan yang tidak diketahui.' };
+  return { message: 'Terjadi kesalahan yang tidak diketahui. Coba muat ulang halaman.' };
 }
 
-/** Mengambil pesan pertama dari fieldErrors untuk ditampilkan di form. */
+/**
+ * Label manusia untuk kunci field yang biasanya muncul di pesan validasi.
+ *
+ * Kunci dari Zod berbentuk path (`heroSliderConfig.slides.0.imageUrl`), yang
+ * tidak terbaca awam bila ditampilkan mentah di toast.
+ */
+const LABEL_FIELD: Record<string, string> = {
+  name: 'Nama',
+  title: 'Judul',
+  slug: 'Slug',
+  year: 'Tahun',
+  email: 'Email',
+  username: 'Nama pengguna',
+  password: 'Kata sandi',
+  currentPassword: 'Kata sandi saat ini',
+  newPassword: 'Kata sandi baru',
+  roleCode: 'Peran',
+  code: 'Kode',
+  credits: 'Jumlah SKS',
+  semesterNumber: 'Semester',
+  sortOrder: 'Urutan',
+  imageUrl: 'Gambar',
+  photoUrl: 'Foto',
+  fileUrl: 'Berkas',
+  coverImageUrl: 'Gambar sampul',
+  backgroundImageUrl: 'Gambar latar',
+  linkUrl: 'Tautan',
+  buttonUrl: 'Tautan tombol',
+  hostname: 'Domain',
+  year_: 'Tahun',
+  limit: 'Jumlah tampil',
+  autoplayMs: 'Durasi putar',
+  page: 'Halaman',
+  perPage: 'Jumlah per halaman',
+};
+
+/** Mengubah segmen path field menjadi label yang terbaca pengguna. */
+function labelField(path: string): string {
+  const kunci = path.split('.').filter((bagian) => !/^\d+$/.test(bagian)).pop() ?? path;
+  if (LABEL_FIELD[kunci]) return LABEL_FIELD[kunci];
+  const dirapikan = kunci
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .toLowerCase();
+  return dirapikan.charAt(0).toUpperCase() + dirapikan.slice(1);
+}
+
+/**
+ * Mengambil pesan pertama dari fieldErrors untuk ditampilkan di form.
+ *
+ * Bila hanya ada satu field bermasalah, pesannya dikembalikan apa adanya karena
+ * biasanya sudah menyebut bagian yang salah. Bila lebih dari satu, pesan diberi
+ * awalan label field agar pengguna tahu bagian mana yang perlu diperbaiki.
+ * Awalan dilewati ketika pesannya sendiri sudah menyebut label tersebut, supaya
+ * tidak muncul kalimat berulang seperti "Gambar: Gambar wajib diunggah."
+ */
 export function firstFieldError(error: ApiError): string | null {
   if (!error.fieldErrors) return null;
-  for (const messages of Object.values(error.fieldErrors)) {
-    if (messages.length > 0) return messages[0];
-  }
-  return null;
+
+  const entri = Object.entries(error.fieldErrors).filter(([, messages]) => messages.length > 0);
+  if (entri.length === 0) return null;
+
+  const [path, messages] = entri[0];
+  const pesan = messages[0];
+  if (entri.length === 1) return pesan;
+
+  const label = labelField(path);
+  const sudahMenyebut = pesan.toLowerCase().startsWith(label.toLowerCase());
+  return sudahMenyebut ? pesan : `${label}: ${pesan}`;
+}
+
+/** Ringkasan seluruh kesalahan field, dipakai saat form panjang perlu dirangkum. */
+export function allFieldErrors(error: ApiError): string[] {
+  if (!error.fieldErrors) return [];
+
+  return Object.entries(error.fieldErrors)
+    .filter(([, messages]) => messages.length > 0)
+    .map(([path, messages]) => {
+      const pesan = messages[0];
+      const label = labelField(path);
+      return pesan.toLowerCase().startsWith(label.toLowerCase()) ? pesan : `${label}: ${pesan}`;
+    });
 }

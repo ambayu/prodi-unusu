@@ -194,7 +194,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (profilItems.length > 0) {
       result.push({
-        label: 'Tentang Prodi',
+        label: 'Profil',
         path: '/profil',
         icon: AcademicCapIcon,
         children: profilItems,
@@ -212,17 +212,17 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (publikasiItems.length > 0) {
       result.push({
-        label: 'Informasi & Dokumen',
+        label: 'Informasi',
         path: '/berita',
         icon: NewspaperIcon,
         children: publikasiItems,
       });
     }
 
-    // Kelompokkan halaman kustom & tautan tambahan ke dalam dropdown "Halaman" jika ada lebih dari 1
+    // Kelompokkan halaman kustom & tautan tambahan ke dalam dropdown "Lainnya" jika ada lebih dari 1
     if (extraItems.length > 1) {
       result.push({
-        label: 'Halaman & Lainnya',
+        label: 'Lainnya',
         path: extraItems[0].path,
         icon: DocumentCheckIcon,
         children: extraItems,
@@ -232,8 +232,11 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
       extraItems.forEach((extra) => result.push(extra));
     }
 
-    if (kontakItem) {
-      result.push(kontakItem);
+    // Catatan: Menu Kontak fisik di deretan tengah dihilangkan karena sudah diwakili
+    // oleh tombol CTA primer "Hubungi Prodi" di sisi kanan navbar agar tidak redundan.
+    if (kontakItem && !extraItems.some((e) => e.path === '/kontak')) {
+      // Masukkan ke mobile drawer via groupedNavItems jika belum ada
+      // Di desktop akan dihandle langsung oleh tombol CTA
     }
 
     return result;
@@ -304,7 +307,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
               </div>
             </Link>
 
-            {/* Desktop Navigation (Dikelompokkan dengan Dropdown Bersih) */}
+            {/* Desktop Navigation (Dikelompokkan dengan Dropdown Bersih - Hover Line & Kotak) */}
             <div ref={navContainerRef} className="hidden lg:flex items-center space-x-1 xl:space-x-2">
               {groupedNavItems.map((item, idx) => {
                 const hasChildren = item.children && item.children.length > 0;
@@ -318,15 +321,15 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                   return (
                     <div
                       key={idx}
-                      className="relative"
+                      className="relative group py-2"
                       onMouseEnter={() => setOpenDropdown(item.label)}
                       onMouseLeave={() => setOpenDropdown(null)}
                     >
                       <button
                         type="button"
                         onClick={() => setOpenDropdown(isDropdownOpen ? null : item.label)}
-                        className={`relative flex items-center space-x-1.5 px-3 py-2 text-xs font-bold transition-colors rounded-lg ${
-                          isActive ? 'text-amber-300' : 'text-white hover:text-amber-200 hover:bg-white/10'
+                        className={`relative flex items-center space-x-1.5 px-3 py-2 text-xs font-bold transition-colors ${
+                          isActive ? 'text-amber-300' : 'text-white hover:text-amber-200'
                         }`}
                         aria-expanded={isDropdownOpen}
                       >
@@ -337,19 +340,22 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                             isDropdownOpen ? 'rotate-180' : 'rotate-0'
                           }`}
                         />
+                        {/* Garis bawah hover & active tanpa border keliling */}
                         <span
                           aria-hidden="true"
-                          className={`absolute bottom-0 left-3 right-3 h-0.5 rounded-full transition-all duration-200 ${
-                            isActive ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+                          className={`absolute bottom-0 left-2 right-2 h-[2.5px] transition-all duration-200 ${
+                            isActive
+                              ? 'opacity-100 scale-x-100'
+                              : 'opacity-0 scale-x-0 group-hover:opacity-100 group-hover:scale-x-100'
                           }`}
                           style={{ backgroundColor: accentColor }}
                         />
                       </button>
 
-                      {/* Dropdown Menu Desktop */}
+                      {/* Dropdown Menu Desktop - Buka Langsung Saat Hover, Desain Kotak Tajam/Elegan */}
                       {isDropdownOpen && (
-                        <div className="absolute top-full left-0 pt-2 w-56 z-50 animate-fadeIn">
-                          <div className="rounded-2xl bg-white p-2 shadow-xl ring-1 ring-black/5 border border-slate-100">
+                        <div className="absolute top-full left-0 w-56 z-50 animate-fadeIn">
+                          <div className="bg-white shadow-xl border-t-2 border-slate-200 ring-1 ring-black/5" style={{ borderTopColor: accentColor }}>
                             {item.children!.map((child, cIdx) => {
                               const ChildIcon = child.icon;
                               const isSubActive = location.pathname === child.path;
@@ -357,7 +363,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                                 <Link
                                   key={cIdx}
                                   to={child.path}
-                                  className={`flex items-center space-x-2.5 px-3 py-2.5 text-xs font-semibold rounded-xl transition-colors ${
+                                  className={`flex items-center space-x-2.5 px-4 py-2.5 text-xs font-semibold border-b border-slate-100 last:border-b-0 transition-colors ${
                                     isSubActive
                                       ? 'bg-slate-100 font-bold'
                                       : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
@@ -383,15 +389,16 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                   <Link
                     key={idx}
                     to={item.path}
-                    className={`relative flex items-center space-x-1.5 px-3 py-2 text-xs font-bold transition-colors rounded-lg group ${
-                      isActive ? 'text-amber-300' : 'text-white hover:text-amber-200 hover:bg-white/10'
+                    className={`relative flex items-center space-x-1.5 px-3 py-2 text-xs font-bold transition-colors group ${
+                      isActive ? 'text-amber-300' : 'text-white hover:text-amber-200'
                     }`}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     <span>{item.label}</span>
+                    {/* Garis bawah hover & active tanpa border keliling */}
                     <span
                       aria-hidden="true"
-                      className={`absolute bottom-0 left-3 right-3 h-0.5 rounded-full transition-all duration-200 ${
+                      className={`absolute bottom-0 left-2 right-2 h-[2.5px] transition-all duration-200 ${
                         isActive
                           ? 'opacity-100 scale-x-100'
                           : 'opacity-0 scale-x-0 group-hover:opacity-100 group-hover:scale-x-100'
@@ -403,18 +410,8 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
               })}
             </div>
 
-            {/* Sisi Kanan: tautan publik ke portal universitas dan kontak prodi. */}
-            <div className="hidden sm:flex items-center space-x-3">
-              <a
-                href="https://unusu.ac.id"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center space-x-1.5 text-xs text-white/90 hover:text-white font-semibold px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
-              >
-                <ArrowTopRightOnSquareIcon className="w-4 h-4 text-white" />
-                <span className="hidden xl:inline">Portal Kampus</span>
-              </a>
-
+            {/* Sisi Kanan: tombol aksi utama kontak prodi */}
+            <div className="hidden sm:flex items-center">
               <Link
                 to="/kontak"
                 className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-slate-950 font-extrabold text-xs shadow-md transition-all active:scale-95 hover:brightness-105"

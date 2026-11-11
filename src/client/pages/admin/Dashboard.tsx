@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   BookOpenIcon,
@@ -17,6 +17,7 @@ import {
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { usePermission, useTenant } from '../../hooks/useSite';
+import { useSiteStore } from '../../app/siteStore';
 import { dashboardApi } from '../../services/adminApi';
 import { toApiError } from '../../services/api';
 
@@ -45,20 +46,38 @@ const MetricCard: React.FC<{
 export const Dashboard: React.FC = () => {
   const { tenant } = useTenant();
   const { isSuperAdmin, user } = usePermission();
+  const portalScope = useSiteStore((state) => state.portalScope);
+  const activeTenantId = useSiteStore((state) => state.activeTenantId);
+
+  /**
+   * Saat scope PORTAL aktif, dashboard prodi tidak relevan: semua metrik di
+   * sini (kurikulum, dosen, berita, galeri) milik satu program studi. Pengguna
+   * diarahkan ke Dashboard Portal.
+   *
+   * Redirect hanya dilakukan bila pengguna memang Super Admin — akun prodi
+   * tidak pernah masuk scope portal karena tenant-nya selalu terisi.
+   */
+  const inPortalScope = (portalScope || activeTenantId === null) && isSuperAdmin;
 
   const statsQuery = useQuery({
     queryKey: ['admin', 'dashboard'],
     queryFn: () => dashboardApi.stats().then((res) => res.data),
+    enabled: !inPortalScope,
   });
 
   const superQuery = useQuery({
     queryKey: ['admin', 'dashboard', 'super'],
     queryFn: () => dashboardApi.superStats().then((res) => res.data),
-    enabled: isSuperAdmin,
+    enabled: isSuperAdmin && !inPortalScope,
   });
 
   const stats = statsQuery.data?.stats;
   const superStats = superQuery.data?.stats;
+
+  // Scope portal punya dashboard sendiri; ringkasan prodi tidak berlaku.
+  if (inPortalScope) {
+    return <Navigate to="/admin/portal-utama" replace />;
+  }
 
   return (
     <AdminLayout

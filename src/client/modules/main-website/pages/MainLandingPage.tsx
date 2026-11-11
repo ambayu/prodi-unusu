@@ -107,10 +107,11 @@ export const MainLandingPage: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
-  // Banner hero dibaca dari widget hero_slider milik PROGRAM STUDI AKTIF
-  // (endpoint publik per-hostname). Bila prodi belum mengatur slide atau API
-  // gagal, tampilan memakai HERO_SLIDES statis sebagai cadangan sehingga
-  // beranda tidak pernah kosong.
+  // Banner hero dibaca dari widget hero_slider milik scope yang sedang dibuka:
+  // pada portal pusat (`prodi.unusu.ac.id`) endpoint ini mengembalikan banner
+  // portal pusat, pada website prodi mengembalikan banner prodi tersebut.
+  // Bila belum ada slide atau API gagal, tampilan memakai HERO_SLIDES statis
+  // sebagai cadangan sehingga beranda tidak pernah kosong.
   const heroQuery = useQuery({
     queryKey: ['public', 'hero-slides'],
     queryFn: () =>

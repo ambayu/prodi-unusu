@@ -38,7 +38,7 @@ import {
 import type { AdminMenuItem } from '../../shared/types/index';
 import { useSiteStore } from '../app/siteStore';
 import { usePermission, useTenant } from '../hooks/useSite';
-import { adminMenuApi, organizationApi } from '../services/adminApi';
+import { adminMenuApi, organizationApi, type AdminMenuScope } from '../services/adminApi';
 import { useToast } from './ui/Toast';
 import { AdminPanelTemplate } from './ui/AdminPanelTemplate';
 
@@ -90,8 +90,9 @@ let savedSidebarScrollTop = 0;
  * Nilai sentinel pada pemilih "Program Studi Aktif" untuk Portal Utama.
  *
  * Portal utama bukan program studi, sehingga tidak dikirim ke
- * `setActiveTenant` (yang akan memanggil reload halaman dengan tenant prodi).
- * Memilih opsi ini hanya mengarahkan pengguna ke halaman pengelolaannya.
+ * `setActiveTenant` (yang akan memanggil reload dengan tenant prodi). Memilih
+ * opsi ini hanya mengubah scope panel admin ke mode portal dan membuka
+ * dashboard portal.
  */
 const PORTAL_SCOPE_VALUE = '__portal_utama__';
 
@@ -111,17 +112,22 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const setActiveTenant = useSiteStore((state) => state.setActiveTenant);
   const activeTenantId = useSiteStore((state) => state.activeTenantId);
+  const enterPortalScope = useSiteStore((state) => state.enterPortalScope);
   const [availablePrograms, setAvailablePrograms] = useState<Array<{ id: number; name: string; code: string }>>([]);
 
   /**
-   * Apakah scope "Portal Utama" sedang aktif.
+   * Scope panel admin: `portal` (website universitas) atau `prodi`.
    *
-   * Nilai `<select>` tidak boleh diikat langsung ke `activeTenantId`, karena
-   * memilih Portal Utama tidak mengubah tenant (tidak ada tenant portal).
-   * Tanpa state ini, React langsung mengembalikan nilai select ke prodi aktif
-   * sehingga opsi Portal Utama tampak "tidak bisa dipilih".
+   * Nilainya berasal dari store (bukan `useState` lokal) supaya bertahan saat
+   * halaman dimuat ulang. `activeTenantId === null` juga diperlakukan sebagai
+   * portal, karena tanpa tenant tidak ada konten prodi yang bisa dikelola.
+   *
+   * Konsekuensinya sidebar benar-benar berganti menu: saat portal aktif, menu
+   * KONTEN (Profil, Visi & Misi, Kurikulum, Dosen, ...) tidak dirender.
    */
-  const [portalScopeActive, setPortalScopeActive] = useState(false);
+  const portalScope = useSiteStore((state) => state.portalScope);
+  const menuScope: AdminMenuScope = portalScope || activeTenantId === null ? 'portal' : 'prodi';
+
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -133,8 +139,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   }, [isSuperAdmin]);
   const [collapsed, setCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [menu, setMenu] = useState<AdminMenuItem[]>(() => adminMenuApi.getCachedMenu() ?? []);
-  const [menuLoading, setMenuLoading] = useState(() => !adminMenuApi.getCachedMenu());
+  const [menu, setMenu] = useState<AdminMenuItem[]>(() => adminMenuApi.getCachedMenu(menuScope) ?? []);
+  const [menuLoading, setMenuLoading] = useState(() => !adminMenuApi.getCachedMenu(menuScope));
   const dropdownRef = useRef<HTMLDivElement>(null);
   const desktopNavRef = useRef<HTMLDivElement>(null);
 
@@ -164,10 +170,22 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     savedSidebarScrollTop = e.currentTarget.scrollTop;
   };
 
+  // Katalog menu dibangun ulang setiap kali scope berubah (portal ↔ prodi).
+  //
+  // Sebelumnya efek ini hanya berjalan sekali saat mount dengan dependensi `[]`,
+  // sehingga memilih Portal Utama tidak mengubah isi sidebar.
   useEffect(() => {
     let active = true;
+    const cached = adminMenuApi.getCachedMenu(menuScope);
+    if (cached) {
+      setMenu(cached);
+      setMenuLoading(false);
+    } else {
+      setMenuLoading(true);
+    }
+
     adminMenuApi
-      .buildMenu()
+      .buildMenu(menuScope)
       .then((items) => {
         if (active) setMenu(items);
       })
@@ -180,7 +198,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     return () => {
       active = false;
     };
-  }, []);
+  }, [menuScope]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -212,9 +230,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     .map((part) => part.charAt(0).toUpperCase())
     .join('');
 
-  // Pisahkan menu berdasarkan section kategori dengan fallback aman
+  // Pisahkan menu berdasarkan section kategori dengan fallback aman.
+  //
+  // Saat scope portal, katalog menu tidak memiliki entri `content.*` maupun
+  // section 'KONTEN', sehingga grup "Konten & Akademik" otomatis tidak dirender.
+  const isPortalMenuScope = menuScope === 'portal';
   const utamaMenus = menu.filter((item) => item.section === 'UTAMA' || item.menuKey === 'dashboard');
-  const kontenMenus = menu.filter((item) => item.section === 'KONTEN' || item.menuKey.startsWith('content.'));
+  const kontenMenus = isPortalMenuScope
+    ? []
+    : menu.filter((item) => item.section === 'KONTEN' || item.menuKey.startsWith('content.'));
   const websiteMenus = menu.filter((item) => item.section === 'WEBSITE' || item.menuKey.startsWith('website.') || item.menuKey === 'builder');
   const tataKelolaMenus = menu.filter((item) => item.section === 'TATA KELOLA' || item.menuKey.startsWith('management.'));
   const universitasMenus = menu.filter((item) => item.section === 'UNIVERSITAS' || item.menuKey.startsWith('super.'));
@@ -300,10 +324,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <div className="leading-tight truncate">
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-[15px] text-slate-900 tracking-tight">PORTAL</span>
-                  <span className="font-extrabold text-[15px] text-[#1e3a8a] tracking-tight">PRODI</span>
+                  <span className="font-extrabold text-[15px] text-[#1e3a8a] tracking-tight">
+                    {menuScope === 'portal' ? 'UNUSU' : 'PRODI'}
+                  </span>
                 </div>
                 <p className="text-[11px] text-slate-500 font-semibold tracking-wide truncate mt-0.5">
-                  {isSuperAdmin
+                  {menuScope === 'portal'
+                    ? 'Portal Utama Universitas'
+                    : isSuperAdmin
                     ? 'Super Administrator'
                     : tenant
                     ? tenant.name
@@ -326,17 +354,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
                 </div>
                 <select
-                  value={portalScopeActive ? PORTAL_SCOPE_VALUE : activeTenantId ?? ''}
+                  value={menuScope === 'portal' ? PORTAL_SCOPE_VALUE : activeTenantId ?? ''}
                   onChange={(e) => {
                     const raw = e.target.value;
                     if (raw === PORTAL_SCOPE_VALUE) {
-                      setPortalScopeActive(true);
-                      navigate('/admin/portal');
+                      // Sakelar scope: sidebar berganti ke menu portal, tanpa reload.
+                      enterPortalScope();
+                      adminMenuApi.clearCache();
+                      navigate('/admin/portal-utama');
                       return;
                     }
                     const id = Number(raw);
                     if (id) {
-                      setPortalScopeActive(false);
                       void setActiveTenant(id);
                     }
                   }}
@@ -354,7 +383,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   </optgroup>
                 </select>
                 <p className="mt-1 text-[10px] text-blue-700/80 leading-tight">
-                  Pilih prodi untuk mengelola kontennya, atau Portal Utama untuk mengatur banner beranda universitas.
+                  {menuScope === 'portal'
+                    ? 'Scope Portal Utama: hanya pengaturan universitas. Pilih prodi untuk mengelola kontennya.'
+                    : 'Scope prodi aktif: mengelola profil, kurikulum, dosen, dan publikasi prodi ini.'}
                 </p>
               </div>
             ) : tenant ? (
@@ -598,12 +629,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             {/* Breadcrumb Path */}
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 overflow-hidden">
               <Link
-                to="/admin"
+                to={menuScope === 'portal' ? '/admin/portal-utama' : '/admin'}
                 className="flex items-center gap-1.5 text-slate-600 hover:text-[#1e3a8a] transition-colors p-1 rounded-md"
-                title="Dashboard Utama"
+                title={menuScope === 'portal' ? 'Dashboard Portal' : 'Dashboard Prodi'}
               >
                 <HomeIcon className="w-4 h-4 text-slate-400" />
-                <span className="hidden sm:inline">Portal Admin</span>
+                <span className="hidden sm:inline">
+                  {menuScope === 'portal' ? 'Portal Utama' : 'Portal Admin'}
+                </span>
               </Link>
               <ChevronRightIcon className="w-3.5 h-3.5 text-slate-300 shrink-0" />
               <span className="px-2.5 py-1 rounded-[8px] bg-slate-100 border border-[#CBD5E1] text-slate-800 font-bold truncate max-w-[180px] sm:max-w-[280px]">
@@ -621,17 +654,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   Prodi:
                 </span>
                 <select
-                  value={portalScopeActive ? PORTAL_SCOPE_VALUE : activeTenantId ?? ''}
+                  value={menuScope === 'portal' ? PORTAL_SCOPE_VALUE : activeTenantId ?? ''}
                   onChange={(e) => {
                     const raw = e.target.value;
                     if (raw === PORTAL_SCOPE_VALUE) {
-                      setPortalScopeActive(true);
-                      navigate('/admin/portal');
+                      enterPortalScope();
+                      adminMenuApi.clearCache();
+                      navigate('/admin/portal-utama');
                       return;
                     }
                     const id = Number(raw);
                     if (id) {
-                      setPortalScopeActive(false);
                       void setActiveTenant(id);
                     }
                   }}

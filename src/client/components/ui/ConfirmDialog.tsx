@@ -31,19 +31,29 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onCancel,
 }) => {
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
 
+  /**
+   * Hanya bergantung pada `open`. Bila `busy`/`onCancel` ikut masuk deps, efek
+   * berjalan ulang setiap render dan memindahkan fokus kembali ke tombol
+   * konfirmasi — perilaku yang sama dengan bug "input lompat-lompat" di
+   * FormModal.
+   */
   useEffect(() => {
     if (!open) return;
 
     confirmRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !busy) onCancel();
+      if (event.key === 'Escape' && !busyRef.current) onCancelRef.current();
     };
 
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, busy, onCancel]);
+  }, [open]);
 
   if (!open) return null;
 

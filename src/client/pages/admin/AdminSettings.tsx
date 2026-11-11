@@ -9,6 +9,9 @@ import { usePermission } from '../../hooks/useSite';
 import { mediaApi, settingsApi, type Theme, type WebsiteSetting } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 
+/** Format berkas gambar yang diterima seluruh unggahan gambar di panel admin. */
+const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
+
 const TABS = [
   { key: 'identity', label: 'Identitas Website', permission: 'website.view' },
   { key: 'theme', label: 'Tema & Warna', permission: 'theme.view' },
@@ -190,12 +193,13 @@ export const AdminSettings: React.FC = () => {
                         <input
                           id="logo-upload"
                           type="file"
-                          accept="image/*"
+                          accept={IMAGE_ACCEPT}
                           disabled={uploadingLogo}
                           className="hidden"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) void handleFileUpload(file, (url) => setIdentity({ ...identity, logoUrl: url }), setUploadingLogo);
+                            e.target.value = '';
                           }}
                         />
                       </label>
@@ -236,12 +240,13 @@ export const AdminSettings: React.FC = () => {
                         <input
                           id="favicon-upload"
                           type="file"
-                          accept="image/*"
+                          accept={IMAGE_ACCEPT}
                           disabled={uploadingFavicon}
                           className="hidden"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) void handleFileUpload(file, (url) => setIdentity({ ...identity, faviconUrl: url }), setUploadingFavicon);
+                            e.target.value = '';
                           }}
                         />
                       </label>
@@ -507,12 +512,13 @@ export const AdminSettings: React.FC = () => {
                       <input
                         id="seo-image-upload"
                         type="file"
-                        accept="image/*"
+                        accept={IMAGE_ACCEPT}
                         disabled={uploadingSeoImage}
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) void handleFileUpload(file, (url) => setIdentity({ ...identity, seoImageUrl: url }), setUploadingSeoImage);
+                          e.target.value = '';
                         }}
                       />
                     </label>

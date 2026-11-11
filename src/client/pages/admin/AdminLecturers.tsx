@@ -19,6 +19,9 @@ import { lecturerApi, type Lecturer } from '../../services/contentApi';
 import { mediaApi } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 
+/** Format berkas gambar yang diterima seluruh unggahan gambar di panel admin. */
+const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
+
 const EMPTY: Partial<Lecturer> = {
   name: '',
   nidn: '',
@@ -270,7 +273,7 @@ export const AdminLecturers: React.FC = () => {
                 <input
                   id="lecturer-photo"
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   className="hidden"
                   disabled={uploadingPhoto}
                   onChange={(e) => {

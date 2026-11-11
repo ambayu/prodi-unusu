@@ -147,6 +147,103 @@ function parseHeroConfig(configJson: string | null): HeroConfig {
 }
 
 /**
+ * Slug halaman & kunci section khusus banner **Portal Pusat**.
+ *
+ * Portal pusat tidak punya tenant, sehingga banner-nya tidak bisa memakai
+ * halaman milik prodi. Sebagai gantinya dibuat satu halaman "sistem" tanpa
+ * `studyProgramId` — skema tidak mewajibkan relasi itu untuk portal.
+ */
+const PORTAL_HERO_PAGE_SLUG = '__portal_hero__';
+const PORTAL_HERO_SECTION_KEY = 'hero';
+
+/** Apakah request meminta banner Portal Pusat (`?scope=portal`). */
+function isPortalHeroRequest(req: { query: Record<string, unknown> }): boolean {
+  return String(req.query.scope ?? '').toLowerCase() === 'portal';
+}
+
+/**
+ * Pastikan banner Portal Pusat boleh diubah oleh pengguna ini.
+ *
+ * Hanya Super Admin, karena banner ini tampil untuk seluruh universitas dan
+ * tidak terikat pada penugasan prodi mana pun.
+ */
+function assertPortalHeroAllowed(req: { authUser?: { isSuperAdmin: boolean } }) {
+  if (!req.authUser?.isSuperAdmin) {
+    throw AppError.forbidden(
+      'Hero slider portal pusat hanya dapat diubah oleh Super Admin.',
+      'SUPER_ADMIN_ONLY',
+    );
+  }
+}
+
+/**
+ * Cari/buat widget `hero_slider` milik Portal Pusat.
+ *
+ * Halaman dan section dibuat otomatis bila belum ada, dengan pola yang sama
+ * seperti `resolveHeroWidget` untuk prodi, hanya saja tanpa tenant.
+ */
+async function resolvePortalHeroWidget() {
+  const widgetMaster = await prisma.widget.findUnique({ where: { code: 'hero_slider' } });
+  if (!widgetMaster) {
+    throw AppError.badRequest('Widget hero_slider belum terdaftar pada registri widget.');
+  }
+
+  const existing = await prisma.sectionWidget.findFirst({
+    where: {
+      widgetId: widgetMaster.id,
+      pageSection: { page: { studyProgramId: null, slug: PORTAL_HERO_PAGE_SLUG } },
+    },
+    include: { pageSection: { include: { page: true } } },
+  });
+  if (existing) {
+    return { widget: existing, created: false as const };
+  }
+
+  let page = await prisma.page.findFirst({
+    where: { studyProgramId: null, slug: PORTAL_HERO_PAGE_SLUG },
+  });
+  if (!page) {
+    page = await prisma.page.create({
+      data: {
+        studyProgramId: null,
+        slug: PORTAL_HERO_PAGE_SLUG,
+        title: 'Beranda Portal Universitas',
+        layout: 'default',
+        isPublished: false,
+        isSystem: true,
+      },
+    });
+  }
+
+  let section = await prisma.pageSection.findFirst({
+    where: { pageId: page.id, sectionKey: PORTAL_HERO_SECTION_KEY },
+  });
+  if (!section) {
+    section = await prisma.pageSection.create({
+      data: {
+        pageId: page.id,
+        sectionKey: PORTAL_HERO_SECTION_KEY,
+        title: 'Hero Slider Portal',
+        sortOrder: 0,
+      },
+    });
+  }
+
+  const created = await prisma.sectionWidget.create({
+    data: {
+      pageSectionId: section.id,
+      widgetId: widgetMaster.id,
+      sortOrder: 1,
+      isActive: true,
+      configJson: JSON.stringify({ slides: [], autoplayMs: 6000, showDots: true }),
+    },
+    include: { pageSection: { include: { page: true } } },
+  });
+
+  return { widget: created, created: true as const };
+}
+
+/**
  * GET /api/v1/admin/portal/hero-slides
  *
  * Mengembalikan slide hero milik PROGRAM STUDI AKTIF (tenant dari header/query),
@@ -156,6 +253,26 @@ router.get(
   '/portal/hero-slides',
   requirePermission('website.view'),
   asyncHandler(async (req, res) => {
+    // --- Banner Portal Pusat (tanpa tenant) ---
+    if (isPortalHeroRequest(req)) {
+      assertPortalHeroAllowed(req);
+      const { widget } = await resolvePortalHeroWidget();
+      const config = parseHeroConfig(widget.configJson);
+
+      res.json({
+        success: true,
+        scope: 'portal',
+        studyProgram: null,
+        page: null,
+        config: {
+          slides: Array.isArray(config.slides) ? config.slides : [],
+          autoplayMs: typeof config.autoplayMs === 'number' ? config.autoplayMs : 6000,
+          showDots: config.showDots !== false,
+        },
+      });
+      return;
+    }
+
     const studyProgramId = scopedTenantId(req);
 
     const studyProgram = await prisma.studyProgram.findUnique({
@@ -171,6 +288,7 @@ router.get(
 
     res.json({
       success: true,
+      scope: 'prodi',
       studyProgram,
       page: { id: widget.pageSection.page.id, slug: widget.pageSection.page.slug },
       config: {
@@ -194,17 +312,54 @@ router.put(
   requirePermission('website.update'),
   validate({ body: slidesPayloadSchema }),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
     const body = getBody<z.infer<typeof slidesPayloadSchema>>(req);
-
-    const { widget } = await resolveHeroWidget(studyProgramId);
-    const config = parseHeroConfig(widget.configJson);
 
     const normalizedSlides = body.slides.map((slide) => ({
       imageUrl: slide.imageUrl,
       alt: slide.alt?.trim() || '',
       linkUrl: slide.linkUrl?.trim() || '',
     }));
+
+    // --- Banner Portal Pusat (tanpa tenant) ---
+    if (isPortalHeroRequest(req)) {
+      assertPortalHeroAllowed(req);
+      const { widget } = await resolvePortalHeroWidget();
+      const config = parseHeroConfig(widget.configJson);
+
+      const portalConfig: HeroConfig = {
+        ...config,
+        slides: normalizedSlides,
+        ...(body.autoplayMs !== undefined ? { autoplayMs: body.autoplayMs } : {}),
+        ...(body.showDots !== undefined ? { showDots: body.showDots } : {}),
+      };
+
+      const updated = await prisma.sectionWidget.update({
+        where: { id: widget.id },
+        data: { configJson: JSON.stringify(portalConfig) },
+      });
+
+      await recordAudit({
+        req,
+        action: 'UPDATE',
+        module: 'NAVIGATION',
+        targetType: 'portal_hero_slider',
+        targetId: widget.id,
+        studyProgramId: null,
+        details: { scope: 'portal', slideCount: normalizedSlides.length },
+      });
+
+      res.json({
+        success: true,
+        message: `Hero slider beranda portal berhasil disimpan (${normalizedSlides.length} slide).`,
+        widgetId: updated.id,
+        slides: normalizedSlides,
+      });
+      return;
+    }
+
+    const studyProgramId = scopedTenantId(req);
+    const { widget } = await resolveHeroWidget(studyProgramId);
+    const config = parseHeroConfig(widget.configJson);
 
     const nextConfig: HeroConfig = {
       ...config,

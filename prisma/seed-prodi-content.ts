@@ -1,12 +1,55 @@
 /**
  * Seeder Idempotent untuk data konten awal 14 Program Studi UNUSU.
  * Mengisi konten dasar: Visi & Misi, Profil, Berita Contoh, Dosen, Sarpras, dan Kontak.
+ *
+ * Catatan format kolom:
+ * - `visions_missions.missions` disimpan satu butir per baris (dipisah newline),
+ *   bukan JSON array. Halaman admin Visi & Misi dan widget beranda membaca kolom
+ *   ini dengan pemisah newline, sehingga `JSON.stringify([...])` tampil sebagai
+ *   satu butir berisi teks JSON mentah.
+ * - `profile_contents.overview` dan `heroImageUrl` menjadi sumber langsung section
+ *   "Profil Program Studi" pada beranda.
  */
 
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+/**
+ * Gambar pendukung profil bawaan per fakultas.
+ *
+ * Dipakai agar setiap program studi memiliki ilustrasi pada section Profil di
+ * beranda, bukan gambar generik yang sama untuk semua prodi. Seluruh berkas ini
+ * sudah tersedia di folder `public` sehingga seeder tidak membuat berkas baru.
+ * Admin dapat menggantinya kapan saja lewat menu Profil Program Studi.
+ */
+const PROFILE_HERO_BY_FACULTY: Record<string, string> = {
+  FIK: '/rektorat-unusu.jpg',
+  FIP: '/gedung-unusu.jpg',
+  FE: '/rektorat-unusu.jpg',
+  FAPERTA: '/gedung-unusu.jpg',
+  FIKES: '/assets/campus-login.png',
+  FAI: '/rektorat-unusu.jpg',
+};
+
+/** Gambar pendukung cadangan bila fakultas prodi tidak dikenali. */
+const PROFILE_HERO_DEFAULT = '/rektorat-unusu.jpg';
+
+/**
+ * Menyusun butir misi per program studi.
+ *
+ * Butir pertama menyebut bidang keilmuan prodi agar rumusan tiap prodi tetap
+ * berbeda sesuai kekhasannya.
+ */
+function buildMissions(name: string): string[] {
+  return [
+    `Menyelenggarakan pendidikan dan pembelajaran berkualitas dalam bidang ${name}.`,
+    `Melaksanakan penelitian terapan dan inovatif yang bermanfaat bagi masyarakat dan industri.`,
+    `Mengembangkan program pengabdian kepada masyarakat yang responsif terhadap kebutuhan umat dan bangsa.`,
+    `Menjalin kemitraan strategis dengan institusi akademik, dunia usaha, dan instansi pemerintah.`,
+  ];
+}
 
 export async function seedProdiContents() {
   console.log('Mengisi data konten untuk seluruh Program Studi UNUSU...');
@@ -21,38 +64,52 @@ export async function seedProdiContents() {
     const code = prodi.code;
     const name = prodi.name;
     const facultyName = prodi.faculty?.name || 'Universitas Nahdlatul Ulama Sumatera Utara';
+    const heroImageUrl = PROFILE_HERO_BY_FACULTY[prodi.faculty?.code || ''] || PROFILE_HERO_DEFAULT;
+
+    const overview = `Program Studi ${name} berada di bawah naungan ${facultyName}, berkomitmen menyelenggarakan pendidikan tinggi berbasis Ahlussunnah wal Jama'ah An-Nahdliyah dengan integrasi keilmuan modern dan nilai-nilai keislaman.`;
+    const missions = buildMissions(name).join('\n');
+    const vision = `Menjadi Program Studi ${name} yang unggul, inovatif, dan berdaya saing nasional berlandaskan nilai-nilai Ahlussunnah wal Jama'ah An-Nahdliyah pada tahun 2030.`;
 
     // 1. Profil & Gambaran Umum
+    // `overview` dan `heroImageUrl` tampil langsung pada section Profil di beranda.
+    // Pada pembaruan, hanya kolom yang masih kosong yang diisi agar konten hasil
+    // suntingan admin tidak tertimpa ketika seeder dijalankan ulang.
+    const existingProfile = await prisma.profileContent.findUnique({
+      where: { studyProgramId: prodi.id },
+    });
+
     await prisma.profileContent.upsert({
       where: { studyProgramId: prodi.id },
       create: {
         studyProgramId: prodi.id,
-        overview: `Program Studi ${name} berada di bawah naungan ${facultyName}, berkomitmen menyelenggarakan pendidikan tinggi berbasis Ahlussunnah wal Jama'ah An-Nahdliyah dengan integrasi keilmuan modern dan nilai-nilai keislaman.`,
+        overview,
         history: `Program Studi ${name} didirikan guna menjawab tantangan kebutuhan sumber daya manusia profesional dan berintegritas di tingkat regional Sumatera Utara dan nasional.`,
         objectives: `Menghasilkan lulusan yang kompeten, berdaya saing global, berakhlak mulia, serta mampu berkontribusi aktif dalam pengembangan ilmu pengetahuan dan pengabdian masyarakat.`,
         targets: `Peningkatan akreditasi unggul, publikasi ilmiah bereputasi, serta keterserapan alumni di dunia kerja dalam waktu kurang dari 6 bulan pascakelulusan.`,
+        heroImageUrl,
       },
       update: {
-        overview: `Program Studi ${name} berada di bawah naungan ${facultyName}, berkomitmen menyelenggarakan pendidikan tinggi berbasis Ahlussunnah wal Jama'ah An-Nahdliyah dengan integrasi keilmuan modern dan nilai-nilai keislaman.`,
+        ...(existingProfile?.overview?.trim() ? {} : { overview }),
+        ...(existingProfile?.heroImageUrl?.trim() ? {} : { heroImageUrl }),
       },
     });
 
     // 2. Visi & Misi
+    const existingVision = await prisma.visionMission.findUnique({
+      where: { studyProgramId: prodi.id },
+    });
+
     await prisma.visionMission.upsert({
       where: { studyProgramId: prodi.id },
       create: {
         studyProgramId: prodi.id,
-        vision: `Menjadi Program Studi ${name} yang unggul, inovatif, dan berdaya saing nasional berlandaskan nilai-nilai Ahlussunnah wal Jama'ah An-Nahdliyah pada tahun 2030.`,
-        missions: JSON.stringify([
-          `Menyelenggarakan pendidikan dan pembelajaran berkualitas dalam bidang ${name}.`,
-          `Melaksanakan penelitian terapan dan inovatif yang bermanfaat bagi masyarakat dan industri.`,
-          `Mengembangkan program pengabdian kepada masyarakat yang responsif terhadap kebutuhan umat dan bangsa.`,
-          `Menjalin kemitraan strategis dengan institusi akademik, dunia usaha, dan instansi pemerintah.`,
-        ]),
+        vision,
+        missions,
         objectives: `Membentuk sarjana yang berintegritas tinggi, berjiwa kewirausahaan, dan menguasai keahlian praktis sesuai standar profesi.`,
       },
       update: {
-        vision: `Menjadi Program Studi ${name} yang unggul, inovatif, dan berdaya saing nasional berlandaskan nilai-nilai Ahlussunnah wal Jama'ah An-Nahdliyah pada tahun 2030.`,
+        ...(existingVision?.vision?.trim() ? {} : { vision }),
+        ...(existingVision?.missions?.trim() ? {} : { missions }),
       },
     });
 

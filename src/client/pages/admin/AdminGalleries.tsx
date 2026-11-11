@@ -11,6 +11,9 @@ import { galleryApi, type Gallery } from '../../services/contentApi';
 import { mediaApi } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 
+/** Format berkas gambar yang diterima seluruh unggahan gambar di panel admin. */
+const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
+
 function toSlug(value: string): string {
   return value
     .toLowerCase()
@@ -342,7 +345,7 @@ export const AdminGalleries: React.FC = () => {
                 <input
                   id="gallery-cover"
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   disabled={uploadingCover}
                   className="hidden"
                   onChange={(e) => {

@@ -43,12 +43,15 @@ import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminPortalHero } from './pages/admin/AdminPortalHero';
 import { AdminNavigation } from './pages/admin/AdminNavigation';
 import { AdminProfile } from './pages/admin/AdminProfile';
+import { AdminVisionMission } from './pages/admin/AdminVisionMission';
 import { AdminMyProfile } from './pages/admin/AdminMyProfile';
 import { AdminOrganization } from './pages/admin/AdminOrganization';
 import { AdminDomains } from './pages/admin/AdminDomains';
 import { AdminRoles } from './pages/admin/AdminRoles';
 import { AdminPermissions } from './pages/admin/AdminPermissions';
-
+import { AdminAuditLogs } from './pages/admin/AdminAuditLogs';
+import { AdminMessages } from './pages/admin/AdminMessages';
+import { AdminPortalOverview } from './pages/admin/AdminPortalOverview';
 import { useBootstrap, useTenant } from './hooks/useSite';
 import { useSiteStore } from './app/siteStore';
 import { RequireAuth, RequirePermission } from './app/guards';
@@ -204,7 +207,7 @@ export const App: React.FC = () => {
         element={
           <RequireAuth>
             <RequirePermission anyOf={['contact_messages.view']}>
-              <AdminContact />
+              <AdminMessages />
             </RequirePermission>
           </RequireAuth>
         }
@@ -269,6 +272,22 @@ export const App: React.FC = () => {
           </RequireAuth>
         }
       />
+      {/*
+        Dashboard Portal Utama (scope portal). Halaman ini menggantikan peran
+        beranda admin saat Super Admin memilih "◈ Portal Utama" pada pemilih
+        Program Studi Aktif: hanya berisi statistik universitas dan daftar
+        website prodi — tanpa menu konten prodi.
+      */}
+      <Route
+        path="/admin/portal-utama"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['dashboard.view']}>
+              <AdminPortalOverview />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
       <Route
         path="/admin/portal/hero-slider"
         element={<Navigate to="/admin/portal" replace />}
@@ -312,7 +331,7 @@ export const App: React.FC = () => {
         element={
           <RequireAuth>
             <RequirePermission anyOf={['vision_mission.view']}>
-              <AdminProfile />
+              <AdminVisionMission />
             </RequirePermission>
           </RequireAuth>
         }
@@ -360,7 +379,7 @@ export const App: React.FC = () => {
         element={
           <RequireAuth>
             <RequirePermission anyOf={['audit_logs.view']}>
-              <AdminDomains />
+              <AdminAuditLogs />
             </RequirePermission>
           </RequireAuth>
         }
@@ -492,27 +511,23 @@ export const App: React.FC = () => {
 };
 
 /**
- * Rute untuk permukaan portal administrasi (ADMIN_HOST).
+ * Rute untuk permukaan portal administrasi (ADMIN_HOST, `prodi.unusu.ac.id`).
  *
- * Portal tidak memiliki tenant, sehingga tidak boleh jatuh ke rute website
- * prodi. Beranda menampilkan landing page portal (hero + direktori fakultas
- * dan prodi) sehingga publik tetap dapat menjelajah website prodi, sedangkan
- * path lain diarahkan ke login agar pengelola langsung menemukan pintu masuk.
+ * Portal pusat bukan website prodi dan tidak mengelola konten prodi. Beranda
+ * hanya menampilkan landing statis `MainLandingPage` — bagian "PROGRAM STUDI
+ * TERAKREDITASI / Tentang Program Studi di UNUSU" beserta tiga kartu
+ * (Kurikulum MBKM, Dosen Berkualitas, Website Mandiri).
+ *
+ * Rute konten universitas seperti `/tentang`, `/fakultas`, `/akademik`,
+ * `/pmb`, `/lppm`, `/kontak`, `/layanan`, dan `/berita` sengaja TIDAK dirender
+ * di sini: itu milik website prodi/universitas dan tidak ada datanya pada
+ * portal pusat. Path lain diarahkan ke login agar pengelola langsung
+ * menemukan pintu masuk.
  */
 function adminPortalRouteElements() {
-  const wrap = (children: React.ReactNode) => <MainWebsiteLayout>{children}</MainWebsiteLayout>;
-
   return (
     <>
-      <Route path="/" element={wrap(<MainLandingPage />)} />
-      <Route path="/tentang" element={wrap(<AboutPage />)} />
-      <Route path="/fakultas" element={wrap(<FacultiesPage />)} />
-      <Route path="/akademik" element={wrap(<AcademicsPage />)} />
-      <Route path="/pmb" element={wrap(<AdmissionPage />)} />
-      <Route path="/lppm" element={wrap(<ResearchPage />)} />
-      <Route path="/kontak" element={wrap(<CampusContactPage />)} />
-      <Route path="/layanan" element={wrap(<CampusServicesPage />)} />
-      <Route path="/berita" element={wrap(<PortalNewsPage />)} />
+      <Route path="/" element={<MainWebsiteLayout><MainLandingPage /></MainWebsiteLayout>} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </>
   );

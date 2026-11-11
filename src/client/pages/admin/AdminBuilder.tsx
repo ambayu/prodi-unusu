@@ -26,7 +26,7 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
 import { useToast } from '../../components/ui/Toast';
-import { usePermission } from '../../hooks/useSite';
+import { usePermission, useTenant } from '../../hooks/useSite';
 import { builderApi, settingsApi, type BuilderPage, type BuilderSection, type BuilderWidgetInstance, type MenuItem } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 import { WidgetVisualForm } from '../../components/builder/WidgetVisualForm';
@@ -49,16 +49,16 @@ function parseConfig(raw: string): Record<string, unknown> {
  * tetap memakai nama aslinya karena isinya diisi manual di sini.
  */
 const WIDGET_SIDEBAR_LABELS: Record<string, string> = {
-  curriculum_overview: 'Kurikulum & MK',
-  lecturer_list: 'Dosen & Tenaga Ahli',
-  document_list: 'Dokumen & SK',
+  curriculum_overview: 'Struktur Kurikulum Merdeka & OBE',
+  lecturer_list: 'Dosen Pembina & Pengajar Ahli',
+  document_list: 'Dokumen & Unduhan',
   facility_grid: 'Sarana & Prasarana',
-  latest_news: 'Berita & Artikel',
-  gallery_grid: 'Galeri Kegiatan',
-  contact_information: 'Kontak & Pesan',
+  latest_news: 'Warta & Pengumuman',
+  gallery_grid: 'Galeri Aktivitas Mahasiswa',
+  contact_information: 'Sekretariat Prodi',
   hero_slider: 'Hero Slider (Banner Beranda)',
   about_prodi: 'Profil Program Studi',
-  vision_mission: 'Visi & Misi Prodi',
+  vision_mission: 'Komitmen Akademik & Visi Misi',
   statistics: 'Statistik Prodi',
   cta_banner: 'Banner Ajakan (CTA)',
 };
@@ -81,63 +81,63 @@ function getWidgetOriginMeta(widgetCode: string): {
     case 'latest_news':
       return {
         type: 'dynamic',
-        badge: 'Dari Menu: Berita & Artikel',
+        badge: 'Dari Menu: Berita',
         badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
-        sourceDesc: 'Data otomatis dari menu Berita & Artikel.',
+        sourceDesc: 'Data otomatis dari menu Berita.',
         manageRoute: '/admin/berita',
         manageLabel: 'Kelola Berita',
       };
     case 'lecturer_list':
       return {
         type: 'dynamic',
-        badge: 'Dari Menu: Dosen & Tenaga Ahli',
+        badge: 'Dari Menu: Dosen',
         badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        sourceDesc: 'Data otomatis dari menu Dosen & Tenaga Ahli.',
+        sourceDesc: 'Data otomatis dari menu Dosen.',
         manageRoute: '/admin/dosen',
         manageLabel: 'Kelola Dosen',
       };
     case 'curriculum_overview':
       return {
         type: 'dynamic',
-        badge: 'Dari Menu: Kurikulum & MK',
+        badge: 'Dari Menu: Kurikulum',
         badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-        sourceDesc: 'Data otomatis dari menu Kurikulum & MK.',
+        sourceDesc: 'Data otomatis dari menu Kurikulum.',
         manageRoute: '/admin/kurikulum',
         manageLabel: 'Kelola Kurikulum',
       };
     case 'facility_grid':
       return {
         type: 'dynamic',
-        badge: 'Dari Menu: Sarana & Prasarana',
+        badge: 'Dari Menu: Sarpras',
         badgeClass: 'bg-purple-50 text-purple-700 border-purple-200',
-        sourceDesc: 'Data otomatis dari menu Sarana & Prasarana.',
+        sourceDesc: 'Data otomatis dari menu Sarpras.',
         manageRoute: '/admin/sarpras',
         manageLabel: 'Kelola Sarpras',
       };
     case 'document_list':
       return {
         type: 'dynamic',
-        badge: 'Dari Menu: Dokumen & SK',
+        badge: 'Dari Menu: Dokumen',
         badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
-        sourceDesc: 'Data otomatis dari menu Dokumen & SK.',
+        sourceDesc: 'Data otomatis dari menu Dokumen.',
         manageRoute: '/admin/dokumen',
         manageLabel: 'Kelola Dokumen',
       };
     case 'gallery_grid':
       return {
         type: 'dynamic',
-        badge: 'Dari Menu: Galeri Kegiatan',
+        badge: 'Dari Menu: Galeri',
         badgeClass: 'bg-teal-50 text-teal-700 border-teal-200',
-        sourceDesc: 'Data otomatis dari menu Galeri Kegiatan.',
+        sourceDesc: 'Data otomatis dari menu Galeri.',
         manageRoute: '/admin/galeri',
         manageLabel: 'Kelola Galeri',
       };
     case 'contact_information':
       return {
         type: 'dynamic',
-        badge: 'Dari Menu: Kontak & Pesan',
+        badge: 'Dari Menu: Kontak',
         badgeClass: 'bg-slate-100 text-slate-700 border-slate-300',
-        sourceDesc: 'Data otomatis dari menu Kontak & Pesan.',
+        sourceDesc: 'Data otomatis dari menu Kontak.',
         manageRoute: '/admin/kontak',
         manageLabel: 'Pengaturan Kontak',
       };
@@ -150,17 +150,21 @@ function getWidgetOriginMeta(widgetCode: string): {
       };
     case 'about_prodi':
       return {
-        type: 'custom',
-        badge: 'Editor Konten',
+        type: 'dynamic',
+        badge: 'Dari Menu: Profil Program Studi',
         badgeClass: 'bg-sky-50 text-sky-700 border-sky-200',
-        sourceDesc: 'Teks narasi profil & foto diatur langsung di Page Builder.',
+        sourceDesc: 'Uraian & gambar otomatis dari halaman Profil Program Studi.',
+        manageRoute: '/admin/konten/profil',
+        manageLabel: 'Kelola Profil',
       };
     case 'vision_mission':
       return {
-        type: 'custom',
-        badge: 'Editor Konten',
+        type: 'dynamic',
+        badge: 'Dari Menu: Visi & Misi Program Studi',
         badgeClass: 'bg-violet-50 text-violet-700 border-violet-200',
-        sourceDesc: 'Visi & butir misi diatur langsung di Page Builder.',
+        sourceDesc: 'Visi & butir misi otomatis dari halaman Visi & Misi Program Studi.',
+        manageRoute: '/admin/konten/visi-misi',
+        manageLabel: 'Kelola Visi & Misi',
       };
     case 'statistics':
       return {
@@ -207,6 +211,7 @@ export const AdminBuilder: React.FC = () => {
   const queryClient = useQueryClient();
   const toast = useToast();
   const { has } = usePermission();
+  const { tenant } = useTenant();
 
   const [selectedPageId, setSelectedPageId] = useState<number | null>(null);
   const [sectionFormOpen, setSectionFormOpen] = useState(false);
@@ -805,7 +810,28 @@ export const AdminBuilder: React.FC = () => {
       ) : pagesQuery.isError ? (
         <ErrorState message={toApiError(pagesQuery.error).message} onRetry={() => void pagesQuery.refetch()} />
       ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[340px_1fr]">
+        <div className="space-y-4">
+          {tenant ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] border border-blue-200 bg-blue-50/60 px-4 py-2.5">
+              <p className="text-xs font-semibold text-blue-900">
+                Cakupan aktif:{' '}
+                <span className="font-bold">{tenant.name}</span>
+                <span className="ml-1.5 rounded bg-white px-1.5 py-0.5 font-mono text-[10px] font-bold text-blue-800">
+                  {tenant.code}
+                </span>
+                <span className="ml-1.5 font-normal text-blue-800">— {tenant.facultyName}</span>
+              </p>
+              <a
+                href={tenant.domain ? `http://${tenant.domain}:5180/` : 'http://localhost:5180/'}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] font-bold text-blue-900 underline hover:text-blue-950"
+              >
+                Lihat Website Prodi &rarr;
+              </a>
+            </div>
+          ) : null}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[340px_1fr]">
           <aside className="rounded-[14px] border border-[#CBD5E1] bg-white p-4 shadow-2xs">
             <div className="mb-2.5 flex items-center justify-between">
               <div>
@@ -1444,6 +1470,7 @@ export const AdminBuilder: React.FC = () => {
             )}
           </div>
         </div>
+      </div>
       )}
 
       <FormModal

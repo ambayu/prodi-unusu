@@ -11,6 +11,9 @@ import { toApiError } from '../../services/api';
 import { useToast } from '../ui/Toast';
 import { RichTextEditor } from '../ui/RichTextEditor';
 
+/** Format berkas gambar yang diterima seluruh unggahan gambar di panel admin. */
+const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
+
 interface WidgetVisualFormProps {
   widgetCode: string;
   config: Record<string, any>;
@@ -113,7 +116,7 @@ export const WidgetVisualForm: React.FC<WidgetVisualFormProps> = ({
                 <span>{uploadingField === 'about-img' ? 'Mengunggah...' : 'Pilih & Unggah Berkas'}</span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   disabled={uploadingField === 'about-img'}
                   className="hidden"
                   onChange={(e) => {
@@ -243,7 +246,7 @@ export const WidgetVisualForm: React.FC<WidgetVisualFormProps> = ({
                           <span>{uploadingField === `slide-${index}` ? 'Mengunggah...' : 'Pilih Gambar'}</span>
                           <input
                             type="file"
-                            accept="image/*"
+                            accept={IMAGE_ACCEPT}
                             disabled={uploadingField === `slide-${index}`}
                             className="hidden"
                             onChange={(e) => {
@@ -543,7 +546,7 @@ export const WidgetVisualForm: React.FC<WidgetVisualFormProps> = ({
                 <span>{uploadingField === 'cta-bg' ? 'Mengunggah...' : 'Unggah Gambar Latar'}</span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   disabled={uploadingField === 'cta-bg'}
                   className="hidden"
                   onChange={(e) => {

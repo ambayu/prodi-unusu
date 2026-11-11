@@ -20,12 +20,35 @@ interface SiteState {
   userLoading: boolean;
   activeTenantId: number | null;
 
+  /**
+   * `true` bila panel admin sedang berada pada **scope Portal Utama**
+   * (website universitas), bukan pada scope satu program studi.
+   *
+   * Portal Utama bukan program studi, sehingga tidak punya tenant. Status ini
+   * disimpan terpisah — dan dipersistensi ke `sessionStorage` — supaya pilihan
+   * scope bertahan saat halaman dimuat ulang, misalnya ketika menyimpan
+   * pengaturan tema atau mengganti prodi lewat `setActiveTenant`.
+   */
+  portalScope: boolean;
+
   bootstrap: () => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
   setActiveTenant: (tenantId: number) => Promise<void>;
+  /** Berpindah ke scope Portal Utama tanpa reload halaman. */
+  enterPortalScope: () => void;
+  /** Berpindah dari Portal Utama ke scope program studi tertentu. */
+  enterProdiScope: (tenantId: number) => Promise<void>;
   hasPermission: (permission: string) => boolean;
   canAny: (permissions: string[]) => boolean;
+}
+
+/** Kunci `sessionStorage` penanda scope portal. Lihat `portalScope`. */
+const PORTAL_SCOPE_KEY = 'portal_scope_active';
+
+function readPortalScope(): boolean {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem(PORTAL_SCOPE_KEY) === '1';
 }
 
 export const useSiteStore = create<SiteState>((set, get) => ({
@@ -38,6 +61,7 @@ export const useSiteStore = create<SiteState>((set, get) => ({
   user: null,
   userLoading: true,
   activeTenantId: null,
+  portalScope: readPortalScope(),
 
   /** Memuat konteks situs dan sesi sekali saat aplikasi dibuka. */
   bootstrap: async () => {
@@ -88,19 +112,55 @@ export const useSiteStore = create<SiteState>((set, get) => ({
     try {
       await api.post('/auth/logout');
     } finally {
-      set({ user: null, activeTenantId: null });
+      sessionStorage.removeItem(PORTAL_SCOPE_KEY);
+      set({ user: null, activeTenantId: null, portalScope: false });
     }
   },
 
-  /** Mengganti tenant aktif untuk Super Admin yang mengelola banyak prodi. */
+  /**
+   * Mengganti tenant aktif untuk Super Admin yang mengelola banyak prodi.
+   *
+   * Memilih prodi otomatis keluar dari scope portal, karena sidebar harus
+   * berganti ke menu konten program studi.
+   */
   setActiveTenant: async (tenantId: number) => {
     sessionStorage.setItem('active_tenant_id', String(tenantId));
+    sessionStorage.removeItem(PORTAL_SCOPE_KEY);
     const res = await api.get<{ activeTenantId: number }>('/admin/access-context', {
       params: { tenantId },
     });
-    set({ activeTenantId: res.data.activeTenantId });
+    set({ activeTenantId: res.data.activeTenantId, portalScope: false });
     // Reload halaman atau trigger invalidasi data global agar seluruh modul membaca tenant baru
     window.location.reload();
+  },
+
+  /**
+   * Berpindah ke scope Portal Utama.
+   *
+   * Tidak menyentuh `activeTenantId` di server: portal bukan program studi.
+   * Yang berubah hanya tampilan panel admin (katalog menu portal). Pindah ke
+   * scope ini juga membuang cache menu agar sidebar tidak memakai menu prodi.
+   */
+  enterPortalScope: () => {
+    sessionStorage.setItem(PORTAL_SCOPE_KEY, '1');
+    set({ portalScope: true });
+  },
+
+  /**
+   * Berpindah dari Portal Utama ke satu program studi ("Kelola konten").
+   *
+   * Berbeda dengan `setActiveTenant`, fungsi ini TIDAK memuat ulang halaman:
+   * pengguna dibawa langsung ke dashboard prodi, lalu seluruh query React
+   * Query yang ber-key `['admin', ...]` akan di-refetch karena `activeTenantId`
+   * berubah.
+   */
+  enterProdiScope: async (tenantId: number) => {
+    sessionStorage.setItem('active_tenant_id', String(tenantId));
+    sessionStorage.removeItem(PORTAL_SCOPE_KEY);
+    const res = await api.get<{ activeTenantId: number }>('/admin/access-context', {
+      params: { tenantId },
+    });
+    set({ activeTenantId: res.data.activeTenantId, portalScope: false });
   },
 
   hasPermission: (permission: string) => {

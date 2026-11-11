@@ -1,6 +1,15 @@
 ﻿import React, { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, PencilSquareIcon, TrashIcon, ArrowUpTrayIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import {
+  PlusIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  ArrowUpTrayIcon,
+  ArrowDownTrayIcon,
+  DocumentArrowUpIcon,
+  DocumentIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -73,6 +82,12 @@ export const AdminDocuments: React.FC = () => {
 
   /** Mengunggah berkas lalu mengisi otomatis URL dan ukurannya di formulir. */
   const handleUpload = async (file: File) => {
+    const allowed = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+    const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowed.includes(extension)) {
+      toast.error('Pilih berkas PDF, DOC, DOCX, XLS, atau XLSX.');
+      return;
+    }
     setUploading(true);
     try {
       const res = await mediaApi.upload(file);
@@ -216,6 +231,12 @@ export const AdminDocuments: React.FC = () => {
         onClose={() => setFormOpen(false)}
         onSubmit={(event) => {
           event.preventDefault();
+          // Sebelumnya berkas boleh diketik manual sebagai URL; kini wajib
+          // diunggah agar tautan unduhan tidak menunjuk berkas yang tidak ada.
+          if (!draft.fileUrl) {
+            toast.error('Unggah berkas dokumen terlebih dahulu.');
+            return;
+          }
           saveMutation.mutate(draft);
         }}
       >
@@ -268,35 +289,59 @@ export const AdminDocuments: React.FC = () => {
           </Field>
         </div>
 
-        <Field label="Berkas dokumen" htmlFor="document-file" hint="Format PDF, DOC, DOCX, XLS, atau XLSX. Maksimal 10 MB.">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <input
-              id="document-file"
-              className="field-input flex-1"
-              placeholder="/uploads/media/nama-berkas.pdf"
-              value={draft.fileUrl ?? ''}
-              onChange={(event) => setDraft({ ...draft, fileUrl: event.target.value })}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="btn-secondary shrink-0"
-            >
-              <ArrowUpTrayIcon className="h-4 w-4" />
-              {uploading ? 'Mengunggah...' : 'Pilih Berkas'}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="sr-only"
-              accept=".pdf,.doc,.docx,.xls,.xlsx"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void handleUpload(file);
-                event.target.value = '';
-              }}
-            />
+        <Field
+          label="Berkas dokumen"
+          htmlFor="document-file"
+          hint="Format PDF, DOC, DOCX, XLS, atau XLSX. Maksimal 10 MB. Tautan unduhan terisi otomatis setelah berkas diunggah."
+        >
+          <div className="space-y-2">
+            {draft.fileUrl ? (
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2">
+                <DocumentIcon className="h-5 w-5 shrink-0 text-[#1e3a8a]" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-mono text-[11px] font-semibold text-slate-700">
+                    {draft.fileUrl.split('/').pop()}
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    {draft.mimeType ? `${draft.mimeType} · ` : ''}
+                    {draft.fileSize ? `${Math.round(draft.fileSize / 1024)} KB` : 'Ukuran belum terdeteksi'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDraft({ ...draft, fileUrl: '', fileSize: null, mimeType: null })}
+                  title="Hapus berkas"
+                  className="rounded p-1 text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-800"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/70 px-3 py-4 text-slate-500">
+                <DocumentArrowUpIcon className="h-5 w-5 shrink-0 text-slate-400" />
+                <span className="text-[11px] font-medium">
+                  Belum ada berkas. Unggah berkas dokumen dari perangkat Anda.
+                </span>
+              </div>
+            )}
+
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50">
+              <ArrowUpTrayIcon className="h-4 w-4 text-[#1e3a8a]" />
+              <span>{uploading ? 'Mengunggah...' : draft.fileUrl ? 'Ganti Berkas' : 'Unggah Berkas'}</span>
+              <input
+                ref={fileInputRef}
+                id="document-file"
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx"
+                disabled={uploading}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void handleUpload(file);
+                  event.target.value = '';
+                }}
+              />
+            </label>
           </div>
         </Field>
 

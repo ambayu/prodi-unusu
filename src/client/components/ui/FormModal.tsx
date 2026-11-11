@@ -32,12 +32,26 @@ export const FormModal: React.FC<FormModalProps> = ({
   wide = false,
 }) => {
   const firstFieldRef = useRef<HTMLDivElement>(null);
+  /** Mencegah efek fokus/escape dipasang ulang setiap render (lihat deps di bawah). */
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
 
+  /**
+   * Efek ini HANYA bergantung pada `open`.
+   *
+   * Sebelumnya deps-nya `[open, busy, onClose]`. Karena `onClose` dan `busy`
+   * berubah setiap kali formulir diketik (state induk berubah) dan `onClose`
+   * sering ditulis sebagai arrow function baru, efek ikut berjalan ulang dan
+   * memanggil `input.focus()`. Akibatnya kursor melompat ke field pertama di
+   * tengah pengetikan — inilah keluhan "input lompat-lompat".
+   */
   useEffect(() => {
     if (!open) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !busy) onClose();
+      if (event.key === 'Escape' && !busyRef.current) onCloseRef.current();
     };
     document.addEventListener('keydown', onKeyDown);
 
@@ -45,7 +59,7 @@ export const FormModal: React.FC<FormModalProps> = ({
     input?.focus();
 
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, busy, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

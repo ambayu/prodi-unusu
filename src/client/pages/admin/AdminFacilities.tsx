@@ -11,6 +11,9 @@ import { facilityApi, type Facility } from '../../services/contentApi';
 import { mediaApi } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 
+/** Format berkas gambar yang diterima seluruh unggahan gambar di panel admin. */
+const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
+
 const EMPTY: Partial<Facility> = {
   name: '',
   category: 'Laboratorium',
@@ -308,7 +311,7 @@ export const AdminFacilities: React.FC = () => {
                 <span>{uploadingImage ? 'Mengunggah...' : draft.imageUrl ? 'Ganti Foto' : 'Unggah Foto Fasilitas'}</span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   disabled={uploadingImage}
                   className="hidden"
                   onChange={(e) => {

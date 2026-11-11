@@ -468,22 +468,31 @@ router.get(
 /**
  * GET /api/v1/public/hero-slides
  *
- * Hero slider program studi untuk beranda portal. Membaca widget `hero_slider`
- * milik tenant aktif (ditentukan dari hostname lewat `requireTenant`), sehingga
- * banner yang tampil selalu sesuai prodi yang sedang dibuka.
+ * Hero slider untuk beranda.
  *
- * Mengembalikan array kosong bila prodi belum mengatur slide; pemanggil
- * bertanggung jawab menyiapkan tampilan cadangan.
+ * - Bila hostname adalah website prodi, yang dibaca adalah widget `hero_slider`
+ *   milik prodi tersebut, sehingga banner selalu sesuai prodi yang dibuka.
+ * - Bila hostname adalah portal pusat / website utama (tidak ada tenant), yang
+ *   dibaca adalah banner Portal Pusat: widget `hero_slider` pada halaman sistem
+ *   `__portal_hero__`. Banner itu diatur melalui
+ *   `/admin/portal/hero-slides?scope=portal`.
+ *
+ * Mengembalikan array kosong bila belum ada slide; pemanggil bertanggung jawab
+ * menyiapkan tampilan cadangan.
  */
 router.get(
   '/hero-slides',
-  requireTenant,
   asyncHandler(async (req, res) => {
     const widget = await prisma.sectionWidget.findFirst({
-      where: {
-        widget: { code: 'hero_slider' },
-        pageSection: { page: { studyProgramId: req.tenant!.id } },
-      },
+      where: req.tenant
+        ? {
+            widget: { code: 'hero_slider' },
+            pageSection: { page: { studyProgramId: req.tenant.id } },
+          }
+        : {
+            widget: { code: 'hero_slider' },
+            pageSection: { page: { studyProgramId: null, slug: '__portal_hero__' } },
+          },
       orderBy: { id: 'asc' },
       select: { configJson: true },
     });
@@ -508,7 +517,12 @@ router.get(
       }
     }
 
-    res.json({ success: true, studyProgramId: req.tenant!.id, slides });
+    res.json({
+      success: true,
+      scope: req.tenant ? 'prodi' : 'portal',
+      studyProgramId: req.tenant?.id ?? null,
+      slides,
+    });
   }),
 );
 
