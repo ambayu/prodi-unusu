@@ -143,10 +143,20 @@ export const settingsApi = {
   updateTheme: (data: Partial<Theme>) => api.put<{ theme: Theme }>('/admin/settings/theme', data),
 
   menus: () => api.get<{ menus: MenuItem[] }>('/admin/menus'),
-  createMenu: (data: Partial<MenuItem>) => api.post('/admin/menus', data),
+  createMenu: (data: Partial<MenuItem> & { isGroup?: boolean }) => api.post('/admin/menus', data),
   updateMenu: (id: number, data: Partial<MenuItem>) => api.put(`/admin/menus/${id}`, data),
   deleteMenu: (id: number) => api.delete(`/admin/menus/${id}`),
-  reorderMenus: (items: Array<{ id: number; sortOrder: number }>) => api.put('/admin/menus/reorder', { items }),
+  /** Menautkan halaman Builder yang belum punya entri navigasi ke tabel menus. */
+  attachPageToMenu: (data: { slug: string; parentId?: number | null; title?: string; sortOrder?: number }) =>
+    api.post('/admin/menus/attach-page', data),
+  /**
+   * Menyimpan urutan menu.
+   *
+   * `parentId` ikut dikirim bila admin memindahkan item antar grup; nilai
+   * `null` berarti item dikeluarkan dari grupnya menjadi menu tingkat atas.
+   */
+  reorderMenus: (items: Array<{ id: number; sortOrder: number; parentId?: number | null }>) =>
+    api.put('/admin/menus/reorder', { items }),
 };
 
 // ---------------------------------------------------------

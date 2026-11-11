@@ -19,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useTenant } from '../../../hooks/useSite';
 import { api } from '../../../services/api';
+import { buildNavbarTree } from '../../../../shared/utils/navbarTree';
 
 export interface PublicMenu {
   id: number;
@@ -107,140 +108,37 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
     setOpenDropdown(null);
   }, [location.pathname]);
 
-  // Mengelompokkan menu agar ringkas & dinamis (Mendukung Dropdown Hirarki Database & Fallback Cerdas)
+  /**
+   * Struktur navbar disusun oleh fungsi bersama `buildNavbarTree`.
+   *
+   * Fungsi yang sama dipakai Page Builder, sehingga urutan dan hierarki yang
+   * dilihat admin identik dengan yang tampil di navbar pengunjung. Grup datang
+   * dari `parentId` pada tabel menus; pengelompokan bawaan hanya dipakai bila
+   * database masih datar.
+   */
   const groupedNavItems: NavItem[] = React.useMemo(() => {
-    const apiMenus = menusQuery.data ?? [];
-    if (apiMenus.length === 0) return [];
+    const pohon = buildNavbarTree(menusQuery.data ?? []);
 
-    // Jika database sudah memiliki struktur anak (children) dari menu parent
-    const hasDbChildren = apiMenus.some((m) => m.children && m.children.length > 0);
-
-    if (hasDbChildren) {
-      return apiMenus
-        .slice()
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((parent) => ({
-          label: parent.title,
-          path: parent.url,
-          icon: ICON_BY_PATH[parent.url] ?? DocumentCheckIcon,
-          children:
-            parent.children && parent.children.length > 0
-              ? parent.children
-                  .slice()
-                  .sort((a, b) => a.sortOrder - b.sortOrder)
-                  .map((child) => ({
-                    label: child.title,
-                    path: child.url,
-                    icon: ICON_BY_PATH[child.url] ?? DocumentCheckIcon,
-                  }))
-              : undefined,
-        }));
-    }
-
-    // Fallback cerdas: grup standar 10 menu universitas
-    const homeItem = rawLinks.find((l) => l.path === '/');
-    const profilItems = rawLinks.filter((l) => l.path === '/profil' || l.path === '/visi-misi');
-    const akademikItems = rawLinks.filter(
-      (l) => l.path === '/kurikulum' || l.path === '/dosen' || l.path === '/sarana-prasarana'
+    /**
+     * Kontak & Lokasi diwakili tombol "Hubungi Prodi" di sisi kanan navbar agar
+     * tidak tampil dua kali. Bila admin memasukkannya ke dalam grup, item tetap
+     * ditampilkan karena sudah menjadi bagian dropdown.
+     */
+    const tanpaKontakGanda = pohon.filter(
+      (node) => !(node.path === '/kontak' && !node.children?.length),
     );
-    const publikasiItems = rawLinks.filter(
-      (l) => l.path === '/berita' || l.path === '/galeri' || l.path === '/dokumen'
-    );
-    const kontakItem = rawLinks.find((l) => l.path === '/kontak');
 
-    // Masukkan halaman terbitan kustom dari Page Builder yang bukan beranda dan bukan rute modul standar
-    const standardPageSlugs = new Set([
-      'beranda',
-      'profil',
-      'visi-misi',
-      'kurikulum',
-      'dokumen',
-      'dosen',
-      'sarana-prasarana',
-      'sarpras',
-      'berita',
-      'galeri',
-      'kontak',
-    ]);
-
-    const customPages = (publishedPagesQuery.data ?? [])
-      .filter((p) => !standardPageSlugs.has(p.slug))
-      .map((p) => ({
-        label: p.title,
-        path: `/halaman/${p.slug}`,
-        icon: DocumentCheckIcon,
-      }));
-
-    // Item lain yang tidak masuk grup standar
-    const standardPaths = new Set([
-      '/',
-      '/profil',
-      '/visi-misi',
-      '/kurikulum',
-      '/dosen',
-      '/sarana-prasarana',
-      '/berita',
-      '/galeri',
-      '/dokumen',
-      '/kontak',
-    ]);
-    const extraItems = [...rawLinks.filter((l) => !standardPaths.has(l.path)), ...customPages];
-
-    const result: NavItem[] = [];
-
-    if (homeItem) {
-      result.push(homeItem);
-    }
-
-    if (profilItems.length > 0) {
-      result.push({
-        label: 'Profil',
-        path: '/profil',
-        icon: AcademicCapIcon,
-        children: profilItems,
-      });
-    }
-
-    if (akademikItems.length > 0) {
-      result.push({
-        label: 'Akademik',
-        path: '/kurikulum',
-        icon: BookOpenIcon,
-        children: akademikItems,
-      });
-    }
-
-    if (publikasiItems.length > 0) {
-      result.push({
-        label: 'Informasi',
-        path: '/berita',
-        icon: NewspaperIcon,
-        children: publikasiItems,
-      });
-    }
-
-    // Kelompokkan halaman kustom & tautan tambahan ke dalam dropdown "Lainnya" jika ada lebih dari 1
-    if (extraItems.length > 1) {
-      result.push({
-        label: 'Lainnya',
-        path: extraItems[0].path,
-        icon: DocumentCheckIcon,
-        children: extraItems,
-      });
-    } else {
-      // Sisipkan langsung jika hanya 1
-      extraItems.forEach((extra) => result.push(extra));
-    }
-
-    // Catatan: Menu Kontak fisik di deretan tengah dihilangkan karena sudah diwakili
-    // oleh tombol CTA primer "Hubungi Prodi" di sisi kanan navbar agar tidak redundan.
-    if (kontakItem && !extraItems.some((e) => e.path === '/kontak')) {
-      // Masukkan ke mobile drawer via groupedNavItems jika belum ada
-      // Di desktop akan dihandle langsung oleh tombol CTA
-    }
-
-    return result;
-  }, [rawLinks, menusQuery.data, publishedPagesQuery.data]);
+    return tanpaKontakGanda.map((node) => ({
+      label: node.label,
+      path: node.path,
+      icon: ICON_BY_PATH[node.path] ?? DocumentCheckIcon,
+      children: node.children?.map((anak) => ({
+        label: anak.label,
+        path: anak.path,
+        icon: ICON_BY_PATH[anak.path] ?? DocumentCheckIcon,
+      })),
+    }));
+  }, [menusQuery.data]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white font-sans text-slate-900">

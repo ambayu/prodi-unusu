@@ -30,6 +30,34 @@ import { usePermission, useTenant } from '../../hooks/useSite';
 import { builderApi, settingsApi, type BuilderPage, type BuilderSection, type BuilderWidgetInstance, type MenuItem } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 import { WidgetVisualForm } from '../../components/builder/WidgetVisualForm';
+import {
+  buildNavbarTree,
+  findOrphanPages,
+  flattenMenus,
+  pageUrl,
+  type NavbarMenuRow,
+  type NavbarNode,
+} from '../../../shared/utils/navbarTree';
+
+/**
+ * Satu baris sidebar Page Builder.
+ *
+ * Sidebar kini dibangun dari tabel `menus`, bukan dari daftar halaman, karena
+ * navbar pengunjung juga dibaca dari tabel itu. Dengan begitu urutan dan grup
+ * yang diatur di sini benar-benar sama dengan yang tampil di landing page.
+ */
+interface NavbarSidebarEntry {
+  /** Etiket stabil untuk React; menu grup memakai id negatif turunan slug. */
+  key: string;
+  /** Id menu di tabel menus; `null` untuk grup sementara (database masih datar). */
+  menuId: number | null;
+  title: string;
+  url: string;
+  isGroup: boolean;
+  /** Halaman Builder yang cocok dengan URL menu, bila ada. */
+  page: BuilderPage | null;
+  children: NavbarSidebarEntry[];
+}
 
 /** Membaca konfigurasi widget dari JSON tersimpan. */
 function parseConfig(raw: string): Record<string, unknown> {
@@ -264,16 +292,25 @@ export const AdminBuilder: React.FC = () => {
   const [draggedPageId, setDraggedPageId] = useState<number | null>(null);
   const [isReorderingMenu, setIsReorderingMenu] = useState(false);
 
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    tentang: true,
-    akademik: true,
-    informasi: true,
-    kustom: true,
-  });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const toggleGroup = (groupKey: string) => {
     setOpenGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
   };
+
+  /**
+   * Grup yang sedang menganggur karena database masih datar.
+   *
+   * Selama admin belum menyentuh grup, navbar publik mengelompokkan menu memakai
+   * definisi bawaan tanpa menyimpan `parentId`. Begitu admin mengganti nama grup
+   * atau memindahkan item, struktur itu perlu "dibekukan" menjadi baris menus
+   * sungguhan. Peta ini mengingat id baris hasil pembekuan untuk tiap grup.
+   */
+  const [pendingGroupMenus, setPendingGroupMenus] = useState<Record<string, number>>({});
+  /** Target dialog ganti nama grup: grup yang belum ada di database. */
+  const [pendingGroupEdit, setPendingGroupEdit] = useState<{ key: string; title: string } | null>(null);
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
+  const [newGroupTitle, setNewGroupTitle] = useState('');
 
   const pagesQuery = useQuery({
     queryKey: ['admin', 'pages'],
@@ -472,79 +509,118 @@ export const AdminBuilder: React.FC = () => {
     onError: (error) => toast.error(toApiError(error).message),
   });
 
+  /**
+   * Membuat halaman baru beserta entri navigasinya.
+   *
+   * Tiga hal yang dijaga di sini:
+   *   1. URL menu memakai bentuk yang sama dengan yang dibaca navbar (`/<slug>`),
+   *      bukan `/halaman/<slug>`. Sebelumnya keduanya berbeda sehingga item baru
+   *      tidak pernah tersorot sebagai halaman aktif.
+   *   2. Menambah item ke grup tujuan mengisi `parentId`, sehingga item langsung
+   *      berada di dropdown yang dipilih admin.
+   *   3. Bila grup tujuan belum ada di database (navbar masih datar), grup itu
+   *      dibekukan lebih dahulu agar item punya induk yang sah.
+   */
   const createNavbarMutation = useMutation({
     mutationFn: async () => {
-      if (navbarType === 'dropdown') {
-        // 1. Buat Menu Parent di Database Menu Navigasi
-        const parentMenuRes = await settingsApi.createMenu({
-          title: navbarDraft.title,
-          url: `/halaman/${navbarDraft.slug}`,
-          target: '_self',
-          sortOrder: 40,
-          isActive: true,
-        });
-        const parentMenuId = (parentMenuRes as any)?.data?.menu?.id;
-
-        // 2. Buat Halaman Utama Dropdown di Builder
-        const parentPageRes = await builderApi.createPage({
-          title: navbarDraft.title,
-          slug: navbarDraft.slug,
-          layout: 'default',
-        });
-
-        // 3. Buat Sub-Navbar jika diisi oleh user
-        for (const item of dropdownItems) {
-          if (item.title && item.slug) {
-            await builderApi.createPage({
-              title: item.title,
-              slug: item.slug,
-              layout: 'default',
-            });
-            if (parentMenuId) {
-              await settingsApi.createMenu({
-                parentId: parentMenuId,
-                title: item.title,
-                url: `/halaman/${item.slug}`,
-                target: '_self',
-                sortOrder: 45,
-                isActive: true,
-              });
-            }
-          }
-        }
-        return parentPageRes;
-      } else {
-        // Buat Menu Tunggal
-        const pageRes = await builderApi.createPage({
-          title: navbarDraft.title,
-          slug: navbarDraft.slug,
-          layout: 'default',
-        });
-        try {
-          await settingsApi.createMenu({
-            title: navbarDraft.title,
-            url: `/halaman/${navbarDraft.slug}`,
-            target: '_self',
-            sortOrder: 50,
-            isActive: true,
-          });
-        } catch {
-          // Abaikan jika duplikat
-        }
-        return pageRes;
+      const judul = navbarDraft.title.trim();
+      const slug = navbarDraft.slug.trim();
+      if (!judul || !slug) {
+        throw new Error('Nama dan slug halaman wajib diisi.');
       }
+
+      // Cari grup tujuan pada pohon navbar saat ini.
+      let grupTujuanId: number | null = null;
+      if (navbarDraft.parentGroup) {
+        const pohon = buildNavbarTree((menusQuery.data ?? []) as NavbarMenuRow[]);
+        const idNyata = new Set(flattenMenus(menusQuery.data ?? []).map((m) => m.id));
+        let indeks = 0;
+        for (const node of pohon) {
+          const kunci = `g${indeks}`;
+          indeks += 1;
+          if (kunci !== navbarDraft.parentGroup) continue;
+
+          const sudahAda = node.id > 0 && idNyata.has(node.id);
+          const idPending = pendingGroupMenus[kunci] ?? null;
+          grupTujuanId = sudahAda ? node.id : idPending;
+
+          if (!grupTujuanId) {
+            // Grup bawaan yang belum tersimpan: bekukan sekarang.
+            const semuaMenu = flattenMenus(menusQuery.data ?? []);
+            const anakPertama = node.children?.[0];
+            const urutan = anakPertama
+              ? semuaMenu.find((m) => m.id === anakPertama.id)?.sortOrder
+              : undefined;
+
+            const grupRes = await settingsApi.createMenu({
+              title: node.label,
+              url: '#',
+              target: '_self',
+              sortOrder: urutan ?? semuaMenu.length + 1,
+              isActive: true,
+              isGroup: true,
+            } as any);
+            grupTujuanId = ((grupRes as any)?.data?.menu?.id as number | undefined) ?? null;
+
+            if (grupTujuanId && node.children?.length) {
+              await Promise.all(
+                node.children.map((anak, index) =>
+                  settingsApi.updateMenu(anak.id, { parentId: grupTujuanId, sortOrder: index + 1 } as any),
+                ),
+              );
+            }
+            setPendingGroupMenus((prev) => ({ ...prev, [kunci]: grupTujuanId ?? 0 }));
+          }
+          break;
+        }
+      }
+
+      const pageRes = await builderApi.createPage({ title: judul, slug, layout: 'default' });
+
+      // Halaman baru selalu masuk sebagai item navbar, sesuai pilihan admin.
+      await settingsApi.createMenu({
+        parentId: grupTujuanId,
+        title: judul,
+        url: pageUrl(slug),
+        target: '_self',
+        sortOrder: 0,
+        isActive: true,
+      } as any);
+
+      if (navbarType === 'dropdown') {
+        for (const item of dropdownItems) {
+          if (!item.title.trim() || !item.slug.trim()) continue;
+          await builderApi.createPage({
+            title: item.title.trim(),
+            slug: item.slug.trim(),
+            layout: 'default',
+          });
+          // Sub-item tidak lagi membuat induk baru; ia masuk grup yang sama.
+          await settingsApi.createMenu({
+            parentId: grupTujuanId,
+            title: item.title.trim(),
+            url: pageUrl(item.slug.trim()),
+            target: '_self',
+            sortOrder: 0,
+            isActive: true,
+          } as any);
+        }
+      }
+
+      return pageRes;
     },
     onSuccess: (res: any) => {
       toast.success(
         navbarType === 'dropdown'
-          ? 'Grup Dropdown Navbar berhasil dibuat.'
-          : 'Item Navbar Tunggal berhasil dibuat.'
+          ? 'Halaman beserta sub-menunya berhasil dibuat.'
+          : 'Halaman dan menu navbar berhasil dibuat.',
       );
       setNavbarFormOpen(false);
       setNavbarDraft({ title: '', slug: '', layout: 'default', parentGroup: '' });
       setDropdownItems([{ title: '', slug: '' }]);
       void queryClient.invalidateQueries({ queryKey: ['admin', 'pages'] });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'menus'] });
+      void queryClient.invalidateQueries({ queryKey: ['public', 'menus'] });
       if (res?.data?.page?.id) {
         setSelectedPageId(res.data.page.id);
       }
@@ -573,12 +649,18 @@ export const AdminBuilder: React.FC = () => {
       const pageToDelete = (pagesQuery.data ?? []).find((p) => p.id === id);
       // Hapus di builder
       const res = await builderApi.deletePage(id);
-      // Hapus juga menu terkait di database menu jika ada
+      // Hapus juga menu terkait di database menu jika ada. Pencarian dilakukan
+      // pada menu tingkat atas maupun anak grup, karena menu yang sudah
+      // dipindahkan ke dalam group tidak lagi berada di daftar teratas.
       if (pageToDelete) {
         try {
-          const allMenus = menusQuery.data ?? [];
-          const matchedMenu = allMenus.find(
-            (m) => m.url === `/${pageToDelete.slug}` || m.url === `/halaman/${pageToDelete.slug}`
+          const urlHalaman = pageUrl(pageToDelete.slug);
+          const semuaMenu = flattenMenus(menusQuery.data ?? []);
+          const matchedMenu = semuaMenu.find(
+            (m) =>
+              m.url === urlHalaman ||
+              m.url === `/${pageToDelete.slug}` ||
+              m.url === `/halaman/${pageToDelete.slug}`,
           );
           if (matchedMenu && !matchedMenu.isRequired) {
             await settingsApi.deleteMenu(matchedMenu.id);
@@ -594,6 +676,7 @@ export const AdminBuilder: React.FC = () => {
       setDeleteNavbarTarget(null);
       void queryClient.invalidateQueries({ queryKey: ['admin', 'pages'] });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'menus'] });
+      void queryClient.invalidateQueries({ queryKey: ['public', 'menus'] });
       const remaining = (pagesQuery.data ?? []).filter((p) => p.id !== deleteNavbarTarget?.id);
       if (remaining.length > 0) {
         setSelectedPageId(remaining[0].id);
@@ -601,6 +684,259 @@ export const AdminBuilder: React.FC = () => {
     },
     onError: (error) => toast.error(toApiError(error).message),
   });
+
+  /**
+   * Menautkan halaman Builder yang belum punya entri menu ke tabel menus.
+   *
+   * Ini satu-satunya cara agar halaman seperti "Sejarah & Perkembangan" muncul
+   * di navbar pengunjung: navbar dibaca dari `menus`, bukan dari `pages`.
+   */
+  const attachPageToMenuMutation = useMutation({
+    mutationFn: (data: { slug: string; parentId?: number | null }) => settingsApi.attachPageToMenu(data),
+    onSuccess: () => {
+      toast.success('Halaman berhasil ditambahkan ke navbar.');
+      refreshNavbar();
+    },
+    onError: (error) => {
+      const apiError = toApiError(error);
+      toast.error(firstFieldError(apiError) ?? apiError.message);
+    },
+  });
+
+  /**
+   * Mengubah grup yang masih "menganggur" menjadi baris menus sungguhan.
+   *
+   * Latar belakang: selama `parentId` seluruh menu masih kosong, navbar publik
+   * mengelompokkan menu memakai definisi bawaan tanpa menyimpan apa pun. Grup
+   * seperti itu belum punya id, sehingga tidak bisa diganti nama atau dipindah
+   * isinya. Fungsi ini membuat satu baris induk ber-URL `#`, lalu mengisi
+   * `parentId` seluruh anggotanya sekaligus.
+   *
+   * @param key    Kunci stabil grup pada pohon navbar.
+   * @param node   Simpul grup beserta anggotanya.
+   * @param title  Judul baru bila admin mengganti nama grup.
+   * @returns Id menu induk hasil pembekuan.
+   */
+  const materializeGroup = async (
+    key: string,
+    node: NavbarSidebarEntry,
+    title?: string,
+  ): Promise<number> => {
+    // Grup yang sudah ada di database cukup diperbarui judulnya.
+    if (node.menuId !== null) {
+      if (title && title !== node.title) {
+        await settingsApi.updateMenu(node.menuId, { title });
+      }
+      return node.menuId;
+    }
+
+    const anggota = node.children.filter((anak) => anak.menuId !== null);
+    const semuaMenu = flattenMenus(menusQuery.data ?? []);
+
+    // Grup diletakkan tepat sebelum anggota pertamanya agar tidak melompat posisi.
+    const urutanPertama = anggota.length > 0
+      ? semuaMenu.find((menu) => menu.id === anggota[0].menuId)?.sortOrder
+      : undefined;
+
+    const grupRes = await settingsApi.createMenu({
+      title: title?.trim() || node.title,
+      url: '#',
+      target: '_self',
+      sortOrder: urutanPertama ?? semuaMenu.length + 1,
+      isActive: true,
+      isGroup: true,
+    } as any);
+
+    const grupId = (grupRes as any)?.data?.menu?.id as number | undefined;
+    if (!grupId) {
+      throw new Error('Grup navbar gagal dibuat. Coba lagi.');
+    }
+
+    // Pindahkan seluruh anggota ke bawah grup tanpa mengubah urutannya.
+    await Promise.all(
+      anggota.map((anak, index) =>
+        settingsApi.updateMenu(anak.menuId as number, { parentId: grupId, sortOrder: index + 1 } as any),
+      ),
+    );
+
+    setPendingGroupMenus((prev) => ({ ...prev, [key]: grupId }));
+    return grupId;
+  };
+
+  /** Menyegarkan seluruh tampilan yang bergantung pada struktur navbar. */
+  const refreshNavbar = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'menus'] });
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'pages'] });
+    void queryClient.invalidateQueries({ queryKey: ['public', 'menus'] });
+  };
+
+  /**
+   * Menukar urutan dua menu berdasarkan id menu (bukan id halaman).
+   *
+   * Sidebar kini dibangun dari tabel menus, sehingga baik tombol panah maupun
+   * seret-lepas bekerja pada id menu. Kedua menu harus bersaudara (induk sama);
+   * pemindahan antar grup ditangani `handleMoveToGroup`.
+   */
+  const handleReorderNavbarMenu = async (sourceMenuId: number, targetMenuId: number) => {
+    const datar = flattenMenus(menusQuery.data ?? []);
+    if (datar.length === 0) return;
+
+    const sumber = datar.find((menu) => menu.id === sourceMenuId);
+    const tujuan = datar.find((menu) => menu.id === targetMenuId);
+    if (!sumber || !tujuan) return;
+    if ((sumber.parentId ?? null) !== (tujuan.parentId ?? null)) return;
+
+    const saudara = datar
+      .filter((menu) => (menu.parentId ?? null) === (sumber.parentId ?? null))
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+
+    const dari = saudara.findIndex((menu) => menu.id === sourceMenuId);
+    const ke = saudara.findIndex((menu) => menu.id === targetMenuId);
+    if (dari === -1 || ke === -1 || dari === ke) return;
+
+    const disusun = [...saudara];
+    const [dipindah] = disusun.splice(dari, 1);
+    disusun.splice(ke, 0, dipindah);
+
+    // Seluruh menu dikirim ulang dengan sortOrder unik agar urutan tersimpan
+    // persis seperti yang terlihat, bukan hanya menukar dua nomor yang bisa sama.
+    const urutan = new Map<number, number>();
+    datar
+      .filter((menu) => (menu.parentId ?? null) === null)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+      .forEach((menu, index) => urutan.set(menu.id, (index + 1) * 100));
+
+    disusun.forEach((menu, index) => urutan.set(menu.id, index + 1));
+
+    const payload = datar.map((menu) => ({
+      id: menu.id,
+      sortOrder: urutan.get(menu.id) ?? menu.sortOrder,
+    }));
+
+    setIsReorderingMenu(true);
+    try {
+      await settingsApi.reorderMenus(payload);
+      toast.success(`Urutan "${sumber.title}" berhasil diubah.`);
+      refreshNavbar();
+    } catch (err) {
+      const apiError = toApiError(err);
+      toast.error(firstFieldError(apiError) ?? apiError.message);
+    } finally {
+      setIsReorderingMenu(false);
+    }
+  };
+
+  /** Mengganti nama grup dropdown, sekaligus membekukannya bila belum ada di database. */
+  const handleRenameGroup = async (node: NavbarSidebarEntry, key: string, judulBaru: string) => {
+    const judul = judulBaru.trim();
+    if (!judul) {
+      toast.error('Nama grup tidak boleh kosong.');
+      return;
+    }
+    if (judul === node.title) {
+      setPendingGroupEdit(null);
+      return;
+    }
+
+    setIsReorderingMenu(true);
+    try {
+      if (node.menuId !== null) {
+        await settingsApi.updateMenu(node.menuId, { title: judul });
+      } else {
+        await materializeGroup(key, node, judul);
+      }
+      toast.success(`Grup diubah menjadi "${judul}".`);
+      setPendingGroupEdit(null);
+      refreshNavbar();
+    } catch (err) {
+      const apiError = toApiError(err);
+      toast.error(firstFieldError(apiError) ?? apiError.message);
+    } finally {
+      setIsReorderingMenu(false);
+    }
+  };
+
+  /** Membuat grup dropdown kosong yang nantinya dapat diisi halaman. */
+  const handleCreateGroup = async () => {
+    const judul = newGroupTitle.trim();
+    if (!judul) {
+      toast.error('Nama grup tidak boleh kosong.');
+      return;
+    }
+
+    setIsReorderingMenu(true);
+    try {
+      const semuaMenu = flattenMenus(menusQuery.data ?? []);
+      const urutanTerakhir = semuaMenu.reduce((maks, menu) => Math.max(maks, menu.sortOrder), 0);
+      await settingsApi.createMenu({
+        title: judul,
+        url: '#',
+        target: '_self',
+        sortOrder: urutanTerakhir + 1,
+        isActive: true,
+        isGroup: true,
+      } as any);
+      toast.success(`Grup "${judul}" berhasil dibuat.`);
+      setNewGroupOpen(false);
+      setNewGroupTitle('');
+      refreshNavbar();
+    } catch (err) {
+      const apiError = toApiError(err);
+      toast.error(firstFieldError(apiError) ?? apiError.message);
+    } finally {
+      setIsReorderingMenu(false);
+    }
+  };
+
+  /**
+   * Memindahkan satu item menu ke grup lain.
+   *
+   * `targetKey` adalah kunci grup tujuan; `null` berarti mengeluarkan item dari
+   * grupnya menjadi menu tingkat atas. Bila grup tujuan belum ada di database,
+   * grup tersebut dibekukan lebih dahulu agar item punya induk yang sah.
+   */
+  const handleMoveToGroup = async (
+    item: NavbarSidebarEntry,
+    targetKey: string | null,
+    targetNode: NavbarSidebarEntry | null,
+  ) => {
+    if (item.menuId === null) {
+      toast.error('Item ini belum terdaftar di navigasi. Tambahkan ke menu terlebih dahulu.');
+      return;
+    }
+
+    setIsReorderingMenu(true);
+    try {
+      let targetId: number | null = null;
+      if (targetNode && targetKey) {
+        targetId =
+          targetNode.menuId !== null ? targetNode.menuId : await materializeGroup(targetKey, targetNode);
+      }
+
+      // Item diletakkan di urutan terakhir grup tujuan.
+      const saudara = flattenMenus(menusQuery.data ?? []).filter(
+        (menu) => (menu.parentId ?? null) === targetId && menu.id !== item.menuId,
+      );
+      const urutanTerakhir = saudara.reduce((maks, menu) => Math.max(maks, menu.sortOrder), 0);
+
+      await settingsApi.updateMenu(item.menuId, {
+        parentId: targetId,
+        sortOrder: urutanTerakhir + 1,
+      } as any);
+
+      toast.success(
+        targetNode
+          ? `"${item.title}" dipindahkan ke ${targetNode.title}.`
+          : `"${item.title}" dikeluarkan dari grup.`,
+      );
+      refreshNavbar();
+    } catch (err) {
+      const apiError = toApiError(err);
+      toast.error(firstFieldError(apiError) ?? apiError.message);
+    } finally {
+      setIsReorderingMenu(false);
+    }
+  };
 
   /**
    * Menukar urutan menu navbar (tombol panah maupun drag & drop).
@@ -819,7 +1155,7 @@ export const AdminBuilder: React.FC = () => {
                 <span className="ml-1.5 rounded bg-white px-1.5 py-0.5 font-mono text-[10px] font-bold text-blue-800">
                   {tenant.code}
                 </span>
-                <span className="ml-1.5 font-normal text-blue-800">— {tenant.facultyName}</span>
+                <span className="ml-1.5 font-normal text-blue-800">â€” {tenant.facultyName}</span>
               </p>
               <a
                 href={tenant.domain ? `http://${tenant.domain}:5180/` : 'http://localhost:5180/'}
@@ -857,55 +1193,83 @@ export const AdminBuilder: React.FC = () => {
 
             {(() => {
               const allPages = pagesQuery.data ?? [];
-              const berandaPage = allPages.find((p) => p.slug === 'beranda');
-              const profilPages = allPages.filter((p) => p.slug === 'profil' || p.slug === 'visi-misi');
-              const akademikPages = allPages.filter(
-                (p) => p.slug === 'kurikulum' || p.slug === 'dosen' || p.slug === 'sarana-prasarana' || p.slug === 'sarpras'
-              );
-              const infoPages = allPages.filter(
-                (p) => p.slug === 'berita' || p.slug === 'galeri' || p.slug === 'dokumen'
-              );
-              const kontakPage = allPages.find((p) => p.slug === 'kontak');
+              const rawMenus = menusQuery.data ?? [];
 
-              const standardSlugs = new Set([
-                'beranda',
-                'profil',
-                'visi-misi',
-                'kurikulum',
-                'dosen',
-                'sarana-prasarana',
-                'sarpras',
-                'berita',
-                'galeri',
-                'dokumen',
-                'kontak',
-              ]);
-              const customPages = allPages.filter((p) => !standardSlugs.has(p.slug));
+              /** Halaman Builder yang URL-nya sama dengan menu. */
+              const findPage = (url: string): BuilderPage | null => {
+                if (!url) return null;
+                return (
+                  allPages.find((p) => pageUrl(p.slug) === url) ??
+                  allPages.find((p) => `/halaman/${p.slug}` === url) ??
+                  null
+                );
+              };
 
-              const renderPageItem = (item: BuilderPage, isChild = false, siblingList?: BuilderPage[]) => {
-                const isSelected = item.id === selectedPageId;
-                const isDragging = draggedPageId === item.id;
-                const siblings = siblingList ?? [];
-                const itemIndex = siblings.findIndex((p) => p.id === item.id);
-                const canMoveUp = itemIndex > 0;
-                const canMoveDown = itemIndex !== -1 && itemIndex < siblings.length - 1;
+              /**
+               * Pohon navbar diambil dari fungsi bersama `buildNavbarTree`, fungsi
+               * yang sama yang dipakai landing page. Inilah yang menjamin sidebar
+               * Builder tidak pernah berbeda dari navbar pengunjung.
+               */
+              const pohon: NavbarNode[] = buildNavbarTree(rawMenus as NavbarMenuRow[]);
+
+              /** Id menu yang sudah ada di database, dipakai membedakan grup nyata/sementara. */
+              const idMenuNyata = new Set(flattenMenus(rawMenus as NavbarMenuRow[]).map((m) => m.id));
+
+              const keEntri = (node: NavbarNode, kunci: string): NavbarSidebarEntry => {
+                const idPending = pendingGroupMenus[kunci];
+                const menuId = node.id > 0 && idMenuNyata.has(node.id) ? node.id : idPending ?? null;
+                const anak = (node.children ?? []).map((c, i) => keEntri(c, `${kunci}.${i}`));
+                const halaman = findPage(node.path);
+
+                return {
+                  key: kunci,
+                  menuId,
+                  title: node.label,
+                  url: node.path,
+                  isGroup: Boolean(node.isGroup) || anak.length > 0,
+                  page: halaman,
+                  children: anak,
+                };
+              };
+
+              const entri: NavbarSidebarEntry[] = pohon.map((node, i) => keEntri(node, `g${i}`));
+              /** Semua grup, dipakai sebagai pilihan tujuan pemindahan item. */
+              const semuaGrup = entri.filter((e) => e.isGroup);
+              /** Halaman terbit yang belum punya entri di tabel menus. */
+              const halamanTanpaMenu = findOrphanPages(allPages, rawMenus as NavbarMenuRow[]);
+
+              const renderItem = (item: NavbarSidebarEntry, siblings: NavbarSidebarEntry[], isChild = false) => {
+                const halaman = item.page;
+                const isSelected = halaman !== null && halaman.id === selectedPageId;
+                const isDragging = halaman !== null && halaman.id === draggedPageId;
+                const itemIndex = siblings.findIndex((s) => s.key === item.key);
+                const canMoveUp = item.menuId !== null && itemIndex > 0;
+                const canMoveDown = item.menuId !== null && itemIndex !== -1 && itemIndex < siblings.length - 1;
 
                 return (
                   <div
-                    key={item.id}
-                    draggable
+                    key={item.key}
+                    draggable={item.menuId !== null}
                     onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', String(item.id));
-                      setDraggedPageId(item.id);
+                      if (item.menuId === null) return;
+                      e.dataTransfer.setData('text/plain', String(item.menuId));
+                      if (halaman) setDraggedPageId(halaman.id);
                     }}
                     onDragOver={(e) => {
                       e.preventDefault();
                     }}
                     onDrop={(e) => {
                       e.preventDefault();
-                      const droppedId = Number(e.dataTransfer.getData('text/plain'));
-                      if (droppedId && droppedId !== item.id) {
-                        void handleReorderNavbar(droppedId, item.id);
+                      const droppedMenuId = Number(e.dataTransfer.getData('text/plain'));
+                      if (!droppedMenuId || droppedMenuId === item.menuId) {
+                        setDraggedPageId(null);
+                        return;
+                      }
+                      // Susun ulang hanya bila kedua item sudah ada di database.
+                      const sumber = flattenMenus(rawMenus as NavbarMenuRow[]).find((m) => m.id === droppedMenuId);
+                      const tujuan = item.menuId;
+                      if (sumber && tujuan !== null && (sumber.parentId ?? null) === (siblings[0]?.menuId ?? null)) {
+                        void handleReorderNavbarMenu(droppedMenuId, tujuan);
                       }
                       setDraggedPageId(null);
                     }}
@@ -914,54 +1278,55 @@ export const AdminBuilder: React.FC = () => {
                       isDragging ? 'opacity-40 border-2 border-dashed border-[#1e3a8a]' : ''
                     }`}
                   >
-                    {/* Drag Handle Icon */}
                     <div
-                      className="flex items-center pl-1.5 cursor-grab active:cursor-grabbing text-slate-300 group-hover:text-slate-600 transition-colors"
-                      title="Tahan & seret (drag) untuk mengubah urutan navbar"
+                      className={`flex items-center pl-1.5 text-slate-300 transition-colors ${
+                        item.menuId !== null ? 'cursor-grab active:cursor-grabbing group-hover:text-slate-600' : 'opacity-30'
+                      }`}
+                      title={item.menuId !== null ? 'Seret untuk mengubah urutan' : 'Tambahkan ke menu agar dapat diurutkan'}
                     >
                       <Bars3Icon className="h-3.5 w-3.5" />
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => setSelectedPageId(item.id)}
-                      className={`flex w-full items-center justify-between rounded-lg py-1.5 pr-32 pl-1.5 text-left text-xs font-semibold transition-colors ${
+                      disabled={halaman === null}
+                      onClick={() => halaman && setSelectedPageId(halaman.id)}
+                      title={halaman === null ? 'Belum ada halaman untuk menu ini' : `Buka ${item.title}`}
+                      className={`flex w-full items-center justify-between rounded-lg py-1.5 pr-24 pl-1.5 text-left text-xs font-semibold transition-colors disabled:cursor-default ${
                         isChild ? 'pl-2' : ''
-                      } ${
-                        isSelected
-                          ? 'bg-[#1e3a8a] text-white'
-                          : 'text-slate-700 hover:bg-slate-50'
-                      }`}
+                      } ${isSelected ? 'bg-[#1e3a8a] text-white' : 'text-slate-700 hover:bg-slate-50'}`}
                     >
                       <span className="min-w-0 truncate">{item.title}</span>
-                      <span
-                        className={`shrink-0 ml-2 rounded px-1.5 py-0.5 text-[9px] font-bold ${
-                          item.isPublished
-                            ? isSelected
-                              ? 'bg-white/20 text-white'
-                              : 'bg-emerald-50 text-emerald-700'
-                            : isSelected
-                              ? 'bg-white/20 text-white'
-                              : 'bg-amber-50 text-amber-700'
-                        }`}
-                      >
-                        {item.isPublished ? 'Terbit' : 'Draft'}
-                      </span>
+                      {halaman ? (
+                        <span
+                          className={`shrink-0 ml-2 rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                            halaman.isPublished
+                              ? isSelected
+                                ? 'bg-white/20 text-white'
+                                : 'bg-emerald-50 text-emerald-700'
+                              : isSelected
+                                ? 'bg-white/20 text-white'
+                                : 'bg-amber-50 text-amber-700'
+                          }`}
+                        >
+                          {halaman.isPublished ? 'Terbit' : 'Draft'}
+                        </span>
+                      ) : (
+                        <span className="shrink-0 ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+                          Tanpa halaman
+                        </span>
+                      )}
                     </button>
-                    
-                    {/* Aksi Reorder Panah, Edit Label & Hapus langsung terlihat nyata di setiap baris item navbar */}
-                    <div className="absolute right-1.5 flex items-center gap-0.5 rounded-md bg-white/95 backdrop-blur-xs px-1 py-0.5 shadow-xs border border-slate-200 z-10">
-                      {/* Tombol Geser Atas / Bawah */}
-                      {siblings.length > 1 ? (
+
+                    <div className="absolute right-1.5 flex items-center gap-0.5 rounded-md bg-white/95 px-1 py-0.5 shadow-xs border border-slate-200 z-10">
+                      {siblings.length > 1 && item.menuId !== null ? (
                         <>
                           <button
                             type="button"
                             disabled={!canMoveUp || isReorderingMenu}
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (canMoveUp) {
-                                void handleReorderNavbar(item.id, siblings[itemIndex - 1].id);
-                              }
+                              if (canMoveUp) void handleReorderNavbarMenu(item.menuId!, siblings[itemIndex - 1].menuId!);
                             }}
                             title="Pindah ke atas"
                             className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
@@ -973,8 +1338,8 @@ export const AdminBuilder: React.FC = () => {
                             disabled={!canMoveDown || isReorderingMenu}
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (canMoveDown) {
-                                void handleReorderNavbar(item.id, siblings[itemIndex + 1].id);
+                              if (canMoveDown && siblings[itemIndex + 1].menuId !== null) {
+                                void handleReorderNavbarMenu(item.menuId!, siblings[itemIndex + 1].menuId!);
                               }
                             }}
                             title="Pindah ke bawah"
@@ -985,28 +1350,60 @@ export const AdminBuilder: React.FC = () => {
                         </>
                       ) : null}
 
-                      {has('pages.update') ? (
+                      {/* Pindah antar grup: hanya muncul bila ada grup lain. */}
+                      {item.menuId !== null && semuaGrup.length > 0 ? (
+                        <select
+                          value=""
+                          disabled={isReorderingMenu}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            const value = e.target.value;
+                            if (!value) return;
+                            if (value === '__keluar__') {
+                              void handleMoveToGroup(item, null, null);
+                              return;
+                            }
+                            const grupTujuan = semuaGrup.find((g) => g.key === value) ?? null;
+                            if (grupTujuan) void handleMoveToGroup(item, value, { ...grupTujuan, children: grupTujuan.children });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Pindahkan ke grup lain"
+                          className="max-w-[22px] cursor-pointer appearance-none rounded p-1 text-slate-500 hover:bg-blue-50 hover:text-[#1e3a8a] focus:outline-none"
+                        >
+                          <option value="">Pindahâ€¦</option>
+                          {semuaGrup
+                            .filter((g) => !item.key.startsWith(`${g.key}.`) && item.key !== g.key)
+                            .map((g) => (
+                              <option key={g.key} value={g.key}>
+                                {g.title}
+                              </option>
+                            ))}
+                          <option value="__keluar__">Keluarkan dari grup</option>
+                        </select>
+                      ) : null}
+
+                      {halaman && has('pages.update') ? (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setEditNavbarTarget({ id: item.id, title: item.title, isSystem: item.isSystem });
-                            setEditNavbarTitle(item.title);
+                            setEditNavbarTarget({ id: halaman.id, title: halaman.title, isSystem: halaman.isSystem });
+                            setEditNavbarTitle(halaman.title);
                           }}
-                          title={`Edit label navbar: ${item.title}`}
+                          title={`Ubah judul halaman: ${halaman.title}`}
                           className="rounded p-1 text-slate-500 hover:bg-blue-50 hover:text-[#1e3a8a] transition-colors"
                         >
                           <PencilSquareIcon className="h-3 w-3" />
                         </button>
                       ) : null}
-                      {has('pages.delete') ? (
+                      {halaman && has('pages.delete') ? (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setDeleteNavbarTarget(item);
+                            setDeleteNavbarTarget(halaman);
                           }}
-                          title={`Hapus navbar: ${item.title}`}
+                          title={`Hapus halaman: ${halaman.title}`}
                           className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
                         >
                           <TrashIcon className="h-3 w-3" />
@@ -1017,197 +1414,148 @@ export const AdminBuilder: React.FC = () => {
                 );
               };
 
+              const renderGroup = (group: NavbarSidebarEntry) => (
+                <div key={group.key} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-1.5 space-y-1">
+                  <div className="flex items-center justify-between px-2 py-1">
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.key)}
+                      className="flex flex-1 items-center gap-1.5 text-[11px] font-bold text-slate-700 hover:text-slate-950 text-left"
+                    >
+                      <DocumentCheckIcon className="h-4 w-4 text-slate-500" />
+                      <span>{group.title}</span>
+                      {openGroups[group.key] ? (
+                        <ChevronDownIcon className="h-3.5 w-3.5 text-slate-400 ml-auto mr-1" />
+                      ) : (
+                        <ChevronRightIcon className="h-3.5 w-3.5 text-slate-400 ml-auto mr-1" />
+                      )}
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {has('navigation.update') ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPendingGroupEdit({ key: group.key, title: group.title });
+                          }}
+                          title={`Ganti nama grup: ${group.title}`}
+                          className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-[#1e3a8a] transition-colors"
+                        >
+                          <PencilSquareIcon className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
+                      {has('pages.create') ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNavbarType('single');
+                            setTargetDropdownGroup(group.key);
+                            setNavbarDraft({ title: '', slug: '', layout: 'default', parentGroup: group.key });
+                            setNavbarFormOpen(true);
+                          }}
+                          title={`Tambah halaman ke ${group.title}`}
+                          className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-[#1e3a8a] transition-colors"
+                        >
+                          <PlusIcon className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  {openGroups[group.key] !== false && (
+                    <div className="space-y-0.5 pl-2 border-l border-slate-200 ml-2">
+                      {group.children.length === 0 ? (
+                        <p className="px-2 py-1.5 text-[10px] italic text-slate-400">
+                          Grup masih kosong. Pindahkan halaman ke sini lewat tombol â€œPindahâ€¦â€.
+                        </p>
+                      ) : (
+                        group.children.map((anak) => renderItem(anak, group.children, true))
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+
+              /**
+               * Item tingkat atas yang bukan grup. Menurut aturan navbar, hanya
+               * Beranda dan Kontak yang boleh berada di sini; tautan lain yang
+               * dikeluarkan admin dari grup tetap dihormati.
+               */
+              const itemTingkatAtas = entri.filter((e) => !e.isGroup);
+
               return (
                 <div className="space-y-2">
-                  {/* 1. Beranda */}
-                  {berandaPage && (
-                    <div className="space-y-1">
-                      {renderPageItem(berandaPage)}
-                    </div>
-                  )}
+                  {entri.length === 0 && halamanTanpaMenu.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-center text-[11px] text-slate-500">
+                      Navigasi masih kosong. Tambahkan menu dengan tombol â€œTambahâ€ di atas.
+                    </p>
+                  ) : null}
 
-                  {/* 2. Dropdown: Tentang Prodi */}
-                  {profilPages.length > 0 && (
-                    <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-1.5 space-y-1">
-                      <div className="flex items-center justify-between px-2 py-1">
-                        <button
-                          type="button"
-                          onClick={() => toggleGroup('tentang')}
-                          className="flex flex-1 items-center gap-1.5 text-[11px] font-bold text-slate-700 hover:text-slate-950 text-left"
-                        >
-                          <AcademicCapIcon className="h-4 w-4 text-slate-500" />
-                          <span>Tentang Prodi</span>
-                          {openGroups.tentang ? (
-                            <ChevronDownIcon className="h-3.5 w-3.5 text-slate-400 ml-auto mr-1" />
-                          ) : (
-                            <ChevronRightIcon className="h-3.5 w-3.5 text-slate-400 ml-auto mr-1" />
-                          )}
-                        </button>
-                        <div className="flex items-center gap-1">
-                          {has('pages.create') ? (
+                  {entri.map((node, index) => {
+                    if (node.isGroup) return renderGroup(node);
+                    // Tautan lepas disisipkan sesuai posisinya di pohon navbar.
+                    const tetangga = itemTingkatAtas;
+                    return (
+                      <div key={node.key} className="space-y-1">
+                        {renderItem(node, tetangga)}
+                      </div>
+                    );
+                  })}
+
+                  {has('pages.create') ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewGroupTitle('');
+                        setNewGroupOpen(true);
+                      }}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 py-1.5 text-[11px] font-semibold text-slate-500 hover:border-[#1e3a8a] hover:bg-blue-50/50 hover:text-[#1e3a8a] transition-colors"
+                    >
+                      <PlusIcon className="h-3.5 w-3.5" />
+                      Buat Grup Dropdown Baru
+                    </button>
+                  ) : null}
+
+                  {halamanTanpaMenu.length > 0 ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-2 space-y-1.5">
+                      <p className="flex items-center gap-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                        <InformationCircleIcon className="h-3.5 w-3.5" />
+                        Halaman belum ada di navbar ({halamanTanpaMenu.length})
+                      </p>
+                      <p className="px-1 text-[10px] leading-relaxed text-amber-900/80">
+                        Halaman ini bisa diedit tetapi tidak terlihat pengunjung karena belum punya entri menu.
+                      </p>
+                      {halamanTanpaMenu.map((hal) => {
+                        const halamanBuilder = allPages.find((p) => p.slug === hal.slug);
+                        return (
+                          <div
+                            key={hal.slug}
+                            className="flex items-center justify-between gap-2 rounded-lg bg-white px-2 py-1.5"
+                          >
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setNavbarType('single');
-                                setTargetDropdownGroup('tentang');
-                                setNavbarDraft({ title: '', slug: '', layout: 'default', parentGroup: 'tentang' });
-                                setNavbarFormOpen(true);
-                              }}
-                              title="Tambah Sub-Navbar ke Tentang Prodi"
-                              className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-[#1e3a8a] transition-colors"
+                              onClick={() => halamanBuilder && setSelectedPageId(halamanBuilder.id)}
+                              className="min-w-0 flex-1 truncate text-left text-[11px] font-semibold text-slate-700 hover:text-[#1e3a8a]"
+                              title={hal.title}
                             >
-                              <PlusIcon className="h-3.5 w-3.5" />
+                              {hal.title}
                             </button>
-                          ) : null}
-                        </div>
-                      </div>
-                      {openGroups.tentang && (
-                        <div className="space-y-0.5 pl-2 border-l border-slate-200 ml-2">
-                          {profilPages.map((p) => renderPageItem(p, true, profilPages))}
-                        </div>
-                      )}
+                            {has('navigation.create') ? (
+                              <button
+                                type="button"
+                                disabled={isReorderingMenu}
+                                onClick={() => void attachPageToMenuMutation.mutate({ slug: hal.slug })}
+                                className="shrink-0 rounded bg-[#1e3a8a] px-2 py-0.5 text-[10px] font-bold text-white hover:bg-[#172554] disabled:opacity-50"
+                                title="Buat entri menu agar halaman tampil di navbar"
+                              >
+                                Tambahkan ke menu
+                              </button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
-
-                  {/* 3. Dropdown: Akademik */}
-                  {akademikPages.length > 0 && (
-                    <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-1.5 space-y-1">
-                      <div className="flex items-center justify-between px-2 py-1">
-                        <button
-                          type="button"
-                          onClick={() => toggleGroup('akademik')}
-                          className="flex flex-1 items-center gap-1.5 text-[11px] font-bold text-slate-700 hover:text-slate-950 text-left"
-                        >
-                          <BookOpenIcon className="h-4 w-4 text-slate-500" />
-                          <span>Akademik</span>
-                          {openGroups.akademik ? (
-                            <ChevronDownIcon className="h-3.5 w-3.5 text-slate-400 ml-auto mr-1" />
-                          ) : (
-                            <ChevronRightIcon className="h-3.5 w-3.5 text-slate-400 ml-auto mr-1" />
-                          )}
-                        </button>
-                        <div className="flex items-center gap-1">
-                          {has('pages.create') ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setNavbarType('single');
-                                setTargetDropdownGroup('akademik');
-                                setNavbarDraft({ title: '', slug: '', layout: 'default', parentGroup: 'akademik' });
-                                setNavbarFormOpen(true);
-                              }}
-                              title="Tambah Sub-Navbar ke Akademik"
-                              className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-[#1e3a8a] transition-colors"
-                            >
-                              <PlusIcon className="h-3.5 w-3.5" />
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                      {openGroups.akademik && (
-                        <div className="space-y-0.5 pl-2 border-l border-slate-200 ml-2">
-                          {akademikPages.map((p) => renderPageItem(p, true, akademikPages))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* 4. Dropdown: Informasi & Dokumen */}
-                  {infoPages.length > 0 && (
-                    <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-1.5 space-y-1">
-                      <div className="flex items-center justify-between px-2 py-1">
-                        <button
-                          type="button"
-                          onClick={() => toggleGroup('informasi')}
-                          className="flex flex-1 items-center gap-1.5 text-[11px] font-bold text-slate-700 hover:text-slate-950 text-left"
-                        >
-                          <NewspaperIcon className="h-4 w-4 text-slate-500" />
-                          <span>Informasi & Dokumen</span>
-                          {openGroups.informasi ? (
-                            <ChevronDownIcon className="h-3.5 w-3.5 text-slate-400 ml-auto mr-1" />
-                          ) : (
-                            <ChevronRightIcon className="h-3.5 w-3.5 text-slate-400 ml-auto mr-1" />
-                          )}
-                        </button>
-                        <div className="flex items-center gap-1">
-                          {has('pages.create') ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setNavbarType('single');
-                                setTargetDropdownGroup('informasi');
-                                setNavbarDraft({ title: '', slug: '', layout: 'default', parentGroup: 'informasi' });
-                                setNavbarFormOpen(true);
-                              }}
-                              title="Tambah Sub-Navbar ke Informasi & Dokumen"
-                              className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-[#1e3a8a] transition-colors"
-                            >
-                              <PlusIcon className="h-3.5 w-3.5" />
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                      {openGroups.informasi && (
-                        <div className="space-y-0.5 pl-2 border-l border-slate-200 ml-2">
-                          {infoPages.map((p) => renderPageItem(p, true, infoPages))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* 5. Dropdown / Grup: Halaman Tambahan (Kustom) */}
-                  {customPages.length > 0 && (
-                    <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-1.5 space-y-1">
-                      <div className="flex items-center justify-between px-2 py-1">
-                        <button
-                          type="button"
-                          onClick={() => toggleGroup('kustom')}
-                          className="flex flex-1 items-center gap-1.5 text-[11px] font-bold text-slate-700 hover:text-slate-950 text-left"
-                        >
-                          <DocumentCheckIcon className="h-4 w-4 text-slate-500" />
-                          <span>Halaman Kustom ({customPages.length})</span>
-                          {openGroups.kustom ? (
-                            <ChevronDownIcon className="h-3.5 w-3.5 text-slate-400 ml-auto mr-1" />
-                          ) : (
-                            <ChevronRightIcon className="h-3.5 w-3.5 text-slate-400 ml-auto mr-1" />
-                          )}
-                        </button>
-                        <div className="flex items-center gap-1">
-                          {has('pages.create') ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setNavbarType('single');
-                                setTargetDropdownGroup('kustom');
-                                setNavbarDraft({ title: '', slug: '', layout: 'default', parentGroup: 'kustom' });
-                                setNavbarFormOpen(true);
-                              }}
-                              title="Tambah Sub-Navbar ke Halaman Kustom"
-                              className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-[#1e3a8a] transition-colors"
-                            >
-                              <PlusIcon className="h-3.5 w-3.5" />
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                      {openGroups.kustom && (
-                        <div className="space-y-0.5 pl-2 border-l border-slate-200 ml-2">
-                          {customPages.map((p) => renderPageItem(p, true, customPages))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* 6. Kontak */}
-                  {kontakPage && (
-                    <div className="space-y-1 pt-1">
-                      {renderPageItem(kontakPage)}
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               );
             })()}
@@ -1222,7 +1570,7 @@ export const AdminBuilder: React.FC = () => {
                   <div>
                     <p className="text-sm font-bold text-slate-900">{page.title}</p>
                     <p className="font-mono text-[11px] text-slate-500">
-                      {page.slug === 'beranda' ? '/' : `/${page.slug}`} • {page.sections.length} section
+                      {page.slug === 'beranda' ? '/' : `/${page.slug}`} â€¢ {page.sections.length} section
                     </p>
                   </div>
                   {has('builder.create') ? (
@@ -1366,7 +1714,7 @@ export const AdminBuilder: React.FC = () => {
                                       </div>
                                       {typeof config.title === 'string' && config.title ? (
                                         <p className="text-[11px] font-semibold text-slate-800">
-                                          Judul tampil: “{config.title}”
+                                          Judul tampil: â€œ{config.title}â€
                                         </p>
                                       ) : null}
                                       {(() => {
@@ -1378,13 +1726,13 @@ export const AdminBuilder: React.FC = () => {
                                               : '';
                                         return desc ? (
                                           <p className="line-clamp-2 text-[10px] italic text-slate-500">
-                                            “{desc}”
+                                            â€œ{desc}â€
                                           </p>
                                         ) : null;
                                       })()}
                                       <div className="flex items-center gap-2 text-[10px] text-slate-500 flex-wrap">
                                         <span className="font-medium text-slate-700">{summarize(config)}</span>
-                                        <span>•</span>
+                                        <span>â€¢</span>
                                         <span>{origin.sourceDesc}</span>
                                         {origin.manageRoute && (
                                           <a
@@ -1512,7 +1860,7 @@ export const AdminBuilder: React.FC = () => {
               const prefix = origin.type === 'dynamic' ? 'Konten & Akademik' : 'Kustom / Media';
               return (
                 <option key={widget.code} value={widget.code}>
-                  [{prefix}] — {getWidgetDisplayName(widget.code, widget.name)}
+                  [{prefix}] â€” {getWidgetDisplayName(widget.code, widget.name)}
                 </option>
               );
             })}
@@ -1620,7 +1968,7 @@ export const AdminBuilder: React.FC = () => {
               const prefix = origin.type === 'dynamic' ? 'Konten & Akademik' : 'Kustom / Media';
               return (
                 <option key={widget.code} value={widget.code}>
-                  [{prefix}] — {getWidgetDisplayName(widget.code, widget.name)}
+                  [{prefix}] â€” {getWidgetDisplayName(widget.code, widget.name)}
                 </option>
               );
             })}
@@ -1986,6 +2334,85 @@ export const AdminBuilder: React.FC = () => {
         }}
         onCancel={() => setDeleteNavbarTarget(null)}
       />
+
+      {/* Ganti nama grup dropdown */}
+      <FormModal
+        open={pendingGroupEdit !== null}
+        title="Ganti Nama Grup Navbar"
+        description="Nama ini tampil sebagai judul dropdown pada navbar website prodi."
+        submitLabel="Simpan Nama"
+        busy={isReorderingMenu}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!pendingGroupEdit) return;
+          const kunci = pendingGroupEdit.key;
+          const pohon = buildNavbarTree((menusQuery.data ?? []) as NavbarMenuRow[]);
+          const node = pohon.find((_, index) => `g${index}` === kunci);
+          if (!node) {
+            toast.error('Grup tidak ditemukan. Muat ulang halaman lalu coba lagi.');
+            return;
+          }
+          const entri: NavbarSidebarEntry = {
+            key: kunci,
+            menuId: node.id > 0 ? node.id : null,
+            title: node.label,
+            url: node.path,
+            isGroup: true,
+            page: null,
+            children: (node.children ?? []).map((anak, index) => ({
+              key: `${kunci}.${index}`,
+              menuId: anak.id > 0 ? anak.id : null,
+              title: anak.label,
+              url: anak.path,
+              isGroup: false,
+              page: null,
+              children: [],
+            })),
+          };
+          void handleRenameGroup(entri, kunci, pendingGroupEdit.title);
+        }}
+        onClose={() => setPendingGroupEdit(null)}
+      >
+        <Field label="Nama Grup" htmlFor="nama-grup-navbar" required>
+          <input
+            id="nama-grup-navbar"
+            type="text"
+            value={pendingGroupEdit?.title ?? ''}
+            onChange={(e) =>
+              setPendingGroupEdit((prev) => (prev ? { ...prev, title: e.target.value } : prev))
+            }
+            placeholder="Contoh: Kemahasiswaan & Alumni"
+            className="input"
+            autoFocus
+          />
+        </Field>
+      </FormModal>
+
+      {/* Buat grup dropdown baru */}
+      <FormModal
+        open={newGroupOpen}
+        title="Buat Grup Dropdown"
+        description="Grup baru tampil di navbar sebagai dropdown. Setelah dibuat, pindahkan halaman ke dalamnya lewat tombol “Pindah…”."
+        submitLabel="Buat Grup"
+        busy={isReorderingMenu}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleCreateGroup();
+        }}
+        onClose={() => setNewGroupOpen(false)}
+      >
+        <Field label="Nama Grup" htmlFor="grup-baru-navbar" required>
+          <input
+            id="grup-baru-navbar"
+            type="text"
+            value={newGroupTitle}
+            onChange={(e) => setNewGroupTitle(e.target.value)}
+            placeholder="Contoh: Kemahasiswaan & Alumni"
+            className="input"
+            autoFocus
+          />
+        </Field>
+      </FormModal>
     </AdminLayout>
   );
 };

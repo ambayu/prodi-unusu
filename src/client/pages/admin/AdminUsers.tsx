@@ -204,6 +204,8 @@ export const AdminUsers: React.FC = () => {
               <tr>
                 <th>Nama</th>
                 <th>Peran SSO</th>
+                <th>Peran Aplikasi</th>
+                <th>Cakupan</th>
                 <th>Status</th>
                 <th>Login Terakhir</th>
                 <th className="text-right">Aksi</th>
@@ -222,58 +224,14 @@ export const AdminUsers: React.FC = () => {
 
                 return (
                   <tr key={user.id}>
+                    {/* Kolom 1: identitas akun saja. */}
                     <td>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="font-bold text-slate-900">{user.name}</span>
-
-                        {/*
-                          Peran aplikasi ditempatkan langsung di samping nama agar
-                          admin dapat menilai status akun dalam satu pandangan,
-                          tanpa kolom terpisah yang memanjangkan tabel.
-                        */}
-                        {belumDivalidasi ? (
-                          <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
-                            Menunggu validasi
-                          </span>
-                        ) : (
-                          user.userRoles.map((assignment) => (
-                            <span key={assignment.id} className="inline-flex items-center gap-1">
-                              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-[#1e3a8a]">
-                                {assignment.role.name}
-                              </span>
-                              {assignment.studyProgram ? (
-                                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                                  Cakupan: {assignment.studyProgram.name}
-                                </span>
-                              ) : assignment.faculty ? (
-                                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                                  Cakupan: {assignment.faculty.name}
-                                </span>
-                              ) : (
-                                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                                  Seluruh prodi
-                                </span>
-                              )}
-                              {has('users.assign_role') ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setRevokeTarget({ userId: user.id, assignmentId: assignment.id })}
-                                  className="text-rose-600 hover:text-rose-800"
-                                  aria-label={`Cabut peran ${assignment.role.name} dari ${user.name}`}
-                                >
-                                  <TrashIcon className="h-3 w-3" />
-                                </button>
-                              ) : null}
-                            </span>
-                          ))
-                        )}
-                      </div>
-                      <span className="mt-0.5 block text-[11px] text-slate-500">
-                        {user.username} • {user.email}
-                      </span>
+                      <span className="block font-bold text-slate-900">{user.name}</span>
+                      <span className="mt-0.5 block text-[11px] text-slate-500">{user.username}</span>
+                      <span className="block text-[11px] text-slate-400">{user.email}</span>
                     </td>
 
-                    {/* Kolom baru: peran dari portal pusat, sebagai dasar validasi. */}
+                    {/* Kolom 2: peran dari portal pusat, sebagai dasar validasi. */}
                     <td>
                       {peranSso.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
@@ -288,6 +246,58 @@ export const AdminUsers: React.FC = () => {
                         </div>
                       ) : (
                         <span className="text-[11px] italic text-slate-400">Belum ada data SSO</span>
+                      )}
+                    </td>
+
+                    {/* Kolom 3: peran yang diberikan admin prodi. */}
+                    <td>
+                      {belumDivalidasi ? (
+                        <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                          Menunggu validasi
+                        </span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {user.userRoles.map((assignment) => (
+                            <span
+                              key={assignment.id}
+                              className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-[#1e3a8a]"
+                            >
+                              {assignment.role.name}
+                              {has('users.assign_role') ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setRevokeTarget({ userId: user.id, assignmentId: assignment.id })}
+                                  className="text-rose-600 hover:text-rose-800"
+                                  aria-label={`Cabut peran ${assignment.role.name} dari ${user.name}`}
+                                >
+                                  <TrashIcon className="h-3 w-3" />
+                                </button>
+                              ) : null}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Kolom 4: batas wilayah kerja tiap peran. */}
+                    <td>
+                      {belumDivalidasi ? (
+                        <span className="text-[11px] italic text-slate-400">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {user.userRoles.map((assignment) => (
+                            <span
+                              key={assignment.id}
+                              className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"
+                            >
+                              {assignment.studyProgram
+                                ? assignment.studyProgram.name
+                                : assignment.faculty
+                                  ? assignment.faculty.name
+                                  : 'Seluruh prodi'}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </td>
 

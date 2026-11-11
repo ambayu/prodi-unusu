@@ -72,10 +72,24 @@ export const updateThemeSchema = z.object({
 export const menuItemSchema = z.object({
   parentId: z.number().int().positive().nullable().optional(),
   title: z.string().trim().min(1).max(100),
-  url: z.string().trim().min(1).max(500),
+  // Grup dropdown tidak punya tujuan, sehingga URL boleh kosong.
+  url: z.string().trim().max(500).default(''),
   target: z.enum(['_self', '_blank']).default('_self'),
   sortOrder: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
+  /** Menandai bahwa menu ini adalah wadah grup dropdown, bukan tautan. */
+  isGroup: z.boolean().optional(),
+});
+
+/**
+ * Menautkan halaman Page Builder yang belum punya entri navigasi ke tabel
+ * `menus`, sehingga halaman tersebut muncul di navbar pengunjung.
+ */
+export const attachPageToMenuSchema = z.object({
+  slug: z.string().trim().min(1).max(150),
+  parentId: z.number().int().positive().nullable().optional(),
+  title: z.string().trim().max(100).optional(),
+  sortOrder: z.number().int().min(0).optional(),
 });
 
 export const reorderMenusSchema = z.object({
@@ -84,6 +98,8 @@ export const reorderMenusSchema = z.object({
       z.object({
         id: z.number().int().positive(),
         sortOrder: z.number().int().min(0),
+        /** `null` mengeluarkan item dari grupnya; `undefined` berarti tidak diubah. */
+        parentId: z.number().int().positive().nullable().optional(),
       }),
     )
     .min(1),
