@@ -29,6 +29,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission, useTenant } from '../../hooks/useSite';
+import { useSiteStore } from '../../app/siteStore';
 import { builderApi, settingsApi, type BuilderPage, type BuilderSection, type BuilderWidgetInstance, type MenuItem } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 import { WidgetVisualForm } from '../../components/builder/WidgetVisualForm';
@@ -505,8 +506,10 @@ export const AdminBuilder: React.FC = () => {
   const [newGroupOpen, setNewGroupOpen] = useState(false);
   const [newGroupTitle, setNewGroupTitle] = useState('');
 
+  const activeTenantId = useSiteStore((state) => state.activeTenantId);
+
   const pagesQuery = useQuery({
-    queryKey: ['admin', 'pages'],
+    queryKey: ['admin', 'pages', activeTenantId],
     queryFn: () => builderApi.pages().then((res) => res.data.pages),
   });
 
@@ -516,7 +519,7 @@ export const AdminBuilder: React.FC = () => {
   });
 
   const menusQuery = useQuery({
-    queryKey: ['admin', 'menus'],
+    queryKey: ['admin', 'menus', activeTenantId],
     queryFn: () => settingsApi.menus().then((res) => res.data.menus),
   });
 
