@@ -20,6 +20,8 @@ import {
   DocumentCheckIcon,
   Bars3Icon,
   InformationCircleIcon,
+  EllipsisVerticalIcon,
+  FolderArrowDownIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
@@ -229,6 +231,188 @@ function summarize(config: Record<string, unknown>): string {
 }
 
 /**
+ * Menu aksi untuk satu item navbar di sidebar Builder.
+ *
+ * Menggabungkan tiga aksi yang sebelumnya tersebar — pindah grup, ubah judul,
+ * dan hapus — ke dalam satu tombol tiga titik. Dengan cara ini baris tetap
+ * ringkas dan setiap aksi terbaca jelas beserta ikonnya, bukan berupa ikon
+ * kecil tanpa label.
+ *
+ * Bila item belum terdaftar di tabel menus, aksi "Pindahkan ke grup" serta
+ * submenu grup tidak ditampilkan: item seperti itu belum punya id sehingga
+ * belum bisa dipindahkan.
+ */
+const DropdownAksiNavbar: React.FC<{
+  namaItem: string;
+  aksi: { pindah: boolean; ubah: boolean; hapus: boolean };
+  grupTujuan: Array<{ key: string; title: string }>;
+  onPindah: (kunci: string | null) => void;
+  onUbah: () => void;
+  onHapus: () => void;
+  /**
+   * Diberitahukan setiap kali dropdown dibuka atau ditutup. Induk memakainya
+   * untuk menaikkan `z-index` baris yang sedang aktif, karena baris di
+   * bawahnya akan menimpa panel dropdown tanpa itu.
+   */
+  onOpenChange?: (terbuka: boolean) => void;
+}> = ({ namaItem, aksi, grupTujuan, onPindah, onUbah, onHapus, onOpenChange }) => {
+  const [terbuka, setTerbuka] = React.useState(false);
+  /** Submenu daftar grup dibuka terpisah agar menu utama tetap pendek. */
+  const [submenuPindah, setSubmenuPindah] = React.useState(false);
+  const kontainer = React.useRef<HTMLDivElement>(null);
+
+  const ubahStatus = React.useCallback(
+    (nilai: boolean) => {
+      setTerbuka(nilai);
+      if (!nilai) setSubmenuPindah(false);
+      onOpenChange?.(nilai);
+    },
+    [onOpenChange],
+  );
+
+  React.useEffect(() => {
+    if (!terbuka) return;
+
+    function tutupJikaDiLuar(event: MouseEvent) {
+      if (kontainer.current && !kontainer.current.contains(event.target as Node)) {
+        ubahStatus(false);
+      }
+    }
+    function tutupDenganEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') ubahStatus(false);
+    }
+
+    document.addEventListener('mousedown', tutupJikaDiLuar);
+    document.addEventListener('keydown', tutupDenganEscape);
+    return () => {
+      document.removeEventListener('mousedown', tutupJikaDiLuar);
+      document.removeEventListener('keydown', tutupDenganEscape);
+    };
+  }, [terbuka, ubahStatus]);
+
+  const jalankan = (callback: () => void) => {
+    ubahStatus(false);
+    callback();
+  };
+
+  return (
+    <div ref={kontainer} className="relative text-left">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          ubahStatus(!terbuka);
+        }}
+        aria-haspopup="menu"
+        aria-expanded={terbuka}
+        aria-label={`Aksi untuk ${namaItem}`}
+        title={`Aksi untuk ${namaItem}`}
+        className={`inline-flex h-6 w-6 items-center justify-center rounded-md border transition-colors ${
+          terbuka
+            ? 'border-[#1e3a8a] bg-blue-50 text-[#1e3a8a]'
+            : 'border-slate-200 bg-white/95 text-slate-500 shadow-xs hover:bg-slate-50 hover:text-slate-800'
+        }`}
+      >
+        <EllipsisVerticalIcon className="h-3.5 w-3.5" />
+      </button>
+
+      {terbuka ? (
+        <div
+          role="menu"
+          className="absolute right-0 z-40 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+        >
+          {aksi.pindah ? (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSubmenuPindah((sebelumnya) => !sebelumnya);
+                }}
+                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <span className="flex items-center gap-2">
+                  <FolderArrowDownIcon className="h-3.5 w-3.5 shrink-0" />
+                  Pindahkan ke grup
+                </span>
+                <ChevronRightIcon
+                  className={`h-3 w-3 text-slate-400 transition-transform ${
+                    submenuPindah ? 'rotate-90' : ''
+                  }`}
+                />
+              </button>
+
+              {submenuPindah ? (
+                <div className="mx-1 mb-1 max-h-52 overflow-y-auto rounded-md border border-slate-100 bg-slate-50/70 py-1">
+                  {grupTujuan.map((grup) => (
+                    <button
+                      key={grup.key}
+                      type="button"
+                      role="menuitem"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        jalankan(() => onPindah(grup.key));
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-1 text-left text-[11px] font-medium text-slate-600 hover:bg-white hover:text-[#1e3a8a]"
+                    >
+                      <DocumentCheckIcon className="h-3 w-3 shrink-0 text-slate-400" />
+                      <span className="truncate">{grup.title}</span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      jalankan(() => onPindah(null));
+                    }}
+                    className="flex w-full items-center gap-2 border-t border-slate-200/70 px-3 pt-1.5 pb-1 text-left text-[11px] font-medium text-slate-600 hover:bg-white hover:text-[#1e3a8a]"
+                  >
+                    <XCircleIcon className="h-3 w-3 shrink-0 text-slate-400" />
+                    Keluarkan dari grup
+                  </button>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+
+          {aksi.ubah ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(event) => {
+                event.stopPropagation();
+                jalankan(onUbah);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <PencilSquareIcon className="h-3.5 w-3.5 shrink-0" />
+              Edit
+            </button>
+          ) : null}
+
+          {aksi.hapus ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(event) => {
+                event.stopPropagation();
+                jalankan(onHapus);
+              }}
+              className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-1.5 text-left text-[11px] font-semibold text-rose-700 hover:bg-rose-50"
+            >
+              <TrashIcon className="h-3.5 w-3.5 shrink-0" />
+              Hapus
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+/**
  * Page builder berbasis section dan widget.
  *
  * Perubahan disimpan ke server pada setiap aksi sehingga draft tidak hilang
@@ -293,6 +477,15 @@ export const AdminBuilder: React.FC = () => {
   const [isReorderingMenu, setIsReorderingMenu] = useState(false);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  /**
+   * Kunci item navbar yang dropdown aksinya sedang terbuka.
+   *
+   * Dipakai untuk menaikkan `z-index` satu baris saja. Kalau semua baris
+   * diberi `z-index`, baris berikutnya tetap menimpa dropdown dan masalahnya
+   * tidak hilang.
+   */
+  const [openAksiKey, setOpenAksiKey] = useState<string | null>(null);
 
   const toggleGroup = (groupKey: string) => {
     setOpenGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
@@ -1238,13 +1431,30 @@ export const AdminBuilder: React.FC = () => {
               /** Halaman terbit yang belum punya entri di tabel menus. */
               const halamanTanpaMenu = findOrphanPages(allPages, rawMenus as NavbarMenuRow[]);
 
-              const renderItem = (item: NavbarSidebarEntry, siblings: NavbarSidebarEntry[], isChild = false) => {
+              /**
+               * Grup lain yang boleh menjadi tujuan pemindahan.
+               *
+               * Grup tempat item berada sekarang tidak ditampilkan karena
+               * memindahkan ke grup yang sama tidak mengubah apa pun.
+               */
+              const grupLain = (item: NavbarSidebarEntry) =>
+                semuaGrup.filter(
+                  (grup) => grup.key !== item.key && !item.key.startsWith(`${grup.key}.`),
+                );
+
+              /**
+               * Item punya tombol aksi bila minimal satu aksi tersedia, yaitu
+               * sudah terdaftar di navigasi (untuk dipindah) atau punya halaman
+               * yang boleh diubah/dihapus.
+               */
+              const bisaKelola = (item: NavbarSidebarEntry) =>
+                (item.menuId !== null && grupLain(item).length > 0) ||
+                (item.page !== null && (has('pages.update') || has('pages.delete')));
+
+              const renderItem = (item: NavbarSidebarEntry, isChild = false) => {
                 const halaman = item.page;
                 const isSelected = halaman !== null && halaman.id === selectedPageId;
                 const isDragging = halaman !== null && halaman.id === draggedPageId;
-                const itemIndex = siblings.findIndex((s) => s.key === item.key);
-                const canMoveUp = item.menuId !== null && itemIndex > 0;
-                const canMoveDown = item.menuId !== null && itemIndex !== -1 && itemIndex < siblings.length - 1;
 
                 return (
                   <div
@@ -1261,22 +1471,34 @@ export const AdminBuilder: React.FC = () => {
                     onDrop={(e) => {
                       e.preventDefault();
                       const droppedMenuId = Number(e.dataTransfer.getData('text/plain'));
-                      if (!droppedMenuId || droppedMenuId === item.menuId) {
-                        setDraggedPageId(null);
-                        return;
-                      }
-                      // Susun ulang hanya bila kedua item sudah ada di database.
-                      const sumber = flattenMenus(rawMenus as NavbarMenuRow[]).find((m) => m.id === droppedMenuId);
-                      const tujuan = item.menuId;
-                      if (sumber && tujuan !== null && (sumber.parentId ?? null) === (siblings[0]?.menuId ?? null)) {
-                        void handleReorderNavbarMenu(droppedMenuId, tujuan);
-                      }
                       setDraggedPageId(null);
+                      if (!droppedMenuId || droppedMenuId === item.menuId || item.menuId === null) return;
+
+                      /*
+                       * Penyusunan ulang hanya berlaku untuk item yang berada
+                       * pada induk yang sama. Perbandingan memakai `parentId`
+                       * sebenarnya dari kedua menu, bukan posisi dalam daftar,
+                       * agar seret-lepas antar grup tidak menghasilkan urutan
+                       * yang salah.
+                       */
+                      const semuaMenu = flattenMenus(rawMenus as NavbarMenuRow[]);
+                      const sumber = semuaMenu.find((menu) => menu.id === droppedMenuId);
+                      const tujuan = semuaMenu.find((menu) => menu.id === item.menuId);
+                      if (!sumber || !tujuan) return;
+                      if ((sumber.parentId ?? null) !== (tujuan.parentId ?? null)) return;
+
+                      void handleReorderNavbarMenu(droppedMenuId, item.menuId);
                     }}
                     onDragEnd={() => setDraggedPageId(null)}
+                    /*
+                     * `z-30` hanya aktif saat dropdown item ini terbuka.
+                     * Tanpa itu baris berikutnya (juga berposisi `relative`)
+                     * menimpa panel dropdown sehingga separuh menunya
+                     * tertutup tombol ⋮ milik item di bawahnya.
+                     */
                     className={`relative flex items-center group rounded-lg transition-all ${
                       isDragging ? 'opacity-40 border-2 border-dashed border-[#1e3a8a]' : ''
-                    }`}
+                    } ${openAksiKey === item.key ? 'z-30' : ''}`}
                   >
                     <div
                       className={`flex items-center pl-1.5 text-slate-300 transition-colors ${
@@ -1318,98 +1540,48 @@ export const AdminBuilder: React.FC = () => {
                       )}
                     </button>
 
-                    <div className="absolute right-1.5 flex items-center gap-0.5 rounded-md bg-white/95 px-1 py-0.5 shadow-xs border border-slate-200 z-10">
-                      {siblings.length > 1 && item.menuId !== null ? (
-                        <>
-                          <button
-                            type="button"
-                            disabled={!canMoveUp || isReorderingMenu}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (canMoveUp) void handleReorderNavbarMenu(item.menuId!, siblings[itemIndex - 1].menuId!);
-                            }}
-                            title="Pindah ke atas"
-                            className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-                          >
-                            <ArrowUpIcon className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!canMoveDown || isReorderingMenu}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (canMoveDown && siblings[itemIndex + 1].menuId !== null) {
-                                void handleReorderNavbarMenu(item.menuId!, siblings[itemIndex + 1].menuId!);
-                              }
-                            }}
-                            title="Pindah ke bawah"
-                            className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-                          >
-                            <ArrowDownIcon className="h-3 w-3" />
-                          </button>
-                        </>
-                      ) : null}
-
-                      {/* Pindah antar grup: hanya muncul bila ada grup lain. */}
-                      {item.menuId !== null && semuaGrup.length > 0 ? (
-                        <select
-                          value=""
-                          disabled={isReorderingMenu}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            const value = e.target.value;
-                            if (!value) return;
-                            if (value === '__keluar__') {
+                    {/*
+                      Satu dropdown untuk seluruh aksi item. Menampung
+                      "Pindahkan ke grup", "Edit judul", dan "Hapus" agar deretan
+                      tombol tidak memenuhi baris. Tiap aksi hanya muncul bila
+                      pengguna punya izinnya dan item memang sudah terdaftar di
+                      navigasi.
+                    */}
+                    {bisaKelola(item) ? (
+                      <div className="absolute right-1.5 z-20">
+                        <DropdownAksiNavbar
+                          namaItem={item.title}
+                          onOpenChange={(terbuka) =>
+                            setOpenAksiKey((sebelumnya) => {
+                              if (!terbuka) return sebelumnya === item.key ? null : sebelumnya;
+                              return item.key;
+                            })
+                          }
+                          aksi={{
+                            pindah: item.menuId !== null && grupLain(item).length > 0,
+                            ubah: halaman !== null && has('pages.update'),
+                            hapus: halaman !== null && has('pages.delete'),
+                          }}
+                          grupTujuan={grupLain(item)}
+                          onPindah={(kunci) => {
+                            if (kunci === null) {
                               void handleMoveToGroup(item, null, null);
                               return;
                             }
-                            const grupTujuan = semuaGrup.find((g) => g.key === value) ?? null;
-                            if (grupTujuan) void handleMoveToGroup(item, value, { ...grupTujuan, children: grupTujuan.children });
+                            const tujuan = semuaGrup.find((g) => g.key === kunci) ?? null;
+                            if (tujuan) void handleMoveToGroup(item, kunci, tujuan);
                           }}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Pindahkan ke grup lain"
-                          className="max-w-[22px] cursor-pointer appearance-none rounded p-1 text-slate-500 hover:bg-blue-50 hover:text-[#1e3a8a] focus:outline-none"
-                        >
-                          <option value="">Pindahâ€¦</option>
-                          {semuaGrup
-                            .filter((g) => !item.key.startsWith(`${g.key}.`) && item.key !== g.key)
-                            .map((g) => (
-                              <option key={g.key} value={g.key}>
-                                {g.title}
-                              </option>
-                            ))}
-                          <option value="__keluar__">Keluarkan dari grup</option>
-                        </select>
-                      ) : null}
-
-                      {halaman && has('pages.update') ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onUbah={() => {
+                            if (!halaman) return;
                             setEditNavbarTarget({ id: halaman.id, title: halaman.title, isSystem: halaman.isSystem });
                             setEditNavbarTitle(halaman.title);
                           }}
-                          title={`Ubah judul halaman: ${halaman.title}`}
-                          className="rounded p-1 text-slate-500 hover:bg-blue-50 hover:text-[#1e3a8a] transition-colors"
-                        >
-                          <PencilSquareIcon className="h-3 w-3" />
-                        </button>
-                      ) : null}
-                      {halaman && has('pages.delete') ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteNavbarTarget(halaman);
+                          onHapus={() => {
+                            if (halaman) setDeleteNavbarTarget(halaman);
                           }}
-                          title={`Hapus halaman: ${halaman.title}`}
-                          className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                        >
-                          <TrashIcon className="h-3 w-3" />
-                        </button>
-                      ) : null}
-                    </div>
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 );
               };
@@ -1466,22 +1638,15 @@ export const AdminBuilder: React.FC = () => {
                     <div className="space-y-0.5 pl-2 border-l border-slate-200 ml-2">
                       {group.children.length === 0 ? (
                         <p className="px-2 py-1.5 text-[10px] italic text-slate-400">
-                          Grup masih kosong. Pindahkan halaman ke sini lewat tombol â€œPindahâ€¦â€.
+                          Grup masih kosong. Pindahkan halaman ke sini lewat menu aksi (⋮) &rarr; Pindahkan ke grup.
                         </p>
                       ) : (
-                        group.children.map((anak) => renderItem(anak, group.children, true))
+                        group.children.map((anak) => renderItem(anak, true))
                       )}
                     </div>
                   )}
                 </div>
               );
-
-              /**
-               * Item tingkat atas yang bukan grup. Menurut aturan navbar, hanya
-               * Beranda dan Kontak yang boleh berada di sini; tautan lain yang
-               * dikeluarkan admin dari grup tetap dihormati.
-               */
-              const itemTingkatAtas = entri.filter((e) => !e.isGroup);
 
               return (
                 <div className="space-y-2">
@@ -1491,13 +1656,11 @@ export const AdminBuilder: React.FC = () => {
                     </p>
                   ) : null}
 
-                  {entri.map((node, index) => {
+                  {entri.map((node) => {
                     if (node.isGroup) return renderGroup(node);
-                    // Tautan lepas disisipkan sesuai posisinya di pohon navbar.
-                    const tetangga = itemTingkatAtas;
                     return (
                       <div key={node.key} className="space-y-1">
-                        {renderItem(node, tetangga)}
+                        {renderItem(node)}
                       </div>
                     );
                   })}

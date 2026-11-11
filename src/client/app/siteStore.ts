@@ -86,24 +86,52 @@ export const useSiteStore = create<SiteState>((set, get) => ({
       });
     }
 
+    /*
+     * Profil dan konteks tenant dimuat sebagai satu kesatuan.
+     *
+     * `userLoading` baru dimatikan setelah `activeTenantId` diketahui. Bila
+     * dimatikan lebih awal, sidebar membaca `activeTenantId = null` padahal
+     * datanya belum tiba lalu menyimpulkan scope "portal" — inilah yang membuat
+     * menu prodi kosong setelah login dan baru muncul setelah halaman di-refresh.
+     */
     try {
       const meRes = await api.get<{ user: AuthUser }>('/auth/me');
-      set({ user: meRes.data.user, userLoading: false });
-
-      const contextRes = await api.get<{ activeTenantId: number }>('/admin/access-context');
-      set({ activeTenantId: contextRes.data.activeTenantId });
+      let activeTenantId: number | null = null;
+      try {
+        const contextRes = await api.get<{ activeTenantId: number }>('/admin/access-context');
+        activeTenantId = contextRes.data.activeTenantId;
+      } catch {
+        // Akun tanpa penugasan prodi memang tidak punya konteks tenant.
+        activeTenantId = null;
+      }
+      set({ user: meRes.data.user, activeTenantId, userLoading: false });
     } catch {
       set({ user: null, userLoading: false, activeTenantId: null });
     }
   },
 
-  /** Memuat ulang profil setelah perubahan hak akses. */
+  /**
+   * Memuat ulang profil setelah perubahan hak akses.
+   *
+   * `activeTenantId` ikut dimuat karena sidebar menyimpulkan scope admin dari
+   * nilai itu: `null` berarti Portal Utama. Tanpa penyegaran ini, pengguna yang
+   * baru masuk lewat SSO sempat dianggap tidak punya tenant sehingga menu
+   * prodi tidak terbangun sampai halaman dimuat ulang.
+   */
   refreshUser: async () => {
     try {
       const res = await api.get<{ user: AuthUser }>('/auth/me');
-      set({ user: res.data.user });
+      set({ user: res.data.user, userLoading: false });
+
+      try {
+        const contextRes = await api.get<{ activeTenantId: number }>('/admin/access-context');
+        set({ activeTenantId: contextRes.data.activeTenantId });
+      } catch {
+        // Akun tanpa penugasan prodi memang tidak punya konteks tenant.
+        set({ activeTenantId: null });
+      }
     } catch {
-      set({ user: null, activeTenantId: null });
+      set({ user: null, userLoading: false, activeTenantId: null });
     }
   },
 

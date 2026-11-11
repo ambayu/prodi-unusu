@@ -3,9 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CheckBadgeIcon,
   NoSymbolIcon,
-  PlusIcon,
   ShieldCheckIcon,
   TrashIcon,
+  EllipsisVerticalIcon,
+  UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
@@ -44,6 +45,105 @@ function labelPeranSso(kode: string): string {
   };
   return peta[kode] ?? kode;
 }
+
+/**
+ * Dropdown menu aksi per baris tabel pengguna.
+ *
+ * Sebelumnya tiap aksi tampil sebagai tombol terpisah. Karena jumlah aksinya
+ * bertambah (kelola peran, aktif/nonaktif), deretan tombol memenuhi kolom dan
+ * tinggi baris ikut melar. Dropdown menahan semuanya dalam satu tombol tiga
+ * titik sehingga tabel tetap ringkas.
+ *
+ * Komponen mengelola status buka sendiri dan menutup diri saat klik di luar
+ * maupun saat tombol Escape ditekan, tanpa memasang listener global.
+ */
+const AksiDropdown: React.FC<{
+  namaAkun: string;
+  items: Array<{
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    onClick: () => void;
+    disabled?: boolean;
+    danger?: boolean;
+  }>;
+}> = ({ namaAkun, items }) => {
+  const [terbuka, setTerbuka] = React.useState(false);
+  const kontainer = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!terbuka) return;
+
+    function tutupJikaDiLuar(event: MouseEvent) {
+      if (kontainer.current && !kontainer.current.contains(event.target as Node)) {
+        setTerbuka(false);
+      }
+    }
+    function tutupDenganEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setTerbuka(false);
+    }
+
+    document.addEventListener('mousedown', tutupJikaDiLuar);
+    document.addEventListener('keydown', tutupDenganEscape);
+    return () => {
+      document.removeEventListener('mousedown', tutupJikaDiLuar);
+      document.removeEventListener('keydown', tutupDenganEscape);
+    };
+  }, [terbuka]);
+
+  if (items.length === 0) {
+    return <span className="text-[11px] italic text-slate-400">—</span>;
+  }
+
+  return (
+    <div ref={kontainer} className="relative inline-block text-left">
+      <button
+        type="button"
+        onClick={() => setTerbuka((sebelumnya) => !sebelumnya)}
+        aria-haspopup="menu"
+        aria-expanded={terbuka}
+        aria-label={`Aksi untuk ${namaAkun}`}
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
+          terbuka
+            ? 'border-[#1e3a8a] bg-blue-50 text-[#1e3a8a]'
+            : 'border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+        }`}
+      >
+        <EllipsisVerticalIcon className="h-4 w-4" />
+      </button>
+
+      {terbuka ? (
+        <div
+          role="menu"
+          className="absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+        >
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                disabled={item.disabled}
+                onClick={() => {
+                  setTerbuka(false);
+                  item.onClick();
+                }}
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] font-semibold transition-colors disabled:opacity-40 ${
+                  item.danger
+                    ? 'text-rose-700 hover:bg-rose-50'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 /**
  * Pengelolaan akun dan pemberian peran pada program studi.
@@ -198,7 +298,12 @@ export const AdminUsers: React.FC = () => {
           description="Akun muncul di sini setelah pengguna masuk minimal satu kali melalui SSO ONE UNUSU. Setelah itu Anda dapat memberikan akses Admin Utama atau Admin Prodi."
         />
       ) : (
-        <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs">
+        /*
+         * `pb-28` memberi ruang di bawah tabel agar dropdown baris terakhir
+         * tidak terpotong oleh pembungkus ber-overflow. Tanpanya menu aksi
+         * hilang di balik batas bawah wadah saat dibuka.
+         */
+        <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white pb-28 shadow-2xs">
           <table className="table-base">
             <thead>
               <tr>
@@ -318,37 +423,38 @@ export const AdminUsers: React.FC = () => {
                     </td>
 
                     <td>
-                      <div className="flex justify-end gap-1.5">
-                        {has('users.assign_role') ? (
-                          <button
-                            type="button"
-                            onClick={() => bukaDialogPeran(user)}
-                            className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50"
-                          >
-                            <PlusIcon className="h-3 w-3" /> Peran
-                          </button>
-                        ) : null}
-
-                        {has('users.disable') ? (
-                          user.isActive ? (
-                            <button
-                              type="button"
-                              onClick={() => setDisableTarget(user)}
-                              className="inline-flex items-center gap-1 rounded border border-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50"
-                            >
-                              <NoSymbolIcon className="h-3 w-3" /> Nonaktifkan
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => activateMutation.mutate(user.id)}
-                              disabled={activateMutation.isPending}
-                              className="inline-flex items-center gap-1 rounded border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
-                            >
-                              <CheckBadgeIcon className="h-3 w-3" /> Aktifkan
-                            </button>
-                          )
-                        ) : null}
+                      <div className="flex justify-end">
+                        <AksiDropdown
+                          namaAkun={user.name}
+                          items={[
+                            ...(has('users.assign_role')
+                              ? [
+                                  {
+                                    label: 'Kelola peran',
+                                    icon: UserPlusIcon,
+                                    onClick: () => bukaDialogPeran(user),
+                                  },
+                                ]
+                              : []),
+                            ...(has('users.disable')
+                              ? [
+                                  user.isActive
+                                    ? {
+                                        label: 'Nonaktifkan akun',
+                                        icon: NoSymbolIcon,
+                                        onClick: () => setDisableTarget(user),
+                                        danger: true,
+                                      }
+                                    : {
+                                        label: 'Aktifkan akun',
+                                        icon: CheckBadgeIcon,
+                                        onClick: () => activateMutation.mutate(user.id),
+                                        disabled: activateMutation.isPending,
+                                      },
+                                ]
+                              : []),
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

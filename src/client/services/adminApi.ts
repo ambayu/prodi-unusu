@@ -513,10 +513,34 @@ const CATALOG_PORTAL: MenuEntry[] = [
 let cachedMenu: Record<AdminMenuScope, AdminMenuItem[] | null> = { portal: null, prodi: null };
 let menuPromise: Record<AdminMenuScope, Promise<AdminMenuItem[]> | null> = { portal: null, prodi: null };
 
+/**
+ * Identitas pengguna yang menurunkan menu dalam cache.
+ *
+ * Cache menu disimpan di tingkat modul, sehingga ia bertahan lebih lama daripada
+ * sesi. Tanpa penanda ini, menu milik akun sebelumnya (misalnya Super Admin yang
+ * baru logout) akan tampil bagi akun berikutnya sampai halaman dimuat ulang.
+ * Nilai ini diperbarui setiap kali `/auth/me` dijawab oleh `buildMenu`.
+ */
+let cachedMenuOwnerId: number | null = null;
+
 export const adminMenuApi = {
   /** Menu yang sudah dibangun untuk scope tertentu (dipakai agar sidebar tidak berkedip). */
   getCachedMenu(scope: AdminMenuScope = 'prodi'): AdminMenuItem[] | null {
     return cachedMenu[scope];
+  },
+
+  /**
+   * Memastikan cache hanya dipakai oleh pemiliknya.
+   *
+   * Dipanggil setelah profil pengguna diketahui; bila pemiliknya berbeda,
+   * seluruh cache dibuang agar tidak ada menu akun lain yang tersisa.
+   */
+  syncCacheOwner(userId: number | null): void {
+    if (cachedMenuOwnerId !== userId) {
+      cachedMenuOwnerId = userId;
+      cachedMenu = { portal: null, prodi: null };
+      menuPromise = { portal: null, prodi: null };
+    }
   },
 
   clearCache(): void {
@@ -542,6 +566,11 @@ export const adminMenuApi = {
       try {
         const res = await api.get<{ user: AuthUser }>('/auth/me');
         const user = res.data.user;
+
+        // Menu harus selalu diturunkan dari akun yang sedang masuk. Bila cache
+        // masih milik akun lain, seluruh isinya dibuang sebelum dipakai.
+        adminMenuApi.syncCacheOwner(user.id);
+
         const codes = new Set(user.permissions);
         const isSuper = user.permissions.includes('*');
 

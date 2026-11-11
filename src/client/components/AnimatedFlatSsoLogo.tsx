@@ -50,19 +50,30 @@ export const AnimatedFlatSsoLogo: React.FC<Props> = ({ size = 210, className = '
   return (
     <div
       className={className}
-      style={{ width: size, height: size, cursor: onClick ? 'pointer' : undefined }}
+      style={{ width: size, height: size, cursor: onClick ? 'pointer' : undefined, touchAction: 'manipulation' }}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       aria-label={onClick ? 'Logo ONE UNUSU — klik untuk membuka portal' : 'Logo ONE UNUSU'}
-      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
     >
+      {/*
+        SVG dijadikan dekoratif penuh.
+
+        Orbit dan satelit di dalamnya beranimasi terus-menerus; tanpa
+        `pointerEvents: 'none'` elemen yang bergerak dapat menelan klik sehingga
+        logo terasa "tidak bisa ditekan". Dengan pengaturan ini seluruh area
+        logo menjadi satu target klik yang utuh, dan pembaca layar hanya
+        membacakan `aria-label` milik pembungkusnya.
+      */}
       <svg
         width={size}
         height={size}
         viewBox="0 0 200 200"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+        style={{ pointerEvents: 'none' }}
       >
         <defs>
           <linearGradient id="onuBadgeFill" x1="55" y1="48" x2="145" y2="152" gradientUnits="userSpaceOnUse">

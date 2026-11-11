@@ -62,7 +62,15 @@ export const RequireTenantAssignment: React.FC<{ children: React.ReactNode }> = 
  * tidak ada permintaan data yang pasti ditolak server.
  */
 export const RequirePermission: React.FC<{ anyOf: string[]; children: React.ReactNode }> = ({ anyOf, children }) => {
+  const userLoading = useSiteStore((state) => state.userLoading);
   const { canAny } = usePermission();
+
+  // Selama profil masih dimuat, izin belum diketahui. Tanpa penjagaan ini
+  // pengguna melihat "Akses ditolak" sekejap sebelum halamannya muncul —
+  // terutama setelah login SSO, ketika `permissions` baru tiba dari server.
+  if (userLoading) {
+    return <AppLoading />;
+  }
 
   if (!canAny(anyOf)) {
     return (

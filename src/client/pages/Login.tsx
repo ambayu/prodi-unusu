@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRightOnRectangleIcon,
@@ -46,10 +46,25 @@ export const Login: React.FC = () => {
   }, [user, navigate]);
 
   const handleSsoLogin = () => {
+    // Klik kedua saat proses berjalan diabaikan agar tidak ada dua redirect.
+    if (ssoRedirecting) return;
+    // Hanya menyalakan layar tunggu. Perpindahan ke Portal ONE UNUSU baru
+    // dijalankan oleh `onReady` setelah jeda animasi terlewati, sehingga logo
+    // SSO sempat terlihat utuh alih-alih berkedip sepersekian detik.
     setSsoRedirecting(true);
+  };
+
+  /**
+   * Perpindahan ke Portal ONE UNUSU.
+   *
+   * Dipisahkan dari `handleSsoLogin` dan dijalankan oleh `SsoLoadingScreen`
+   * lewat `onReady` setelah `delayMs` — pola yang sama dengan aplikasi lain di
+   * ekosistem UNUSU (E-Surat, LPM, LPPM, LMS, Sarpras, Akreditasi).
+   */
+  const goToPortal = useCallback(() => {
     const target = `${ONE_UNUSU_URL}/authorize?client_id=${encodeURIComponent(SSO_CLIENT_ID)}`;
     window.location.href = target;
-  };
+  }, []);
 
   const handleLocalLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -67,15 +82,24 @@ export const Login: React.FC = () => {
     }
   };
 
+  // Layar tunggu satu halaman penuh selama browser berpindah ke Portal ONE
+  // UNUSU, supaya pengguna tidak menekan tombol masuk berulang kali.
+  //
+  // Ditulis sebagai early-return (bukan overlay) agar layar tunggu benar-benar
+  // tergambar sebelum browser mulai bernavigasi.
+  if (ssoRedirecting) {
+    return (
+      <SsoLoadingScreen
+        title="Menghubungkan ke ONE UNUSU"
+        description="Mengalihkan Anda ke Portal Single Sign-On kampus. Jangan tutup halaman ini."
+        delayMs={1400}
+        onReady={goToPortal}
+      />
+    );
+  }
+
   return (
-    <>
-      {ssoRedirecting && (
-        <SsoLoadingScreen
-          title="Menghubungkan ke ONE UNUSU"
-          description="Mengalihkan Anda ke Portal Single Sign-On kampus. Jangan tutup halaman ini."
-        />
-      )}
-      <div className="flex min-h-screen w-full flex-col bg-white font-sans lg:flex-row">
+    <div className="flex min-h-screen w-full flex-col bg-white font-sans lg:flex-row">
       <div className="z-10 flex w-full flex-col justify-between p-6 sm:p-12 lg:w-1/2 lg:p-16 xl:p-20">
         <div>
           <button
@@ -124,12 +148,17 @@ export const Login: React.FC = () => {
           <button
             type="button"
             onClick={handleSsoLogin}
-            className="w-full flex items-center justify-center gap-3 py-3.5 px-6 rounded-full bg-[#166534] hover:bg-[#14532D] text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all transform active:scale-98 cursor-pointer group"
+            disabled={ssoRedirecting}
+            className="w-full flex items-center justify-center gap-3 py-3.5 px-6 rounded-full bg-[#166534] hover:bg-[#14532D] text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all transform active:scale-98 cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Masuk dengan ONE UNUSU"
           >
             <ArrowRightOnRectangleIcon className="w-5 h-5 text-white shrink-0" />
-            <span className="font-bold">Masuk dengan ONE UNUSU</span>
-            <ChevronRightIcon className="w-4 h-4 text-white/80 group-hover:translate-x-1 transition-transform shrink-0" />
+            <span className="font-bold">
+              {ssoRedirecting ? 'Menghubungkan ke ONE UNUSU...' : 'Masuk dengan ONE UNUSU'}
+            </span>
+            {!ssoRedirecting && (
+              <ChevronRightIcon className="w-4 h-4 text-white/80 group-hover:translate-x-1 transition-transform shrink-0" />
+            )}
           </button>
 
           {error ? (
@@ -253,7 +282,6 @@ export const Login: React.FC = () => {
         </div>
       </div>
     </div>
-  </>
   );
 };
 

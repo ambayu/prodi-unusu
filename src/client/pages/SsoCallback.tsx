@@ -145,7 +145,16 @@ export const SsoCallback: React.FC = () => {
     api
       .post('/auth/sso', { client_id: clientId, token })
       .then(async (res) => {
+        /*
+         * Menu sidebar diturunkan dari permission dan tenant aktif. Keduanya
+         * baru tersedia setelah `refreshUser`. Tanpa memuat `access-context`
+         * lebih dahulu, AdminLayout sempat melihat `activeTenantId = null` lalu
+         * menyimpulkan scope "portal" — sidebar pun kosong ("belum memiliki izin
+         * modul aktif") sampai halaman dimuat ulang. Karena itu konteks dipuat
+         * di sini, sebelum berpindah ke dashboard.
+         */
         await refreshUser();
+
         /*
          * Akun yang lolos gerbang SSO tetapi belum diberi peran diarahkan ke
          * halaman validasi. Tanpa ini pengguna mendarat di dashboard lalu

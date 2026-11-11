@@ -111,7 +111,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const toast = useToast();
 
   const setActiveTenant = useSiteStore((state) => state.setActiveTenant);
-  const activeTenantId = useSiteStore((state) => state.activeTenantId);
   const enterPortalScope = useSiteStore((state) => state.enterPortalScope);
   const [availablePrograms, setAvailablePrograms] = useState<Array<{ id: number; name: string; code: string }>>([]);
 
@@ -119,14 +118,35 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
    * Scope panel admin: `portal` (website universitas) atau `prodi`.
    *
    * Nilainya berasal dari store (bukan `useState` lokal) supaya bertahan saat
-   * halaman dimuat ulang. `activeTenantId === null` juga diperlakukan sebagai
-   * portal, karena tanpa tenant tidak ada konten prodi yang bisa dikelola.
+   * halaman dimuat ulang.
    *
-   * Konsekuensinya sidebar benar-benar berganti menu: saat portal aktif, menu
-   * KONTEN (Profil, Visi & Misi, Kurikulum, Dosen, ...) tidak dirender.
+   * CATATAN PENTING — jangan menganggap `activeTenantId === null` sebagai portal.
+   *
+   * Saat pertama kali masuk lewat SSO, `bootstrap` baru selesai memuat profil
+   * lalu `activeTenantId` masih `null` sampai `/admin/access-context` dijawab.
+   * Bila kondisi itu langsung dianggap "portal", sidebar membangun katalog
+   * portal (tanpa menu konten prodi), lalu MENYIMPANNYA di cache. Cache itu
+   * bertahan sampai halaman dimuat ulang — itulah sebabnya menu prodi baru
+   * muncul setelah refresh, dan sebelum itu tampil pesan
+   * "Akun Anda belum memiliki izin modul aktif".
+   *
+   * Sekarang scope baru dipastikan portal bila pengguna memang memilih portal
+   * (`portalScope`) atau ketika tenant sudah selesai dimuat dan hasilnya kosong
+   * (`tenantResolved`). Selama masih memuat, sidebar menunggu.
    */
   const portalScope = useSiteStore((state) => state.portalScope);
-  const menuScope: AdminMenuScope = portalScope || activeTenantId === null ? 'portal' : 'prodi';
+  const activeTenantId = useSiteStore((state) => state.activeTenantId);
+  const userLoading = useSiteStore((state) => state.userLoading);
+
+  /**
+   * `true` bila status tenant sudah ditentukan, bukan sekadar belum dimuat.
+   *
+   * `bootstrap` mengisi `userLoading=false` setelah `/admin/access-context`
+   * selesai. Super Admin tanpa penugasan memang bisa berakhir dengan
+   * `activeTenantId = null`, dan itu sah dianggap portal.
+   */
+  const tenantResolved = !userLoading;
+  const menuScope: AdminMenuScope = portalScope || (tenantResolved && activeTenantId === null) ? 'portal' : 'prodi';
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -174,6 +194,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   //
   // Sebelumnya efek ini hanya berjalan sekali saat mount dengan dependensi `[]`,
   // sehingga memilih Portal Utama tidak mengubah isi sidebar.
+  //
+  // Efek tidak dijalankan selama profil pengguna belum siap. Menu diturunkan
+  // dari `permissions` dan kepemilikan cache, sehingga membangunnya lebih awal
+  // hanya menghasilkan sidebar kosong yang harus diulang setelah data tiba.
   useEffect(() => {
     let active = true;
     const cached = adminMenuApi.getCachedMenu(menuScope);
@@ -198,7 +222,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     return () => {
       active = false;
     };
-  }, [menuScope]);
+  }, [menuScope, activeTenantId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -549,7 +573,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 </div>
               )}
 
-              {menu.length === 0 && (
+              {/*
+                Pesan ini hanya boleh muncul setelah pemuatan selesai. Sebelumnya
+                ia ikut tampil selama menu masih dibangun, sehingga pengguna
+                membaca "belum memiliki izin" padahal izinnya justru sedang dimuat.
+              */}
+              {menu.length === 0 && !menuLoading && (
                 <div className="rounded-[12px] border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                   Akun Anda belum memiliki izin modul aktif. Hubungi administrator universitas.
                 </div>
