@@ -27,6 +27,35 @@ export const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children 
 };
 
 /**
+ * Penjaga penugasan peran.
+ *
+ * Akun yang lolos gerbang SSO tetapi belum diberi peran oleh admin tidak boleh
+ * masuk ke portal. Sebelumnya akun seperti ini tetap masuk lalu menerima
+ * "Data gagal dimuat" dari server karena tidak terikat prodi mana pun. Dengan
+ * pemeriksaan ini pengguna langsung diarahkan ke halaman pemberitahuan bahwa
+ * akunnya sedang menunggu validasi.
+ */
+export const RequireTenantAssignment: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const user = useSiteStore((state) => state.user);
+  const userLoading = useSiteStore((state) => state.userLoading);
+
+  if (userLoading) {
+    return <AppLoading />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Belum punya peran sama sekali berarti akun masih menunggu validasi admin.
+  if (!user.isSuperAdmin && user.roles.length === 0) {
+    return <Navigate to="/validasi-akun" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+/**
  * Penjaga permission per halaman.
  *
  * Bila pengguna tidak berizin, halaman tidak dirender sama sekali sehingga

@@ -20,7 +20,7 @@ import {
   touchLastLogin,
 } from '../../services/authService.js';
 import { recordAudit } from '../../services/auditService.js';
-import { ROLES } from '../../../shared/constants/permissions.js';
+import { SSO_ENTRY_PERMISSIONS, punyaIzinMasuk } from '../../../shared/constants/sso.js';
 
 const router = Router();
 
@@ -43,21 +43,31 @@ interface SsoUserPayload {
   nama: string;
   email: string | null;
   role: string;
+  /** Seluruh kode peran dari portal pusat. Dikirim sebagai array pada kontrak v2. */
+  roles?: string[];
   avatar?: string | null;
   prodi?: string | null;
   fakultas?: string | null;
+  nim?: string | null;
+  nidn?: string | null;
 }
 
-/** Memetakan peran SSO pusat ke peran aplikasi ini. */
-function mapSsoRoleToAppRole(ssoRole: string): string {
-  switch (ssoRole) {
-    case 'SUPERADMIN':
-      return ROLES.SUPER_ADMIN;
-    case 'ADMIN_SSO':
-      return ROLES.SUPER_ADMIN;
-    default:
-      return ROLES.EDITOR;
-  }
+/**
+ * Keputusan akses yang dihitung portal pusat.
+ *
+ * `permissions` hanya salinan untuk sesi berjalan dan tidak disimpan sebagai
+ * sumber otorisasi. Otorisasi fitur tetap memakai RBAC lokal.
+ */
+interface SsoAccessPayload {
+  allowed: boolean;
+  tingkat: string[];
+  permissions: string[];
+}
+
+interface SsoExchangeResult {
+  user: SsoUserPayload;
+  access: SsoAccessPayload;
+  app: { clientId: string; nameApp: string } | null;
 }
 
 /**
@@ -66,7 +76,7 @@ function mapSsoRoleToAppRole(ssoRole: string): string {
  * Pola ini sama dengan aplikasi satelit UNUSU lain: verifikasi dilakukan
  * server-ke-server memakai client_key yang tidak pernah dikirim ke browser.
  */
-async function exchangeSsoTicket(token: string): Promise<SsoUserPayload> {
+async function exchangeSsoTicket(token: string): Promise<SsoExchangeResult> {
   if (!config.sso.clientKey) {
     throw AppError.internal(
       'SSO_CLIENT_KEY belum dikonfigurasi di server. Login SSO tidak dapat diproses.',
@@ -93,26 +103,69 @@ async function exchangeSsoTicket(token: string): Promise<SsoUserPayload> {
   }
 
   const payload = (await response.json().catch(() => null)) as
-    | { status?: boolean; message?: string; data?: { user?: SsoUserPayload } }
+    | {
+        status?: boolean;
+        message?: string;
+        reason?: string;
+        data?: { user?: SsoUserPayload; access?: SsoAccessPayload; app?: { clientId: string; nameApp: string } };
+      }
     | null;
 
   const ssoUser = payload?.data?.user;
   if (!response.ok || !payload?.status || !ssoUser) {
+    // Portal pusat menolak dengan 403 ketika akun tidak memiliki izin masuk ke
+    // aplikasi ini. Pesannya diteruskan apa adanya agar pengguna memahami bahwa
+    // masalahnya ada pada peran di portal pusat, bukan pada tiket yang rusak.
+    if (response.status === 403) {
+      throw AppError.forbidden(
+        payload?.message || 'Akses ditolak. Anda tidak memiliki akses ke aplikasi ini.',
+        'SSO_ACCESS_DENIED',
+        {
+          appAccess: {
+            allowed: false,
+            reason: payload?.reason ?? null,
+            ssoRole: null,
+            ssoRoles: [],
+          },
+        },
+      );
+    }
     throw AppError.unauthorized(
       payload?.message || 'Verifikasi tiket SSO gagal.',
       'SSO_VERIFY_FAILED',
     );
   }
 
-  return ssoUser;
+  // Portal lama belum tentu mengirim `access`. Bila tidak ada, izin masuk
+  // diperiksa dari `tingkat` yang kosong sehingga akun ditolak, bukan diterima
+  // diam-diam. Menolak lebih aman daripada memberi akses tanpa dasar.
+  const access: SsoAccessPayload = payload.data?.access ?? { allowed: false, tingkat: [], permissions: [] };
+
+  return { user: ssoUser, access, app: payload.data?.app ?? null };
 }
 
-/** Membuat atau menyelaraskan akun lokal dari profil SSO yang sudah terverifikasi. */
-async function upsertUserFromSso(ssoUser: SsoUserPayload) {
+/**
+ * Menyelaraskan akun lokal dengan profil SSO yang sudah terverifikasi.
+ *
+ * Akun baru sengaja dibuat TANPA peran. Peran hanya diberikan admin melalui
+ * Manajemen Pengguna setelah akun ditinjau, sehingga pemilik akun tidak pernah
+ * memperoleh akses otomatis hanya karena berhasil masuk lewat portal pusat.
+ */
+async function upsertUserFromSso(ssoUser: SsoUserPayload, access: SsoAccessPayload) {
   const email = (ssoUser.email ?? `${ssoUser.username}@unusu.ac.id`).toLowerCase();
   const existing = await prisma.user.findFirst({
     where: { OR: [{ ssoId: String(ssoUser.id) }, { username: ssoUser.username }, { email }] },
   });
+
+  // Jejak profil portal disimpan agar admin dapat menilai akun sebelum memberi
+  // peran. `ssoRole` memakai peran utama, `ssoRoles` menyimpan seluruhnya.
+  const ssoRoles = ssoUser.roles ?? (ssoUser.role ? [ssoUser.role] : []);
+  const profilSso = {
+    ssoRole: ssoUser.role || null,
+    ssoRoles: JSON.stringify(ssoRoles),
+    ssoAccess: JSON.stringify(access),
+    ssoSyncedAt: new Date(),
+  };
 
   const user = existing
     ? await prisma.user.update({
@@ -123,6 +176,7 @@ async function upsertUserFromSso(ssoUser: SsoUserPayload) {
           email,
           avatarUrl: ssoUser.avatar ?? existing.avatarUrl,
           lastLoginAt: new Date(),
+          ...profilSso,
         },
       })
     : await prisma.user.create({
@@ -133,23 +187,9 @@ async function upsertUserFromSso(ssoUser: SsoUserPayload) {
           username: ssoUser.username,
           avatarUrl: ssoUser.avatar ?? null,
           lastLoginAt: new Date(),
+          ...profilSso,
         },
       });
-
-  // Akun Super Admin sudah mendapat assignment dari seeder. Akun SSO baru
-  // dibuat tanpa role agar tidak otomatis punya akses apa pun (default deny).
-  const roleCount = await prisma.userRole.count({ where: { userId: user.id } });
-  if (roleCount === 0) {
-    const shouldBootstrap = mapSsoRoleToAppRole(ssoUser.role) === ROLES.SUPER_ADMIN;
-    if (shouldBootstrap) {
-      const superAdminRole = await prisma.role.findUnique({ where: { code: ROLES.SUPER_ADMIN } });
-      if (superAdminRole) {
-        await prisma.userRole.create({
-          data: { userId: user.id, roleId: superAdminRole.id, scopeType: 'global' },
-        });
-      }
-    }
-  }
 
   return user;
 }
@@ -223,8 +263,56 @@ router.post(
       throw AppError.badRequest('Client ID tidak sesuai dengan aplikasi ini.', 'SSO_CLIENT_MISMATCH');
     }
 
-    const ssoUser = await exchangeSsoTicket(token);
-    const user = await upsertUserFromSso(ssoUser);
+    const { user: ssoUser, access, app } = await exchangeSsoTicket(token);
+
+    /*
+     * Gerbang masuk: hanya akun dengan izin `masuk_admin` atau `masuk_dosen`
+     * yang boleh melanjutkan. Pemeriksaan dilakukan SEBELUM akun lokal dibuat
+     * dan sebelum sesi diterbitkan, sehingga mahasiswa atau peran lain tidak
+     * meninggalkan jejak dan tidak pernah menerima sesi.
+     */
+    if (!punyaIzinMasuk(access)) {
+      await recordAudit({
+        req,
+        action: 'LOGIN',
+        module: 'AUTH',
+        targetType: 'user',
+        details: {
+          channel: 'sso',
+          result: 'denied',
+          reason: 'entry_permission_denied',
+          ssoRole: ssoUser.role,
+          ssoRoles: ssoUser.roles ?? [ssoUser.role],
+          tingkat: access.tingkat,
+        },
+      });
+      throw AppError.forbidden(
+        'Akun Anda tidak memiliki izin masuk ke Portal Program Studi. ' +
+          'Portal ini hanya untuk administrator dan dosen yang akan mengelola konten program studi.',
+        'SSO_NO_ENTRY_PERMISSION',
+        {
+          appAccess: {
+            allowed: false,
+            reason: 'no_entry_permission',
+            ssoRole: ssoUser.role ?? null,
+            ssoRoles: ssoUser.roles ?? (ssoUser.role ? [ssoUser.role] : []),
+            tingkat: access.tingkat,
+            permissions: access.permissions,
+            allowedPermissions: SSO_ENTRY_PERMISSIONS,
+            appName: app?.nameApp ?? null,
+          },
+        },
+      );
+    }
+
+    const user = await upsertUserFromSso(ssoUser, access);
+
+    if (!user.isActive) {
+      throw AppError.forbidden(
+        'Akun Anda sedang dinonaktifkan oleh administrator.',
+        'USER_INACTIVE',
+      );
+    }
 
     const session = await createSession(user.id, {
       userAgent: req.header('user-agent'),
@@ -241,7 +329,15 @@ router.post(
       details: { channel: 'sso' },
     });
 
-    res.json({ success: true, message: 'Login SSO berhasil.', user: session.user });
+    const belumDivalidasi = session.user.roles.length === 0;
+    res.json({
+      success: true,
+      message: belumDivalidasi
+        ? 'Akun Anda berhasil terverifikasi dan sedang menunggu validasi administrator.'
+        : 'Login SSO berhasil.',
+      user: session.user,
+      needsValidation: belumDivalidasi,
+    });
   }),
 );
 

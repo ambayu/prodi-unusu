@@ -273,6 +273,14 @@ export interface ManagedUser {
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  /** Jejak profil SSO terakhir; null bila akun belum pernah masuk lewat SSO. */
+  ssoId: string | null;
+  ssoRole: string | null;
+  /** JSON array seluruh kode peran dari portal pusat. */
+  ssoRoles: string | null;
+  /** JSON `access` dari portal pusat: allowed, tingkat, permissions. */
+  ssoAccess: string | null;
+  ssoSyncedAt: string | null;
   userRoles: Array<{
     id: number;
     scopeType: string;
@@ -286,14 +294,18 @@ export interface ManagedUser {
 export const userApi = {
   list: () => api.get<{ users: ManagedUser[] }>('/admin/users'),
   get: (id: number) => api.get<{ user: ManagedUser }>(`/admin/users/${id}`),
-  create: (data: { name: string; email: string; username: string; password: string }) =>
-    api.post('/admin/users', data),
   update: (id: number, data: Record<string, unknown>) => api.put(`/admin/users/${id}`, data),
   assignRole: (
     id: number,
     data: { roleCode: string; scopeType: string; studyProgramId?: number | null; permissionGroupCodes?: string[] },
   ) => api.post(`/admin/users/${id}/roles`, data),
   revokeRole: (userId: number, assignmentId: number) => api.delete(`/admin/users/${userId}/roles/${assignmentId}`),
+  /**
+   * Menonaktifkan akun. Server memakai soft delete agar riwayat audit dan
+   * penulis berita tetap utuh, sekaligus mencabut seluruh sesi aktif.
+   */
+  deactivate: (id: number) => api.delete(`/admin/users/${id}`),
+  activate: (id: number) => api.post(`/admin/users/${id}/activate`, {}),
   roles: () => api.get<{ roles: Array<{ id: number; code: string; name: string; rolePermissions: Array<{ permission: { code: string; name: string; module: string } }> }> }>('/admin/users/meta/roles'),
   permissionGroups: () =>
     api.get<{ groups: Array<{ id: number; code: string; name: string; items: Array<{ permission: { code: string } }> }> }>(
@@ -719,26 +731,32 @@ export const adminMenuApi = {
           {
             menuKey: 'management.users',
             label: 'Manajemen Pengguna',
-            desc: 'Daftar akun & penugasan peran',
+            desc: 'Validasi akun SSO & penugasan peran',
             route: '/admin/pengguna',
             icon: 'UsersIcon',
             parentKey: null,
             sortOrder: 31,
             section: 'TATA KELOLA',
             requiredPermission: 'users.view',
-            scopeType: 'prodi',
+            /*
+             * Global, bukan per prodi. Akun berasal dari SSO dan perannya hanya
+             * dua (Admin Utama / Admin Prodi), sehingga validasi dilakukan satu
+             * pintu di Portal Utama agar tidak ada prodi yang memberi akses
+             * sepihak tanpa pengetahuan admin universitas.
+             */
+            scopeType: 'global',
           },
           {
             menuKey: 'management.roles',
             label: 'Peran (Roles)',
-            desc: 'Alokasi peran 14 prodi',
+            desc: 'Alokasi peran lintas prodi',
             route: '/admin/peran',
             icon: 'ShieldCheckIcon',
             parentKey: null,
             sortOrder: 32,
             section: 'TATA KELOLA',
             requiredPermission: 'users.view',
-            scopeType: 'prodi',
+            scopeType: 'global',
           },
           {
             menuKey: 'management.permissions',
@@ -750,7 +768,7 @@ export const adminMenuApi = {
             sortOrder: 33,
             section: 'TATA KELOLA',
             requiredPermission: 'users.view',
-            scopeType: 'prodi',
+            scopeType: 'global',
           },
 
           // 5. TATA KELOLA UNIVERSITAS (Hanya Super Admin)

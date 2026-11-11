@@ -696,18 +696,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <span>Lihat Website</span>
             </Link>
 
-            {/* Tombol SSO Launcher Central ONE UNUSU */}
-            <a
-              href="http://localhost:5173/"
-              target="_blank"
-              rel="noreferrer"
-              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-[10px] border border-[#CBD5E1] bg-white text-slate-600 hover:text-[#1e3a8a] hover:bg-slate-50 transition-colors shadow-2xs"
-              title="Portal SSO & Layanan Terpadu ONE UNUSU"
-              aria-label="Portal SSO ONE UNUSU"
-            >
-              <Squares2X2Icon className="w-5 h-5 text-slate-600" />
-            </a>
-
             {/* User Profile Dropdown Menu */}
             <div className="relative" ref={dropdownRef}>
               <button

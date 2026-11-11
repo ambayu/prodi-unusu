@@ -5,24 +5,67 @@ import { useSiteStore } from '../app/siteStore';
 import { SsoLoadingScreen } from '../components/SsoLoadingScreen';
 import { SsoProblemScreen, type SsoProblemDetail } from '../components/SsoProblemScreen';
 
-function terjemahkanGagalSso(err: any, payload: any): SsoProblemDetail {
-  const status = err?.response?.status;
-  const msg = String(payload?.message || err?.message || '').toLowerCase();
+function terjemahkanGagalSso(err: unknown, payload: Record<string, any>): SsoProblemDetail {
+  const status = (err as any)?.response?.status;
+  const code = String(payload?.code || '');
+  const msg = String(payload?.message || (err as Error)?.message || '').toLowerCase();
   const appAccess = payload?.appAccess;
 
-  if (status === 403 || msg.includes('peran') || msg.includes('izin') || msg.includes('scope') || (appAccess && appAccess.allowed === false)) {
+  /*
+   * Portal pusat menolak akun yang tidak memiliki izin masuk
+   * (`masuk_admin` / `masuk_dosen`). Ini berbeda dari akun yang belum diberi
+   * peran aplikasi, sehingga pesannya harus menjelaskan bahwa masalahnya ada
+   * pada peran di portal pusat — bukan pada tiket atau sistem prodi.
+   */
+  if (code === 'SSO_NO_ENTRY_PERMISSION' || code === 'SSO_ACCESS_DENIED') {
+    const peranSso = appAccess?.ssoRole || appAccess?.ssoRoles?.join(', ') || 'tidak diketahui';
+    return {
+      jenis: 'peran',
+      judul: 'Akun ini tidak memiliki izin masuk ke Portal Program Studi',
+      penjelasan:
+        'Akun ONE UNUSU Anda berhasil diverifikasi, namun tidak memiliki izin masuk sebagai Administrator atau Dosen. ' +
+        'Portal ini hanya diperuntukkan bagi pengelola konten program studi.',
+      langkah: [
+        'Periksa apakah akun yang Anda gunakan memang akun kepegawaian, bukan akun mahasiswa.',
+        'Hubungi Administrator Universitas untuk meminta izin masuk aplikasi Portal Prodi.',
+        'Setelah izin diberikan, lakukan proses masuk ulang melalui ONE UNUSU.',
+      ],
+      catatan: `Peran terdeteksi: ${peranSso}. Akun Anda tidak dibuat di portal ini.`,
+      ssoRole: appAccess?.ssoRole || 'Tidak diketahui',
+      ssoRoleLabel: 'Tanpa izin masuk portal prodi',
+      appName: appAccess?.appName || 'Portal Program Studi UNUSU',
+    };
+  }
+
+  // Akun nonaktif ditangani terpisah agar pesannya jelas dan tidak disangka galat.
+  if (code === 'USER_INACTIVE') {
+    return {
+      jenis: 'peran',
+      judul: 'Akun Anda sedang dinonaktifkan',
+      penjelasan:
+        'Akun Anda pernah terdaftar di portal program studi, tetapi saat ini dinonaktifkan oleh administrator.',
+      langkah: [
+        'Hubungi Administrator Universitas untuk menanyakan status akun Anda.',
+        'Bila akun diaktifkan kembali, lakukan proses masuk ulang.',
+      ],
+      ssoRoleLabel: 'Nonaktif',
+      appName: 'Portal Program Studi UNUSU',
+    };
+  }
+
+  if (status === 403 || msg.includes('peran') || msg.includes('izin') || msg.includes('scope') || appAccess?.allowed === false) {
     return {
       jenis: 'peran',
       judul: 'Akun ini belum memiliki akses ke Program Studi',
       penjelasan:
-        'Akun ONE UNUSU Anda berhasil diverifikasi, namun belum terdaftar atau belum diberikan peran administratif (Admin Prodi / Editor) pada sistem program studi ini.',
+        'Akun ONE UNUSU Anda berhasil diverifikasi, namun belum terdaftar atau belum diberikan peran administratif pada sistem program studi ini.',
       langkah: [
         'Pastikan email dan akun ONE UNUSU yang Anda gunakan sesuai dengan SK penugasan resmi.',
-        'Minta Super Administrator Universitas untuk mengalokasikan peran pada program studi Anda.',
+        'Minta Administrator Universitas untuk mengalokasikan peran pada program studi Anda.',
         'Setelah hak akses ditambahkan oleh administrator, silakan lakukan proses masuk ulang.',
       ],
       ssoRole: appAccess?.ssoRole || 'Pengguna Terverifikasi',
-      ssoRoleLabel: appAccess?.ssoRoleLabel || 'Belum ada alokasi prodi',
+      ssoRoleLabel: 'Belum ada alokasi prodi',
       appName: 'Portal Program Studi UNUSU',
     };
   }
@@ -42,7 +85,7 @@ function terjemahkanGagalSso(err: any, payload: any): SsoProblemDetail {
     };
   }
 
-  if (!err?.response) {
+  if (!(err as { response?: unknown })?.response) {
     return {
       jenis: 'jaringan',
       judul: 'Koneksi ke Portal SSO Terputus',
@@ -101,12 +144,18 @@ export const SsoCallback: React.FC = () => {
 
     api
       .post('/auth/sso', { client_id: clientId, token })
-      .then(async () => {
+      .then(async (res) => {
         await refreshUser();
-        navigate('/admin', { replace: true });
+        /*
+         * Akun yang lolos gerbang SSO tetapi belum diberi peran diarahkan ke
+         * halaman validasi. Tanpa ini pengguna mendarat di dashboard lalu
+         * melihat galat "Data gagal dimuat" yang membingungkan.
+         */
+        const needsValidation = Boolean((res.data as { needsValidation?: boolean })?.needsValidation);
+        navigate(needsValidation ? '/validasi-akun' : '/admin', { replace: true });
       })
       .catch((requestError) => {
-        const payload = requestError.response?.data;
+        const payload = (requestError as { response?: { data?: Record<string, any> } })?.response?.data ?? {};
         setMasalah(terjemahkanGagalSso(requestError, payload));
       });
   }, [params, navigate, refreshUser]);

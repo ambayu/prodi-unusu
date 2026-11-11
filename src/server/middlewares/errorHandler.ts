@@ -85,6 +85,7 @@ export function errorHandler(error: unknown, req: Request, res: Response, _next:
       message: error.message,
       code: error.code,
       ...(error.fieldErrors ? { fieldErrors: error.fieldErrors } : {}),
+      ...(error.extras ?? {}),
     });
     return;
   }

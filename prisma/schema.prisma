@@ -114,6 +114,15 @@ model User {
   passwordHash String?   @map("password_hash") @db.VarChar(255)
   avatarUrl    String?   @map("avatar_url") @db.VarChar(500)
   phone        String?   @db.VarChar(30)
+
+  /// Jejak profil SSO saat terakhir masuk. Disimpan agar admin dapat menilai
+  /// kelayakan akun sebelum memberi peran: peran mentah portal, seluruh peran
+  /// yang dimiliki, dan hasil keputusan akses dari portal pusat.
+  ssoRole     String?   @map("sso_role") @db.VarChar(100)
+  ssoRoles    String?   @map("sso_roles") @db.Text
+  ssoAccess   String?   @map("sso_access") @db.Text
+  ssoSyncedAt DateTime? @map("sso_synced_at")
+
   isActive     Boolean   @default(true) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at")
   createdAt    DateTime  @default(now()) @map("created_at")

@@ -28,7 +28,7 @@ import { DynamicCustomPage } from './pages/public/DynamicCustomPage';
 import { Login } from './pages/Login';
 import { PortalNewsPage } from './pages/PortalNewsPage';
 import { SsoCallback } from './pages/SsoCallback';
-import { Dashboard } from './pages/admin/Dashboard';
+import { AccountPendingPage } from './pages/AccountPendingPage';import { Dashboard } from './pages/admin/Dashboard';
 import { AdminCurriculum } from './pages/admin/AdminCurriculum';
 import { AdminDocuments } from './pages/admin/AdminDocuments';
 import { AdminLecturers } from './pages/admin/AdminLecturers';
@@ -54,7 +54,7 @@ import { AdminMessages } from './pages/admin/AdminMessages';
 import { AdminPortalOverview } from './pages/admin/AdminPortalOverview';
 import { useBootstrap, useTenant } from './hooks/useSite';
 import { useSiteStore } from './app/siteStore';
-import { RequireAuth, RequirePermission } from './app/guards';
+import { RequireAuth, RequirePermission, RequireTenantAssignment } from './app/guards';
 import { AppError, AppLoading, DomainNotRegistered } from './components/ui/AppStates';
 import { NotFoundPage } from './pages/public/NotFoundPage';
 
@@ -82,6 +82,19 @@ export const App: React.FC = () => {
     return (
       <Routes>
         <Route path="/sso/callback" element={<SsoCallback />} />
+      </Routes>
+    );
+  }
+
+  /*
+   * Halaman validasi akun juga didahulukan. Penggunanya justru akun yang belum
+   * punya peran, sehingga pemeriksaan bootstrap di bawah dapat menutupi
+   * pemberitahuan yang seharusnya mereka baca.
+   */
+  if (location.pathname === '/validasi-akun') {
+    return (
+      <Routes>
+        <Route path="/validasi-akun" element={<AccountPendingPage />} />
       </Routes>
     );
   }
@@ -118,7 +131,9 @@ export const App: React.FC = () => {
         path="/admin"
         element={
           <RequireAuth>
-            <Dashboard />
+            <RequireTenantAssignment>
+              <Dashboard />
+            </RequireTenantAssignment>
           </RequireAuth>
         }
       />
