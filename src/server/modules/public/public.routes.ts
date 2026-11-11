@@ -355,6 +355,44 @@ router.get(
 );
 
 /**
+ * GET /api/v1/public/academic-hierarchy
+ *
+ * Endpoint publik untuk struktur hierarki Fakultas dan Program Studi aktif.
+ * Digunakan oleh SSO ONE UNUSU dan modul eksternal untuk sinkronisasi dropdown akun.
+ */
+router.get(
+  '/academic-hierarchy',
+  asyncHandler(async (_req, res) => {
+    const faculties = await prisma.faculty.findMany({
+      orderBy: { sortOrder: 'asc' },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        slug: true,
+        studyPrograms: {
+          where: { status: 'active' },
+          orderBy: { sortOrder: 'asc' },
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            slug: true,
+            degree: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      total: faculties.length,
+      faculties,
+    });
+  }),
+);
+
+/**
  * GET /api/v1/public/news
  *
  * Berita terbit dari SELURUH program studi, dipakai beranda portal.
