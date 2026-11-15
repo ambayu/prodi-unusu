@@ -143,29 +143,37 @@ export async function seedProdiContents() {
     });
 
     // 5. Berita Selamat Datang / Contoh
-    await prisma.post.upsert({
+    const welcomeSlug = 'selamat-datang-di-website-resmi';
+    const existingPost = await prisma.post.findFirst({
       where: {
-        post_tenant_slug_unique: {
-          studyProgramId: prodi.id,
-          slug: 'selamat-datang-di-website-resmi',
-        },
-      },
-      create: {
         studyProgramId: prodi.id,
-        categoryId: catAkademik.id,
-        title: `Selamat Datang di Website Resmi Program Studi ${name} UNUSU`,
-        slug: 'selamat-datang-di-website-resmi',
-        excerpt: `Website resmi Program Studi ${name} Universitas Nahdlatul Ulama Sumatera Utara sebagai portal informasi akademik, riset, dan kegiatan civitas akademika.`,
-        content: `<p>Selamat datang di portal resmi Program Studi <strong>${name}</strong>, Fakultas ${facultyName}, Universitas Nahdlatul Ulama Sumatera Utara.</p><p>Portal ini dihadirkan untuk memberikan kemudahan akses informasi terkait kurikulum, profil pengajar, kegiatan kemahasiswaan, fasilitas sarana-prasarana, serta pencapaian tri dharma perguruan tinggi.</p>`,
-        status: 'published',
-        isPublished: true,
-        publishedAt: new Date(),
-      },
-      update: {
-        title: `Selamat Datang di Website Resmi Program Studi ${name} UNUSU`,
-        isPublished: true,
+        slug: welcomeSlug,
       },
     });
+
+    if (existingPost) {
+      await prisma.post.update({
+        where: { id: existingPost.id },
+        data: {
+          title: `Selamat Datang di Website Resmi Program Studi ${name} UNUSU`,
+          isPublished: true,
+        },
+      });
+    } else {
+      await prisma.post.create({
+        data: {
+          studyProgramId: prodi.id,
+          categoryId: catAkademik.id,
+          title: `Selamat Datang di Website Resmi Program Studi ${name} UNUSU`,
+          slug: welcomeSlug,
+          excerpt: `Website resmi Program Studi ${name} Universitas Nahdlatul Ulama Sumatera Utara sebagai portal informasi akademik, riset, dan kegiatan civitas akademika.`,
+          content: `<p>Selamat datang di portal resmi Program Studi <strong>${name}</strong>, Fakultas ${facultyName}, Universitas Nahdlatul Ulama Sumatera Utara.</p><p>Portal ini dihadirkan untuk memberikan kemudahan akses informasi terkait kurikulum, profil pengajar, kegiatan kemahasiswaan, fasilitas sarana-prasarana, serta pencapaian tri dharma perguruan tinggi.</p>`,
+          status: 'published',
+          isPublished: true,
+          publishedAt: new Date(),
+        },
+      });
+    }
 
     // 6. Sarana & Prasarana Dasar
     const existingLab = await prisma.facility.findFirst({
