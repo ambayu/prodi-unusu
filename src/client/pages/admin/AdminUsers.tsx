@@ -9,7 +9,7 @@ import {
   UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
-import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
+import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
 import { useToast } from '../../components/ui/Toast';
@@ -165,8 +165,9 @@ export const AdminUsers: React.FC = () => {
   const [roleDraft, setRoleDraft] = useState<{
     roleCode: string;
     studyProgramId: string;
+    facultyId: string;
     permissionGroupCode: string;
-  }>({ roleCode: 'ADMIN_PRODI', studyProgramId: '', permissionGroupCode: '' });
+  }>({ roleCode: 'ADMIN_PRODI', studyProgramId: '', facultyId: '', permissionGroupCode: '' });
 
   const usersQuery = useQuery({
     queryKey: ['admin', 'users'],
@@ -185,18 +186,26 @@ export const AdminUsers: React.FC = () => {
     enabled: roleTarget !== null,
   });
 
+  // Daftar fakultas untuk menugaskan Admin Fakultas.
+  const facultiesQuery = useQuery({
+    queryKey: ['admin', 'users', 'faculties'],
+    queryFn: () => organizationApi.faculties().then((res) => res.data.faculties),
+    enabled: roleTarget !== null,
+  });
+
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
   };
 
   const assignMutation = useMutation({
     mutationFn: () => {
-      const adminUtama = roleDraft.roleCode === 'SUPER_ADMIN';
+      const isSuper = roleDraft.roleCode === 'SUPER_ADMIN';
+      const isFakultas = roleDraft.roleCode === 'ADMIN_FAKULTAS';
       return userApi.assignRole(roleTarget!.id, {
         roleCode: roleDraft.roleCode,
-        // Admin Utama berlaku lintas prodi; Admin Prodi wajib terikat satu prodi.
-        scopeType: adminUtama ? 'global' : 'prodi',
-        studyProgramId: adminUtama ? null : Number(roleDraft.studyProgramId),
+        scopeType: isSuper ? 'global' : isFakultas ? 'faculty' : 'prodi',
+        studyProgramId: (!isSuper && !isFakultas) ? Number(roleDraft.studyProgramId) : null,
+        facultyId: isFakultas ? Number(roleDraft.facultyId) : null,
         permissionGroupCodes: roleDraft.permissionGroupCode ? [roleDraft.permissionGroupCode] : [],
       });
     },
@@ -254,6 +263,7 @@ export const AdminUsers: React.FC = () => {
       roleCode: 'ADMIN_PRODI',
       // Prodi aktif dijadikan nilai awal agar admin tidak salah pilih.
       studyProgramId: activeTenantId ? String(activeTenantId) : '',
+      facultyId: '',
       permissionGroupCode: '',
     });
   };
@@ -288,182 +298,198 @@ export const AdminUsers: React.FC = () => {
         </div>
       </div>
 
-      {usersQuery.isLoading ? (
-        <LoadingState label="Memuat pengguna" />
-      ) : usersQuery.isError ? (
-        <ErrorState message={toApiError(usersQuery.error).message} onRetry={() => void usersQuery.refetch()} />
-      ) : akun.length === 0 ? (
-        <EmptyState
-          title="Belum ada akun terdaftar"
-          description="Akun muncul di sini setelah pengguna masuk minimal satu kali melalui SSO ONE UNUSU. Setelah itu Anda dapat memberikan akses Admin Utama atau Admin Prodi."
-        />
-      ) : (
-        /*
-         * `pb-28` memberi ruang di bawah tabel agar dropdown baris terakhir
-         * tidak terpotong oleh pembungkus ber-overflow. Tanpanya menu aksi
-         * hilang di balik batas bawah wadah saat dibuka.
-         */
-        <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white pb-28 shadow-2xs">
-          <table className="table-base">
-            <thead>
-              <tr>
-                <th>Nama</th>
-                <th>Peran SSO</th>
-                <th>Peran Aplikasi</th>
-                <th>Cakupan</th>
-                <th>Status</th>
-                <th>Login Terakhir</th>
-                <th className="text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {akun.map((user) => {
-                /*
-                 * `ssoRoles` menyimpan seluruh peran dari portal pusat. Bila akun
-                 * dibuat sebelum kolom itu ada, `ssoRole` tunggal tetap dipakai
-                 * sebagai cadangan agar peran tidak tampil kosong.
-                 */
-                const daftarPeran = bacaJson<string[]>(user.ssoRoles, []);
-                const peranSso = daftarPeran.length > 0 ? daftarPeran : user.ssoRole ? [user.ssoRole] : [];
-                const belumDivalidasi = user.userRoles.length === 0;
-
-                return (
-                  <tr key={user.id}>
-                    {/* Kolom 1: identitas akun saja. */}
-                    <td>
-                      <span className="block font-bold text-slate-900">{user.name}</span>
-                      <span className="mt-0.5 block text-[11px] text-slate-500">{user.username}</span>
-                      <span className="block text-[11px] text-slate-400">{user.email}</span>
-                    </td>
-
-                    {/* Kolom 2: peran dari portal pusat, sebagai dasar validasi. */}
-                    <td>
-                      {peranSso.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {peranSso.map((kode) => (
-                            <span
-                              key={kode}
-                              className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700"
-                            >
-                              {labelPeranSso(kode)}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-[11px] italic text-slate-400">Belum ada data SSO</span>
-                      )}
-                    </td>
-
-                    {/* Kolom 3: peran yang diberikan admin prodi. */}
-                    <td>
-                      {belumDivalidasi ? (
-                        <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
-                          Menunggu validasi
+      {/*
+       * `pb-28` pada pembungkus memberi ruang di bawah tabel agar dropdown baris
+       * terakhir tidak terpotong oleh pembungkus ber-overflow. Tanpanya menu aksi
+       * hilang di balik batas bawah wadah saat dibuka.
+       */}
+      <div className="pb-28">
+        {/*
+         * Keadaan memuat/galat/kosong ditangani DataTable.
+         */}
+        <DataTable<ManagedUser>
+          rows={akun}
+          rowKey={(user) => String(user.id)}
+          loading={usersQuery.isLoading}
+          loadingLabel="Memuat pengguna"
+          error={usersQuery.isError ? toApiError(usersQuery.error).message : null}
+          onRetry={() => void usersQuery.refetch()}
+          emptyTitle="Belum ada akun terdaftar"
+          emptyDescription="Akun muncul di sini setelah pengguna masuk minimal satu kali melalui SSO ONE UNUSU. Setelah itu Anda dapat memberikan akses Admin Utama atau Admin Prodi."
+          minWidth={1080}
+          columns={
+            [
+              {
+                key: 'nama',
+                header: 'Nama',
+                render: (user) => (
+                  <>
+                    {/* Kolom identitas akun saja. */}
+                    <span className="block font-bold text-slate-900">{user.name}</span>
+                    <span className="mt-0.5 block text-[11px] text-slate-500">{user.username}</span>
+                    <span className="block text-[11px] text-slate-400">{user.email}</span>
+                  </>
+                ),
+              },
+              {
+                key: 'peran-sso',
+                header: 'Peran SSO',
+                width: 170,
+                // Peran dari portal pusat, sebagai dasar validasi.
+                render: (user) => {
+                  /*
+                   * `ssoRoles` menyimpan seluruh peran dari portal pusat. Bila akun
+                   * dibuat sebelum kolom itu ada, `ssoRole` tunggal tetap dipakai
+                   * sebagai cadangan agar peran tidak tampil kosong.
+                   */
+                  const daftarPeran = bacaJson<string[]>(user.ssoRoles, []);
+                  const peranSso =
+                    daftarPeran.length > 0 ? daftarPeran : user.ssoRole ? [user.ssoRole] : [];
+                  return peranSso.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {peranSso.map((kode) => (
+                        <span
+                          key={kode}
+                          className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700"
+                        >
+                          {labelPeranSso(kode)}
                         </span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {user.userRoles.map((assignment) => (
-                            <span
-                              key={assignment.id}
-                              className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-[#1e3a8a]"
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-[11px] italic text-slate-400">Belum ada data SSO</span>
+                  );
+                },
+              },
+              {
+                key: 'peran-aplikasi',
+                header: 'Peran Aplikasi',
+                width: 190,
+                // Peran yang diberikan admin prodi.
+                render: (user) =>
+                  user.userRoles.length === 0 ? (
+                    <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                      Menunggu validasi
+                    </span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {user.userRoles.map((assignment) => (
+                        <span
+                          key={assignment.id}
+                          className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-[#1e3a8a]"
+                        >
+                          {assignment.role.name}
+                          {has('users.assign_role') ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setRevokeTarget({ userId: user.id, assignmentId: assignment.id })
+                              }
+                              className="text-rose-600 hover:text-rose-800"
+                              aria-label={`Cabut peran ${assignment.role.name} dari ${user.name}`}
                             >
-                              {assignment.role.name}
-                              {has('users.assign_role') ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setRevokeTarget({ userId: user.id, assignmentId: assignment.id })}
-                                  className="text-rose-600 hover:text-rose-800"
-                                  aria-label={`Cabut peran ${assignment.role.name} dari ${user.name}`}
-                                >
-                                  <TrashIcon className="h-3 w-3" />
-                                </button>
-                              ) : null}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Kolom 4: batas wilayah kerja tiap peran. */}
-                    <td>
-                      {belumDivalidasi ? (
-                        <span className="text-[11px] italic text-slate-400">—</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {user.userRoles.map((assignment) => (
-                            <span
-                              key={assignment.id}
-                              className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"
-                            >
-                              {assignment.studyProgram
-                                ? assignment.studyProgram.name
-                                : assignment.faculty
-                                  ? assignment.faculty.name
-                                  : 'Seluruh prodi'}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-
-                    <td>
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                          user.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {user.isActive ? 'Aktif' : 'Nonaktif'}
-                      </span>
-                    </td>
-
-                    <td className="text-[11px] text-slate-500">
-                      {user.lastLoginAt
-                        ? new Date(user.lastLoginAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })
-                        : 'Belum pernah'}
-                    </td>
-
-                    <td>
-                      <div className="flex justify-end">
-                        <AksiDropdown
-                          namaAkun={user.name}
-                          items={[
-                            ...(has('users.assign_role')
-                              ? [
-                                  {
-                                    label: 'Kelola peran',
-                                    icon: UserPlusIcon,
-                                    onClick: () => bukaDialogPeran(user),
+                              <TrashIcon className="h-3 w-3" />
+                            </button>
+                          ) : null}
+                        </span>
+                      ))}
+                    </div>
+                  ),
+              },
+              {
+                key: 'cakupan',
+                header: 'Cakupan',
+                width: 170,
+                // Batas wilayah kerja tiap peran.
+                render: (user) =>
+                  user.userRoles.length === 0 ? (
+                    <span className="text-[11px] italic text-slate-400">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {user.userRoles.map((assignment) => (
+                        <span
+                          key={assignment.id}
+                          className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"
+                        >
+                          {assignment.studyProgram
+                            ? assignment.studyProgram.name
+                            : assignment.faculty
+                              ? assignment.faculty.name
+                              : 'Seluruh prodi'}
+                        </span>
+                      ))}
+                    </div>
+                  ),
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                width: 100,
+                render: (user) => (
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                      user.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {user.isActive ? 'Aktif' : 'Nonaktif'}
+                  </span>
+                ),
+              },
+              {
+                key: 'login-terakhir',
+                header: 'Login Terakhir',
+                width: 130,
+                cellClassName: 'text-slate-500',
+                render: (user) =>
+                  user.lastLoginAt
+                    ? new Date(user.lastLoginAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })
+                    : 'Belum pernah',
+              },
+              {
+                key: 'aksi',
+                header: 'Aksi',
+                width: 90,
+                align: 'right',
+                render: (user) => (
+                  <div className="flex justify-end">
+                    <AksiDropdown
+                      namaAkun={user.name}
+                      items={[
+                        ...(has('users.assign_role')
+                          ? [
+                              {
+                                label: 'Kelola peran',
+                                icon: UserPlusIcon,
+                                onClick: () => bukaDialogPeran(user),
+                              },
+                            ]
+                          : []),
+                        ...(has('users.disable')
+                          ? [
+                              user.isActive
+                                ? {
+                                    label: 'Nonaktifkan akun',
+                                    icon: NoSymbolIcon,
+                                    onClick: () => setDisableTarget(user),
+                                    danger: true,
+                                  }
+                                : {
+                                    label: 'Aktifkan akun',
+                                    icon: CheckBadgeIcon,
+                                    onClick: () => activateMutation.mutate(user.id),
+                                    disabled: activateMutation.isPending,
                                   },
-                                ]
-                              : []),
-                            ...(has('users.disable')
-                              ? [
-                                  user.isActive
-                                    ? {
-                                        label: 'Nonaktifkan akun',
-                                        icon: NoSymbolIcon,
-                                        onClick: () => setDisableTarget(user),
-                                        danger: true,
-                                      }
-                                    : {
-                                        label: 'Aktifkan akun',
-                                        icon: CheckBadgeIcon,
-                                        onClick: () => activateMutation.mutate(user.id),
-                                        disabled: activateMutation.isPending,
-                                      },
-                                ]
-                              : []),
-                          ]}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                            ]
+                          : []),
+                      ]}
+                    />
+                  </div>
+                ),
+              },
+            ] satisfies Array<DataTableColumn<ManagedUser>>
+          }
+        />
+      </div>
 
       <FormModal
         open={roleTarget !== null}
@@ -477,6 +503,10 @@ export const AdminUsers: React.FC = () => {
             toast.error('Pilih program studi untuk Admin Prodi.');
             return;
           }
+          if (roleDraft.roleCode === 'ADMIN_FAKULTAS' && !roleDraft.facultyId) {
+            toast.error('Pilih fakultas untuk Admin Fakultas.');
+            return;
+          }
           assignMutation.mutate();
         }}
       >
@@ -484,7 +514,7 @@ export const AdminUsers: React.FC = () => {
           label="Peran"
           htmlFor="role-code"
           required
-          hint="Hanya dua peran yang tersedia sesuai kebijakan akses portal prodi."
+          hint="Pilih peran administrasi yang sesuai untuk pengguna."
         >
           <select
             id="role-code"
@@ -494,11 +524,39 @@ export const AdminUsers: React.FC = () => {
           >
             {ASSIGNABLE_ROLE_CODES.map((code) => (
               <option key={code} value={code}>
-                {code === 'SUPER_ADMIN' ? 'Admin Utama (seluruh program studi)' : 'Admin Prodi (satu program studi)'}
+                {code === 'SUPER_ADMIN'
+                  ? 'Admin Utama (seluruh program studi)'
+                  : code === 'ADMIN_FAKULTAS'
+                  ? 'Admin Fakultas (mengelola prodi di fakultasnya)'
+                  : 'Admin Prodi (satu program studi)'}
               </option>
             ))}
           </select>
         </Field>
+
+        {roleDraft.roleCode === 'ADMIN_FAKULTAS' ? (
+          <Field
+            label="Fakultas"
+            htmlFor="role-faculty"
+            required
+            hint="Pengguna akan mengelola seluruh program studi di bawah fakultas ini."
+          >
+            <select
+              id="role-faculty"
+              className="field-input"
+              required
+              value={roleDraft.facultyId}
+              onChange={(event) => setRoleDraft({ ...roleDraft, facultyId: event.target.value })}
+            >
+              <option value="">— Pilih fakultas —</option>
+              {(facultiesQuery.data ?? []).map((fac) => (
+                <option key={fac.id} value={String(fac.id)}>
+                  {fac.name} ({fac.code})
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : null}
 
         {roleDraft.roleCode === 'ADMIN_PRODI' ? (
           <Field

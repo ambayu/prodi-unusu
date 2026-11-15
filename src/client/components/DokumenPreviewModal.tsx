@@ -1,0 +1,166 @@
+import React, { useEffect, useState } from 'react';
+import { ArrowDownTrayIcon, ArrowPathIcon, DocumentIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { arsipDownloadApi, arsipPreviewApi, type ArsipBerkasMode } from '../services/contentApi';
+
+interface DokumenPreviewModalProps {
+  open: boolean;
+  arsipId: number;
+  judul: string;
+  /**
+   * Kata sandi arsip prodi; dikirim lewat header, tidak pernah di URL.
+   * Tidak dipakai bila `sumber` bernilai `admin` (sesi login sudah cukup).
+   */
+  password?: string;
+  /** Jalur pengambilan berkas: sesi admin prodi atau kata sandi publik. */
+  sumber?: ArsipBerkasMode;
+  onClose: () => void;
+}
+
+/**
+ * Pratinjau dokumen arsip LPM/LPPM.
+ *
+ * Alur yang diminta: dokumen MELIHAT lebih dulu, baru dapat diunduhnya lewat
+ * tombol Download. Berkas diambil sebagai blob lalu ditampilkan pada
+ * `<iframe>` ber-`src` `blob:` sehingga kata sandi tidak pernah muncul pada
+ * URL, riwayat peramban, atau log akses.
+ */
+export const DokumenPreviewModal: React.FC<DokumenPreviewModalProps> = ({
+  open,
+  arsipId,
+  judul,
+  password = '',
+  sumber = 'publik',
+  onClose,
+}) => {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  // Memuat berkas pratinjau setiap kali dokumen berganti.
+  useEffect(() => {
+    if (!open) return;
+
+    let dibatalkan = false;
+    let urlSementara: string | null = null;
+
+    setLoading(true);
+    setError(null);
+    setBlobUrl(null);
+
+    arsipPreviewApi(arsipId, password, sumber)
+      .then((blob) => {
+        if (dibatalkan) return;
+        urlSementara = URL.createObjectURL(blob);
+        setBlobUrl(urlSementara);
+      })
+      .catch((err: unknown) => {
+        if (dibatalkan) return;
+        setError(err instanceof Error ? err.message : 'Berkas dokumen tidak dapat dibuka.');
+      })
+      .finally(() => {
+        if (!dibatalkan) setLoading(false);
+      });
+
+    return () => {
+      dibatalkan = true;
+      // Membebaskan memori blob agar tidak menumpuk saat membuka banyak dokumen.
+      if (urlSementara) URL.revokeObjectURL(urlSementara);
+    };
+  }, [open, arsipId, password, sumber]);
+
+  // Menutup dengan tombol Escape.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  /** Mengunduh berkas setelah pratinjau terbuka. */
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const blob = await arsipDownloadApi(arsipId, password, sumber);
+      const url = URL.createObjectURL(blob);
+      const tautan = document.createElement('a');
+      tautan.href = url;
+      tautan.download = `${judul.replace(/[^A-Za-z0-9 _.-]/g, '').slice(0, 80) || 'dokumen'}.pdf`;
+      document.body.appendChild(tautan);
+      tautan.click();
+      tautan.remove();
+      // Beri jeda singkat agar peramban selesai membaca blob sebelum dibebaskan.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Berkas dokumen tidak dapat diunduh.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Pratinjau ${judul}`}
+      onMouseDown={(event) => {
+        // Klik pada latar (bukan isi dialog) menutup pratinjau.
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="flex h-full max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-bold text-slate-900">{judul}</h2>
+            <p className="text-[11px] text-slate-500">
+              Pratinjau dokumen. Gunakan tombol Download untuk menyimpan berkas.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleDownload()}
+              disabled={downloading || loading || !blobUrl}
+              className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              {downloading ? 'Mengunduh...' : 'Download'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-200 p-2 text-slate-500 transition-colors hover:bg-slate-50"
+              aria-label="Tutup pratinjau"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </header>
+
+        <div className="relative flex-1 overflow-hidden bg-slate-100">
+          {loading ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
+              <ArrowPathIcon className="h-6 w-6 animate-spin" />
+              <p className="text-xs font-semibold">Memuat dokumen…</p>
+            </div>
+          ) : error ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+              <DocumentIcon className="h-8 w-8 text-rose-400" />
+              <p className="text-sm font-bold text-slate-800">Dokumen tidak dapat ditampilkan</p>
+              <p className="max-w-md text-xs text-slate-500">{error}</p>
+            </div>
+          ) : blobUrl ? (
+            <iframe src={blobUrl} title={`Pratinjau ${judul}`} className="h-full w-full border-0" />
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DokumenPreviewModal;

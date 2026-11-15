@@ -15,19 +15,21 @@
  * Izin masuk yang diteruskan SSO. Salah satu harus dimiliki agar akun boleh
  * masuk ke Portal Program Studi lalu menunggu validasi admin.
  *
- * - `masuk_admin`  : staf/administrator universitas
- * - `masuk_dosen`  : dosen, dapat mengajukan diri sebagai pengelola prodi
+ * - `masuk_admin`    : staf/administrator universitas
+ * - `masuk_fakultas` : administrator fakultas
+ * - `masuk_dosen`    : dosen, dapat mengajukan diri sebagai pengelola prodi
  *
  * `masuk_mahasiswa` sengaja tidak diterima: portal ini bukan untuk mahasiswa.
  */
-export const SSO_ENTRY_PERMISSIONS = ['masuk_admin', 'masuk_dosen'] as const;
+export const SSO_ENTRY_PERMISSIONS = ['masuk_admin', 'masuk_fakultas', 'masuk_dosen'] as const;
 
 /** Tingkat akses yang dikirim SSO pada `access.tingkat`. */
-export const SSO_ACCEPTED_LEVELS = ['admin', 'dosen'] as const;
+export const SSO_ACCEPTED_LEVELS = ['admin', 'fakultas', 'dosen'] as const;
 
 /** Label manusia untuk tingkat SSO, dipakai di layar diagnosis. */
 export const SSO_LEVEL_LABELS: Record<string, string> = {
   admin: 'Administrator',
+  fakultas: 'Admin Fakultas',
   dosen: 'Dosen',
   mahasiswa: 'Mahasiswa',
 };
@@ -35,6 +37,7 @@ export const SSO_LEVEL_LABELS: Record<string, string> = {
 /** Keterangan singkat tiap izin masuk untuk ditampilkan ke admin. */
 export const SSO_ENTRY_LABELS: Record<string, string> = {
   masuk_admin: 'Masuk sebagai Administrator',
+  masuk_fakultas: 'Masuk sebagai Admin Fakultas',
   masuk_dosen: 'Masuk sebagai Dosen',
   masuk_mahasiswa: 'Masuk sebagai Mahasiswa',
 };
@@ -42,10 +45,12 @@ export const SSO_ENTRY_LABELS: Record<string, string> = {
 /**
  * Peran aplikasi yang boleh diberikan kepada akun SSO.
  *
- * Hanya dua, sesuai keputusan: admin utama mengelola seluruh prodi, sedangkan
- * admin prodi terikat pada satu prodi lewat `studyProgramId` di penugasannya.
+ * Ditugaskan setelah validasi manual oleh admin:
+ * - Super Admin: mengelola portal pusat & seluruh prodi
+ * - Admin Fakultas: mengelola seluruh prodi di bawah fakultas tertentu
+ * - Admin Prodi: terikat pada satu prodi lewat `studyProgramId`
  */
-export const ASSIGNABLE_ROLE_CODES = ['SUPER_ADMIN', 'ADMIN_PRODI'] as const;
+export const ASSIGNABLE_ROLE_CODES = ['SUPER_ADMIN', 'ADMIN_FAKULTAS', 'ADMIN_PRODI'] as const;
 
 export type AssignableRoleCode = (typeof ASSIGNABLE_ROLE_CODES)[number];
 

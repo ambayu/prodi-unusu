@@ -12,6 +12,16 @@ export const createCurriculumSchema = z.object({
 
 export const updateCurriculumSchema = createCurriculumSchema.partial();
 
+export const createAcademicSemesterSchema = z.object({
+  code: z.string().trim().min(2).max(50),
+  name: z.string().trim().min(2).max(100),
+  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Format tanggal mulai tidak valid.' }),
+  endDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Format tanggal selesai tidak valid.' }),
+  isActive: z.boolean().default(true),
+});
+
+export const updateAcademicSemesterSchema = createAcademicSemesterSchema.partial();
+
 export const createSemesterSchema = z.object({
   curriculumId: z.number().int().positive(),
   semesterNumber: z.number().int().min(1).max(14),
@@ -23,17 +33,67 @@ export const updateSemesterSchema = z.object({
   title: z.string().trim().min(1).max(100).optional(),
 });
 
+export const lecturerAssignmentSchema = z.object({
+  id: z.union([z.number(), z.string()]),
+  name: z.string().trim().min(1),
+  nidn: z.string().nullable().optional(),
+});
+
 export const createCourseSchema = z.object({
-  semesterId: z.number().int().positive(),
+  /**
+   * Master semester (periode kalender akademik). Wajib diisi dari daftar
+   * `/admin/semester`. Keputusan pemilik sistem 2026-11-16: "Semester" pada
+   * mata kuliah berarti periode kalender, bukan posisi 1..14.
+   */
+  academicSemesterId: z.number().int().positive(),
   code: z.string().trim().min(1).max(30),
   name: z.string().trim().min(2).max(200),
   credits: z.number().int().min(0).max(12),
-  courseType: z.enum(['Wajib', 'Pilihan', 'Praktikum', 'MBKM']).default('Wajib'),
+  /**
+   * Keterangan berupa teks bebas (contoh "Wajib", "Pilihan", atau catatan
+   * kompetensi). Keputusan pemilik sistem 2026-11-16 menghapus dropdown
+   * `courseType` dari formulir; kolom `course_type` di database dipertahankan
+   * sebagai warisan dan tidak lagi diisi dari UI.
+   */
   description: optionalText(5000),
+  lecturersData: z.array(lecturerAssignmentSchema).nullable().optional(),
   sortOrder: z.number().int().min(0).default(0),
 });
 
-export const updateCourseSchema = createCourseSchema.partial().omit({ semesterId: true });
+export const updateCourseSchema = createCourseSchema.partial();
+
+/*
+ * Master mata kuliah (tabel `courses`).
+ *
+ * Hanya identitas: kode dan nama. SKS, semester, dosen, dan RPS adalah milik
+ * penawaran (`createCurriculumItemSchema`), bukan milik master. Pemisahan ini
+ * mengikuti keputusan pemilik sistem 2026-11-16 (ADR-006).
+ */
+export const createCourseMasterSchema = z.object({
+  code: z.string().trim().min(1, 'Kode mata kuliah wajib diisi.').max(30),
+  name: z.string().trim().min(2, 'Nama mata kuliah minimal 2 karakter.').max(200),
+});
+
+export const updateCourseMasterSchema = createCourseMasterSchema.partial();
+
+/*
+ * Penawaran mata kuliah di dalam kurikulum (`curriculum_items`).
+ *
+ * `courseId` wajib: inilah kolom "id matakuliah" yang menautkan penawaran ke
+ * master. `studyProgramId` TIDAK ada di sini dengan sengaja — kepemilikan
+ * diturunkan dari sesi dan dari kurikulum induk, tidak pernah dari browser.
+ */
+export const createCurriculumItemSchema = z.object({
+  curriculumId: z.number().int().positive(),
+  courseId: z.number().int().positive(),
+  academicSemesterId: z.number().int().positive().nullable().optional(),
+  credits: z.number().int().min(0).max(12).default(2),
+  description: optionalText(5000),
+  lecturersData: z.array(lecturerAssignmentSchema).nullable().optional(),
+  sortOrder: z.number().int().min(0).default(0),
+});
+
+export const updateCurriculumItemSchema = createCurriculumItemSchema.partial();
 
 export const createRpsSchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -57,19 +117,25 @@ export const createLecturerSchema = z.object({
 
 export const updateLecturerSchema = createLecturerSchema.partial();
 
-export const createDocumentSchema = z.object({
-  code: optionalText(50),
-  title: z.string().trim().min(3).max(255),
-  category: z.string().trim().min(2).max(100),
-  description: optionalText(5000),
-  year: z.number().int().min(1990).max(2100).default(new Date().getFullYear()),
-  fileUrl: z.string().trim().min(1).max(500),
-  fileSize: z.number().int().min(0).nullable().optional(),
-  mimeType: optionalText(120),
-  isPublic: z.boolean().default(true),
+/*
+ * Skema CRUD dokumen lokal (`createDocumentSchema`/`updateDocumentSchema`)
+ * sudah DIHAPUS karena bank dokumen prodi tidak lagi disimpan di aplikasi ini.
+ */
+
+/**
+ * Kata sandi arsip dokumen prodi.
+ *
+ * Satu kata sandi berlaku untuk seluruh dokumen mutu prodi. `null` dipakai
+ * untuk menghapus kata sandi lama — namun kebijakan sistem mewajibkan setiap
+ * prodi memasang kata sandi sebelum arsipnya dapat dibuka publik.
+ */
+export const dokumenPasswordSchema = z.object({
+  password: z.string().trim().min(6, 'Kata sandi minimal 6 karakter.').max(72, 'Kata sandi maksimal 72 karakter.'),
 });
 
-export const updateDocumentSchema = createDocumentSchema.partial();
+export const hapusDokumenPasswordSchema = z.object({
+  password: z.null(),
+});
 
 export const createFacilitySchema = z.object({
   name: z.string().trim().min(2).max(200),
@@ -174,4 +240,3 @@ export const createContactMessageSchema = z.object({
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 export type CreateLecturerInput = z.infer<typeof createLecturerSchema>;
-export type CreateDocumentInput = z.infer<typeof createDocumentSchema>;

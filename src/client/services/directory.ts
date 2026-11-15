@@ -6,7 +6,7 @@ export interface DirectoryProdi {
   degree: string;
   logoUrl: string | null;
   primaryHostname: string | null;
-  faculty: { id: number; name: string; code: string };
+  faculty: { id: number; name: string; code: string; slug?: string; description?: string | null };
 }
 
 export interface DirectoryResponse {
@@ -19,6 +19,8 @@ export interface DirectoryFaculty {
   id: number;
   code: string;
   name: string;
+  slug?: string;
+  description?: string | null;
   prodis: DirectoryProdi[];
 }
 
@@ -85,6 +87,8 @@ export function groupByFaculty(prodis: DirectoryProdi[]): DirectoryFaculty[] {
         id: prodi.faculty.id,
         code: prodi.faculty.code,
         name: prodi.faculty.name,
+        slug: prodi.faculty.slug,
+        description: prodi.faculty.description,
         prodis: [prodi],
       });
     }

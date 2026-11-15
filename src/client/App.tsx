@@ -6,6 +6,7 @@ import { MainWebsiteLayout } from './modules/main-website/layouts/MainWebsiteLay
 import { MainLandingPage } from './modules/main-website/pages/MainLandingPage';
 import { AboutPage, AdmissionPage, ResearchPage } from './modules/main-website/pages/MainInfoPages';
 import { AcademicsPage, FacultiesPage } from './modules/main-website/pages/FacultiesPage';
+import { FacultyDetailPage } from './modules/main-website/pages/FacultyDetailPage';
 import { CampusContactPage, CampusServicesPage } from './modules/main-website/pages/CampusPages';
 
 // Ekosistem website program studi.
@@ -30,6 +31,7 @@ import { PortalNewsPage } from './pages/PortalNewsPage';
 import { SsoCallback } from './pages/SsoCallback';
 import { AccountPendingPage } from './pages/AccountPendingPage';import { Dashboard } from './pages/admin/Dashboard';
 import { AdminCurriculum } from './pages/admin/AdminCurriculum';
+import { AdminCourses } from './pages/admin/AdminCourses';
 import { AdminDocuments } from './pages/admin/AdminDocuments';
 import { AdminLecturers } from './pages/admin/AdminLecturers';
 import { AdminFacilities } from './pages/admin/AdminFacilities';
@@ -52,6 +54,7 @@ import { AdminPermissions } from './pages/admin/AdminPermissions';
 import { AdminAuditLogs } from './pages/admin/AdminAuditLogs';
 import { AdminMessages } from './pages/admin/AdminMessages';
 import { AdminPortalOverview } from './pages/admin/AdminPortalOverview';
+import { AdminAcademicSemesters } from './pages/admin/AdminAcademicSemesters';
 import { useBootstrap, useTenant } from './hooks/useSite';
 import { useSiteStore } from './app/siteStore';
 import { RequireAuth, RequirePermission, RequireTenantAssignment } from './app/guards';
@@ -147,6 +150,26 @@ export const App: React.FC = () => {
           </RequireAuth>
         }
       />
+      <Route
+        path="/admin/mata-kuliah"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['curriculum.view']}>
+              <AdminCourses />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      {/*
+        Rute form mata kuliah lama dipertahankan sebagai pengalihan ke daftar.
+        Sejak ADR-006 master mata kuliah hanya berisi kode + nama sehingga cukup
+        dikelola lewat `FormModal` di `/admin/mata-kuliah`; halaman form penuh
+        (`AdminCurriculumForm`) tidak lagi dipakai dan berkasnya dihapus.
+      */}
+      <Route path="/admin/mata-kuliah/baru" element={<Navigate to="/admin/mata-kuliah" replace />} />
+      <Route path="/admin/mata-kuliah/:id/ubah" element={<Navigate to="/admin/mata-kuliah" replace />} />
+      <Route path="/admin/kurikulum/baru" element={<Navigate to="/admin/kurikulum" replace />} />
+      <Route path="/admin/kurikulum/semester/baru" element={<Navigate to="/admin/kurikulum" replace />} />
       <Route
         path="/admin/kurikulum"
         element={
@@ -370,6 +393,16 @@ export const App: React.FC = () => {
         }
       />
       <Route
+        path="/admin/semester"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['organization.view']}>
+              <AdminAcademicSemesters />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/admin/domain"
         element={
           <RequireAuth>
@@ -463,6 +496,14 @@ export const App: React.FC = () => {
             element={
               <MainWebsiteLayout>
                 <FacultiesPage />
+              </MainWebsiteLayout>
+            }
+          />
+          <Route
+            path="/fakultas/:slug"
+            element={
+              <MainWebsiteLayout>
+                <FacultyDetailPage />
               </MainWebsiteLayout>
             }
           />

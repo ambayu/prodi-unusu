@@ -88,6 +88,7 @@ export async function loadAuthUser(userId: number): Promise<AuthUser> {
   const roles: AuthUserRole[] = [];
   const permissions = new Set<string>();
   const tenantIds = new Set<number>();
+  const facultyTenantIds = new Set<number>();
   let isSuperAdmin = false;
 
   for (const assignment of user.userRoles) {
@@ -116,6 +117,9 @@ export async function loadAuthUser(userId: number): Promise<AuthUser> {
     if (assignment.studyProgramId) {
       tenantIds.add(assignment.studyProgramId);
     }
+    if (assignment.facultyId) {
+      facultyTenantIds.add(assignment.facultyId);
+    }
   }
 
   return {
@@ -127,6 +131,7 @@ export async function loadAuthUser(userId: number): Promise<AuthUser> {
     roles,
     permissions: isSuperAdmin ? ['*'] : Array.from(permissions).sort(),
     tenantIds: Array.from(tenantIds).sort((a, b) => a - b),
+    facultyTenantIds: Array.from(facultyTenantIds).sort((a, b) => a - b),
     isSuperAdmin,
   };
 }

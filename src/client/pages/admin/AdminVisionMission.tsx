@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, TrashIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { ErrorState, LoadingState } from '../../components/ui/States';
 import { Field } from '../../components/ui/FormModal';
@@ -102,18 +102,6 @@ export const AdminVisionMission: React.FC = () => {
         <ErrorState message={toApiError(dataQuery.error).message} onRetry={() => void dataQuery.refetch()} />
       ) : (
         <div className="space-y-4">
-          <div className="flex items-start gap-2.5 rounded-xl border border-blue-200 bg-blue-50/70 p-3.5 text-xs text-blue-900">
-            <InformationCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
-            <p className="leading-relaxed">
-              Data pada halaman ini menjadi acuan resmi visi dan misi program studi. Bagian
-              &ldquo;Komitmen Akademik&rdquo; pada beranda dikelola terpisah melalui{' '}
-              <a href="/admin/builder" className="font-bold underline hover:text-blue-950">
-                Page Builder &rsaquo; Beranda
-              </a>
-              .
-            </p>
-          </div>
-
           <section className="card space-y-4">
             <h2 className="text-sm font-bold text-slate-900">Visi Program Studi</h2>
             <Field label="Rumusan visi" htmlFor="vision-text" hint="Satu paragraf utuh, tanpa penomoran.">

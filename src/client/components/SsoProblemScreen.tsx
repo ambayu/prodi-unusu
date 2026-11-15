@@ -10,7 +10,7 @@ import {
   LockClosedIcon,
 } from '@heroicons/react/24/outline';
 
-const ONE_UNUSU_URL = import.meta.env.VITE_ONE_UNUSU_URL || 'http://localhost:5173';
+const ONE_UNUSU_URL = import.meta.env.VITE_ONE_UNUSU_URL || 'http://localhost:5178';
 
 export type SsoProblemDetail = {
   jenis: 'kosong' | 'token' | 'jaringan' | 'peran' | 'umum';

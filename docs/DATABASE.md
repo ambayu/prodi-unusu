@@ -21,12 +21,12 @@ yang dipisahkan per tenant.
 
 | Tabel | Isi | Catatan |
 |---|---|---|
-| `faculties` | Fakultas | Data induk. Bukan tenant, tidak memiliki domain. |
-| `study_programs` | Program studi | Tenant sebenarnya. Kode dan slug unik global. |
-| `domains` | Hostname | `hostname` unik global, huruf kecil tanpa skema. |
+| `faculties` | Fakultas | Unit tenant fakultas (ADR-001). Memiliki domain, landing page, dan profil mandiri. |
+| `study_programs` | Program studi | Unit tenant program studi. Kode dan slug unik global. `external_prodi_code` memetakan kode prodi lokal ke `prodiCode` arsip LPM/LPPM (ADR-002). |
+| `domains` | Hostname | `hostname` unik global, huruf kecil tanpa skema. Dapat merujuk ke `study_program_id` atau `faculty_id`. |
 
-Relasi: satu fakultas memiliki banyak program studi. Satu program studi memiliki
-satu atau lebih domain. Domain terakhir tidak dapat dihapus.
+Relasi: satu fakultas menaungi banyak program studi. Masing-masing fakultas dan program studi memiliki
+satu atau lebih domain resmi. Domain terakhir tidak dapat dihapus.
 
 ## 3. Identitas dan akses
 
@@ -54,7 +54,7 @@ permission tetap dapat dibaca manusia.
 
 | Tabel | Isi |
 |---|---|
-| `website_settings` | Judul, tagline, logo, favicon, SEO, hak cipta. Satu baris per tenant. |
+| `website_settings` | Judul, tagline, logo, favicon, SEO, hak cipta. Satu baris per tenant. Juga menyimpan **kata sandi arsip dokumen** (`document_password_hash` scrypt, `document_password_version`, `document_password_set_at`) — ADR-002. |
 | `themes` | Token desain: warna, font, radius, bayangan, gaya tombol, layout. |
 | `menus` | Navigasi publik. `sort_order`, `parent_id`, `is_required`. |
 | `admin_menus` | Katalog menu portal admin beserta permission yang dibutuhkan. |
@@ -92,11 +92,14 @@ media.
 | Tabel | Isi |
 |---|---|
 | `curriculums` | Kurikulum. Unik per tenant dan tahun. |
-| `curriculum_semesters` | Semester. Unik per kurikulum dan nomor. |
-| `curriculum_courses` | Mata kuliah: kode, nama, SKS, jenis, deskripsi. |
-| `rps_documents` | Berkas RPS per mata kuliah, dengan status publik. |
-| `lecturers` | Dosen: NIDN, jabatan akademik, keahlian, foto, status aktif. |
-| `documents` | Repository dokumen: kategori, tahun, berkas, status publik, unduhan. |
+| `curriculum_semesters` | Semester internal kurikulum (nomor 1..14, unik per kurikulum). Bukan kalender akademik. |
+| `academic_semesters` | **Master semester global**: kode unik, nama, `start_date`, `end_date`, status aktif. Tidak memiliki tenant (lihat ADR-003). |
+| `curriculum_courses` | **WARISAN.** Mata kuliah lama: `study_program_id`, kode, nama, SKS, keterangan, `semester_id` (posisi 1..14), `academic_semester_id`, `lecturers_data`. UI baru **tidak menulis** ke tabel ini, tetapi dashboard dan halaman publik masih membacanya. Jangan dihapus sebelum migrasi data tuntas (ADR-006). |
+| `courses` | **Master mata kuliah** (ADR-006). Hanya identitas: `study_program_id` (wajib, dari sesi), `code`, `name`. Unik `(study_program_id, code)`. **Tidak** menyimpan SKS, semester, dosen, atau RPS. Diisi dari menu **Mata Kuliah**. |
+| `curriculum_items` | **Penawaran mata kuliah pada kurikulum** (ADR-006): `curriculum_id`, `course_id` (**id matakuliah**), `academic_semester_id` (nullable), `credits`, `description`, `lecturers_data` (JSON), `sort_order`. Unik `(curriculum_id, course_id)`. **Tidak punya** `study_program_id` — kepemilikan diturunkan dari kurikulum induk. Diisi dari menu **Kurikulum**. |
+| `curriculum_rps` | Dokumen RPS **per penawaran** (`curriculum_item_id`), cascade. Dipisahkan dari `rps_documents` warisan agar RPS melekat pada penawaran, bukan pada master (ADR-006). |
+| `rps_documents` | Berkas RPS per mata kuliah (`title`, `file_url`, `revision`, `is_public`). Ditulis lewat `/api/v1/admin/courses/:courseId/rps`. |
+| `lecturers` | Dosen lokal: NIDN, jabatan akademik, keahlian, foto, status aktif. **Tidak lagi dikelola lewat admin**; hanya fallback direktori publik. Sumber utama dosen adalah ONE UNUSU API Hub. |
 | `facilities` | Sarana prasarana: kategori, lokasi, status. |
 | `post_categories` | Kategori berita. Unik per tenant dan slug. |
 | `posts` | Berita: slug, isi, status draft/terjadwal/terbit/arsip. |
@@ -128,9 +131,12 @@ pengurutan:
 - `pages`: `study_program_id, is_published`
 - `page_sections`: `page_id, is_active, sort_order`
 - `section_widgets`: `page_section_id, is_active, sort_order`
-- `curriculum_courses`: `semester_id, sort_order`, `code`
+- `curriculum_courses`: `study_program_id, academic_semester_id`, `study_program_id, code`, `semester_id, sort_order`, `academic_semester_id`, `code`
+- `courses`: `(study_program_id, code)` unik, `(study_program_id, name)`
+- `curriculum_items`: `(curriculum_id, course_id)` unik, `curriculum_id, sort_order`, `course_id`, `academic_semester_id`
+- `curriculum_rps`: `curriculum_item_id`
+- `academic_semesters`: `code` (unik)
 - `lecturers`: `study_program_id, is_active, sort_order`, `nidn`
-- `documents`: `study_program_id, is_public`, `category`
 - `posts`: `study_program_id, status, published_at`, `category_id`
 - `audit_logs`: `study_program_id, created_at`, `user_id, created_at`, `module, action`
 

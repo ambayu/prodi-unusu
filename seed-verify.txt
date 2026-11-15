@@ -1,0 +1,99 @@
+﻿=== MASTER MATA KULIAH (courses) ===
+    3  TIF101   Pengantar Teknologi Informasi
+    4  TIF102   Algoritma dan Pemrograman I
+    5  TIF103   Matematika Diskrit
+    6  TIF104   Kalkulus I
+    7  TIF105   Praktikum Algoritma dan Pemrograman I
+   10  TIF201   Algoritma dan Pemrograman II
+   11  TIF202   Struktur Data
+   12  TIF203   Basis Data I
+   13  TIF204   Kalkulus II
+   14  TIF205   Praktikum Struktur Data
+   17  TIF301   Pemrograman Berorientasi Objek
+   18  TIF302   Basis Data II
+   19  TIF303   Jaringan Komputer
+   20  TIF304   Sistem Operasi
+   21  TIF305   Aljabar Linear
+   22  TIF306   Praktikum Jaringan Komputer
+   23  TIF401   Rekayasa Perangkat Lunak
+   24  TIF402   Kecerdasan Buatan
+   25  TIF403   Pemrograman Web
+   26  TIF404   Teori Bahasa dan Automata
+   27  TIF405   Statistika dan Probabilitas
+   28  TIF406   Praktikum Pemrograman Web
+   29  TIF501   Analisis dan Perancangan Sistem Informasi
+   30  TIF502   Pembelajaran Mesin
+   31  TIF503   Keamanan Informasi
+   32  TIF504   Pemrograman Mobile
+   33  TIF505   Sistem Pendukung Keputusan
+   34  TIF601   Manajemen Proyek Teknologi Informasi
+   35  TIF602   Pengolahan Citra Digital
+   36  TIF603   Data Mining
+   37  TIF604   Internet of Things
+   38  TIF605   Magang Industri
+   39  TIF701   Metodologi Penelitian
+   40  TIF702   Kewirausahaan Teknologi
+   41  TIF703   Etika Profesi dan HAKI
+   42  TIF704   Proposal Tugas Akhir
+   43  TIF801   Tugas Akhir
+    8  UNU101   Pendidikan Agama Islam
+    9  UNU102   Pancasila
+   15  UNU201   Bahasa Indonesia
+   16  UNU202   Kewarganegaraan
+  total: 41
+
+=== PENAWARAN PER SEMESTER (curriculum_items) ===
+
+  2025/2026 Ganjil ΓÇö 22 MK, 56 SKS
+    TIF101   Pengantar Teknologi Informasi              3 SKS  [Wajib]
+    UNU101   Pendidikan Agama Islam                     2 SKS  [Wajib]
+    TIF102   Algoritma dan Pemrograman I                3 SKS  [Wajib]
+    UNU102   Pancasila                                  2 SKS  [Wajib]
+    TIF103   Matematika Diskrit                         3 SKS  [Wajib]
+    TIF104   Kalkulus I                                 3 SKS  [Wajib]
+    TIF105   Praktikum Algoritma dan Pemrograman I      1 SKS  [Praktikum]
+    TIF301   Pemrograman Berorientasi Objek             3 SKS  [Wajib]
+    TIF302   Basis Data II                              3 SKS  [Wajib]
+    TIF303   Jaringan Komputer                          3 SKS  [Wajib]
+    TIF304   Sistem Operasi                             3 SKS  [Wajib]
+    TIF305   Aljabar Linear                             3 SKS  [Wajib]
+    TIF306   Praktikum Jaringan Komputer                1 SKS  [Praktikum]
+    TIF501   Analisis dan Perancangan Sistem Informasi  3 SKS  [Wajib]
+    TIF502   Pembelajaran Mesin                         3 SKS  [Wajib]
+    TIF503   Keamanan Informasi                         3 SKS  [Wajib]
+    TIF504   Pemrograman Mobile                         3 SKS  [Pilihan]
+    TIF505   Sistem Pendukung Keputusan                 3 SKS  [Pilihan]
+    TIF701   Metodologi Penelitian                      2 SKS  [Wajib]
+    TIF702   Kewirausahaan Teknologi                    2 SKS  [Wajib]
+    TIF703   Etika Profesi dan HAKI                     2 SKS  [Wajib]
+    TIF704   Proposal Tugas Akhir                       2 SKS  [Wajib]
+
+  (tanpa semester) ΓÇö 19 MK, 53 SKS
+    TIF201   Algoritma dan Pemrograman II               3 SKS  [Wajib]
+    UNU201   Bahasa Indonesia                           2 SKS  [Wajib]
+    TIF202   Struktur Data                              3 SKS  [Wajib]
+    UNU202   Kewarganegaraan                            2 SKS  [Wajib]
+    TIF203   Basis Data I                               3 SKS  [Wajib]
+    TIF204   Kalkulus II                                3 SKS  [Wajib]
+    TIF205   Praktikum Struktur Data                    1 SKS  [Praktikum]
+    TIF401   Rekayasa Perangkat Lunak                   3 SKS  [Wajib]
+    TIF402   Kecerdasan Buatan                          3 SKS  [Wajib]
+    TIF403   Pemrograman Web                            3 SKS  [Wajib]
+    TIF404   Teori Bahasa dan Automata                  3 SKS  [Wajib]
+    TIF405   Statistika dan Probabilitas                3 SKS  [Wajib]
+    TIF406   Praktikum Pemrograman Web                  1 SKS  [Praktikum]
+    TIF601   Manajemen Proyek Teknologi Informasi       3 SKS  [Wajib]
+    TIF602   Pengolahan Citra Digital                   3 SKS  [Pilihan]
+    TIF603   Data Mining                                3 SKS  [Pilihan]
+    TIF604   Internet of Things                         3 SKS  [Pilihan]
+    TIF605   Magang Industri                            2 SKS  [MBKM]
+    TIF801   Tugas Akhir                                6 SKS  [Wajib]
+
+  TOTAL: 41 penawaran, 109 SKS
+
+=== ISOLASI TENANT ===
+  IKO: 0 master mata kuliah (harus 0)
+  SIN: 0 master mata kuliah (harus 0)
+
+=== RPS ===
+  total curriculum_rps: 0

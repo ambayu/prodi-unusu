@@ -6,37 +6,27 @@ import {
   ChevronLeftIcon,
   ArrowTopRightOnSquareIcon,
   ExclamationTriangleIcon,
-  KeyIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { AnimatedFlatSsoLogo } from '../components/AnimatedFlatSsoLogo';
 import { SsoLoadingScreen } from '../components/SsoLoadingScreen';
 import { useTenant } from '../hooks/useSite';
 import { useSiteStore } from '../app/siteStore';
-import { api, toApiError } from '../services/api';
 
-const ONE_UNUSU_URL = import.meta.env.VITE_ONE_UNUSU_URL || 'http://localhost:5173';
+const ONE_UNUSU_URL = import.meta.env.VITE_ONE_UNUSU_URL || 'http://localhost:5178';
 const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || '70c76ea9b5d5d3a8';
 
 /**
- * Halaman masuk portal program studi.
+ * Halaman masuk portal program studi & fakultas.
  *
- * Jalur utama adalah SSO ONE UNUSU. Login kata sandi lokal tersedia sebagai
- * jalur darurat untuk akun bootstrap dan ketika portal SSO tidak dapat
- * dihubungi, sehingga administrator tidak terkunci dari sistemnya sendiri.
+ * Jalur resmi autentikasi terpusat via SSO ONE UNUSU.
  */
 export const Login: React.FC = () => {
   const { tenant } = useTenant();
   const user = useSiteStore((state) => state.user);
-  const refreshUser = useSiteStore((state) => state.refreshUser);
   const navigate = useNavigate();
 
-  const [localOpen, setLocalOpen] = useState(false);
   const [ssoRedirecting, setSsoRedirecting] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
 
   // Pengguna yang sesinya masih berlaku tidak perlu melihat form lagi.
   useEffect(() => {
@@ -46,47 +36,18 @@ export const Login: React.FC = () => {
   }, [user, navigate]);
 
   const handleSsoLogin = () => {
-    // Klik kedua saat proses berjalan diabaikan agar tidak ada dua redirect.
     if (ssoRedirecting) return;
-    // Hanya menyalakan layar tunggu. Perpindahan ke Portal ONE UNUSU baru
-    // dijalankan oleh `onReady` setelah jeda animasi terlewati, sehingga logo
-    // SSO sempat terlihat utuh alih-alih berkedip sepersekian detik.
     setSsoRedirecting(true);
   };
 
   /**
    * Perpindahan ke Portal ONE UNUSU.
-   *
-   * Dipisahkan dari `handleSsoLogin` dan dijalankan oleh `SsoLoadingScreen`
-   * lewat `onReady` setelah `delayMs` — pola yang sama dengan aplikasi lain di
-   * ekosistem UNUSU (E-Surat, LPM, LPPM, LMS, Sarpras, Akreditasi).
    */
   const goToPortal = useCallback(() => {
     const target = `${ONE_UNUSU_URL}/authorize?client_id=${encodeURIComponent(SSO_CLIENT_ID)}`;
     window.location.href = target;
   }, []);
 
-  const handleLocalLogin = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setBusy(true);
-    setError(null);
-
-    try {
-      await api.post('/auth/login', { username, password });
-      await refreshUser();
-      navigate('/admin', { replace: true });
-    } catch (requestError) {
-      setError(toApiError(requestError).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // Layar tunggu satu halaman penuh selama browser berpindah ke Portal ONE
-  // UNUSU, supaya pengguna tidak menekan tombol masuk berulang kali.
-  //
-  // Ditulis sebagai early-return (bukan overlay) agar layar tunggu benar-benar
-  // tergambar sebelum browser mulai bernavigasi.
   if (ssoRedirecting) {
     return (
       <SsoLoadingScreen
@@ -171,15 +132,8 @@ export const Login: React.FC = () => {
             </div>
           ) : null}
 
-          {/* Wrapper Rapat: Divider 'atau' & Opsi Masuk Alternatif */}
+          {/* Tautan Navigasi Tambahan */}
           <div className="!mt-4 space-y-2">
-            <div className="relative flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative bg-white px-3 text-xs text-slate-400">atau</div>
-            </div>
-
             <div className="text-center pt-0.5">
               <a
                 href={ONE_UNUSU_URL}
@@ -191,67 +145,6 @@ export const Login: React.FC = () => {
                 <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5 shrink-0" />
               </a>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setLocalOpen((open) => !open)}
-              className="inline-flex w-full items-center justify-center gap-1.5 pt-1 text-[11px] font-semibold text-slate-500 transition-colors hover:text-slate-800"
-            >
-              <KeyIcon className="h-3.5 w-3.5" />
-              {localOpen ? 'Tutup login kata sandi' : 'Login kata sandi lokal (jalur darurat)'}
-            </button>
-
-            {localOpen ? (
-              <form
-                onSubmit={handleLocalLogin}
-                className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4"
-              >
-                <p className="text-[11px] leading-relaxed text-slate-500">
-                  Dipakai administrator bila portal ONE UNUSU tidak dapat dihubungi. Akun dibuat oleh
-                  Super Admin universitas.
-                </p>
-
-                <div>
-                  <label htmlFor="username" className="mb-1 block text-[11px] font-bold text-slate-700">
-                    Nama pengguna atau email
-                  </label>
-                  <input
-                    id="username"
-                    name="username"
-                    type="text"
-                    autoComplete="username"
-                    required
-                    value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#166534] focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="password" className="mb-1 block text-[11px] font-bold text-slate-700">
-                    Kata sandi
-                  </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#166534] focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="w-full rounded-lg bg-[#166534] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#14532D] disabled:opacity-60"
-                >
-                  {busy ? 'Memproses...' : 'Masuk'}
-                </button>
-              </form>
-            ) : null}
           </div>
 
           <div className="text-xs text-slate-500 text-center font-normal pt-1">

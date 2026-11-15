@@ -8,6 +8,7 @@ import { slugParamSchema } from '../../../shared/schemas/public.js';
 import { paginationSchema } from '../../../shared/schemas/common.js';
 import { getPublishedPageBySlug } from '../../services/pageService.js';
 import { buildCurriculumSummary, listPublicCurriculum } from '../../services/curriculumService.js';
+import { fetchLecturersFromApiHub } from '../../services/lecturerIntegrationService.js';
 
 const router = Router();
 
@@ -106,46 +107,43 @@ router.get(
   }),
 );
 
-/** GET /api/v1/public/lecturers: direktori dosen aktif. */
+/** GET /api/v1/public/lecturers: direktori dosen aktif dari API Hub ONE UNUSU. */
 router.get(
   '/lecturers',
   requireTenant,
   asyncHandler(async (req, res) => {
-    const lecturers = await prisma.lecturer.findMany({
-      where: { studyProgramId: req.tenant!.id, isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-    });
+    try {
+      const allLecturers = await fetchLecturersFromApiHub();
+      const prodiName = req.tenant?.name?.toLowerCase() || '';
 
-    res.json({ success: true, lecturers });
+      const lecturers = allLecturers.filter((l) => {
+        if (!prodiName) return true;
+        const homebase = (l.studyProgramName || '').toLowerCase();
+        return homebase.includes(prodiName) || prodiName.includes(homebase);
+      });
+
+      res.json({
+        success: true,
+        lecturers: lecturers.length > 0 ? lecturers : allLecturers,
+      });
+    } catch {
+      // Fallback ke tabel lokal jika API Hub belum tersambung
+      const lecturers = await prisma.lecturer.findMany({
+        where: { studyProgramId: req.tenant!.id, isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      });
+      res.json({ success: true, lecturers });
+    }
   }),
 );
 
-/** GET /api/v1/public/documents: dokumen yang ditandai publik saja. */
-router.get(
-  '/documents',
-  requireTenant,
-  asyncHandler(async (req, res) => {
-    const documents = await prisma.document.findMany({
-      where: { studyProgramId: req.tenant!.id, isPublic: true },
-      orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
-      select: {
-        id: true,
-        code: true,
-        title: true,
-        category: true,
-        description: true,
-        year: true,
-        fileUrl: true,
-        fileSize: true,
-        mimeType: true,
-        downloadCount: true,
-        createdAt: true,
-      },
-    });
-
-    res.json({ success: true, documents });
-  }),
-);
+/*
+ * GET /api/v1/public/documents sudah DIHAPUS.
+ *
+ * Dokumen publik kini dibaca dari arsip LPM/LPPM melalui
+ * `GET /api/v1/public/arsip-dokumen` (lihat `modules/admin/arsipDokumen.routes.ts`)
+ * dan dilindungi kata sandi dokumen milik masing-masing program studi.
+ */
 
 /** GET /api/v1/public/facilities: sarana dan prasarana tenant. */
 router.get(
@@ -330,7 +328,7 @@ router.get(
         slug: true,
         degree: true,
         logoUrl: true,
-        faculty: { select: { id: true, name: true, code: true } },
+        faculty: { select: { id: true, name: true, code: true, slug: true, description: true } },
         domains: {
           where: { isActive: true },
           orderBy: { isPrimary: 'desc' },
@@ -442,7 +440,7 @@ router.get(
     res.json({
       success: true,
       items: posts.map((post) => {
-        const hostname = post.studyProgram.domains[0]?.hostname ?? null;
+        const hostname = post.studyProgram?.domains[0]?.hostname ?? null;
         return {
           id: post.id,
           title: post.title,
@@ -452,10 +450,10 @@ router.get(
           publishedAt: post.publishedAt,
           views: post.views,
           category: post.category,
-          studyProgramId: post.studyProgram.id,
-          studyProgramCode: post.studyProgram.code,
-          studyProgramName: post.studyProgram.name,
-          facultyName: post.studyProgram.faculty.name,
+          studyProgramId: post.studyProgram?.id ?? null,
+          studyProgramCode: post.studyProgram?.code ?? null,
+          studyProgramName: post.studyProgram?.name ?? null,
+          facultyName: post.studyProgram?.faculty.name ?? null,
           prodiHostname: hostname,
           // Tautan absolut ke domain prodi asal agar tidak bergantung konteks host.
           url: hostname ? `https://${hostname}/berita/${post.slug}` : null,

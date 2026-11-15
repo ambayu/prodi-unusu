@@ -4,7 +4,15 @@
 
 @layer base {
   body {
-    @apply bg-white font-sans text-slate-800 antialiased;
+    /*
+     * `tracking-[0.01em]` memberi jarak antarhuruf sangat tipis.
+     *
+     * Plus Jakarta Sans punya jarak antarhuruf yang rapat pada ukuran kecil,
+     * sehingga teks 12-14px terasa "berdesakan". Nilai 0.01em (sekitar 0.14px
+     * pada 14px) cukup melonggarkan tanpa membuat kata terlihat terpisah,
+     * dan tidak mengubah jenis huruf sama sekali.
+     */
+    @apply bg-white font-sans text-slate-800 antialiased tracking-[0.01em];
   }
 
   /* Fokus yang terlihat jelas untuk navigasi keyboard. */
@@ -27,31 +35,85 @@
     @apply field-input min-h-[96px] resize-y leading-relaxed;
   }
 
+  /*
+   * Select bersama.
+   *
+   * Tetap memakai <select> asli supaya perilaku keyboard, pembaca layar, dan
+   * pemilih bawaan ponsel tidak perlu ditulis ulang. Yang diperbaiki hanya
+   * tampilannya: `appearance-none` mematikan panah bawaan peramban yang
+   * berbeda-beda antarsistem, lalu panah digambar sendiri oleh komponen
+   * `Select` sebagai ikon. Ruang kanan `pr-10` disediakan agar teks opsi
+   * panjang tidak menimpa ikon itu.
+   *
+   * `min-h-[44px]` memenuhi target sentuh `DESIGN_RULES.md` §9.
+   */
+  .field-select {
+    @apply w-full min-h-[44px] appearance-none rounded-[10px] border border-[#CBD5E1] bg-white py-2 pl-3.5 pr-10 text-sm text-slate-900 shadow-xs transition-colors focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500;
+  }
+
+  /*
+   * Tombol bersama admin.
+   *
+   * Ukuran dinaikkan agar memenuhi target sentuh minimal 44px
+   * (`DESIGN_RULES.md` §9) dan teksnya lebih mudah dibaca: 13px, bukan 12px.
+   * Sebelumnya `py-2` menghasilkan tinggi sekitar 34px.
+   */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#1e3a8a] px-3.5 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-[#172f6e] disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[10px] bg-[#1e3a8a] px-4 py-2.5 text-[13px] font-bold text-white shadow-xs transition-colors hover:bg-[#172f6e] disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-[10px] border border-[#CBD5E1] bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[10px] border border-[#CBD5E1] bg-white px-4 py-2.5 text-[13px] font-bold text-slate-700 shadow-xs transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-[10px] bg-rose-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[10px] bg-rose-600 px-4 py-2.5 text-[13px] font-bold text-white shadow-xs transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  /*
+   * Tombol aksi ikon di dalam baris tabel (ubah, hapus, dan sejenisnya).
+   *
+   * Ukurannya 34px x 34px dengan ikon 17px — sepadan dengan tinggi huruf isi
+   * tabel 13px, sehingga tidak lagi terlihat seperti tombol mungil 10px.
+   * Ikon lebih besar dari 20px akan mendominasi baris dan mendorong tinggi
+   * baris menjadi tidak wajar, jadi ukuran ini yang dipilih.
+   *
+   * `aria-label` dan `title` WAJIB diisi di komponen pemanggil karena tombol
+   * tanpa teks tidak terbaca oleh pembaca layar.
+   */
+  .btn-icon {
+    @apply inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] border bg-white transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-icon-neutral {
+    @apply btn-icon border-[#CBD5E1] text-slate-700 hover:border-[#1e3a8a] hover:bg-blue-50 hover:text-[#1e3a8a];
+  }
+
+  .btn-icon-danger {
+    @apply btn-icon border-rose-200 text-rose-600 hover:border-rose-400 hover:bg-rose-50 hover:text-rose-700;
   }
 
   .card {
     @apply rounded-[16px] border border-[#CBD5E1] bg-white p-6 shadow-xs;
   }
 
+  /*
+   * Tabel bersama.
+   *
+   * Isi naik dari 12px ke 13px dan header dari 10px ke 12px. Pada 10px huruf
+   * kapital renggang terasa sangat kecil dan sulit dibaca, terutama di layar
+   * beresolusi tinggi. Header tetap kapital (bukan tebal berlebih) karena
+   * fungsinya label, sementara isi memakai warna lebih gelap agar terbaca.
+   */
   .table-base {
-    @apply w-full border-collapse text-left text-xs;
+    @apply w-full border-collapse text-left text-[13px];
   }
 
   .table-base thead th {
-    @apply border-b border-[#CBD5E1] bg-slate-50/80 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500;
+    @apply border-b border-[#CBD5E1] bg-slate-50/80 px-4 py-3 text-[12px] font-bold uppercase tracking-wide text-slate-600;
   }
 
   .table-base tbody td {
-    @apply border-b border-slate-100 px-4 py-3 align-middle text-slate-700;
+    @apply border-b border-slate-100 px-4 py-3.5 align-middle text-[13px] text-slate-800;
   }
 }

@@ -13,7 +13,8 @@ import {
   XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
-import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
+import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+import { EmptyState } from '../../components/ui/States';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { useSiteStore } from '../../app/siteStore';
@@ -134,6 +135,80 @@ export const AdminPortalOverview: React.FC = () => {
     }
   };
 
+  /*
+   * Kolom daftar website prodi. Hanya kolom Program Studi yang dibiarkan
+   * melebar; kolom lain memakai lebar tetap agar tombol aksi tidak menimpa.
+   */
+  const columns: Array<DataTableColumn<PortalDomainRow>> = [
+    {
+      key: 'kode',
+      header: 'Kode',
+      width: 100,
+      cellClassName: 'whitespace-nowrap font-bold text-slate-700',
+      render: (row) => row.studyProgram.code,
+    },
+    {
+      key: 'prodi',
+      header: 'Program Studi',
+      cellClassName: 'font-semibold text-slate-900',
+      render: (row) => row.studyProgram.name,
+    },
+    {
+      key: 'fakultas',
+      header: 'Fakultas',
+      width: 220,
+      cellClassName: 'text-slate-600',
+      render: (row) => row.studyProgram.faculty.name,
+    },
+    {
+      key: 'hostname',
+      header: 'Hostname',
+      width: 230,
+      cellClassName: '',
+      render: (row) => (
+        <>
+          <span className="font-mono text-[11px] text-slate-700">{row.hostname}</span>
+          {row.isPrimary ? (
+            <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">
+              utama
+            </span>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      width: 120,
+      render: (row) =>
+        row.isActive ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+            <CheckCircleIcon className="h-3 w-3" aria-hidden="true" /> Aktif
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+            <XCircleIcon className="h-3 w-3" aria-hidden="true" /> Nonaktif
+          </span>
+        ),
+    },
+    {
+      key: 'aksi',
+      header: 'Aksi',
+      width: 150,
+      align: 'right',
+      render: (row) => (
+        <button
+          type="button"
+          onClick={() => void handleManage(row)}
+          disabled={switchingId !== null}
+          className="inline-flex min-h-[36px] items-center gap-1.5 rounded-[8px] bg-[#1e3a8a] px-3 text-xs font-bold text-white transition-colors hover:bg-[#16305f] disabled:opacity-60"
+        >
+          {switchingId === row.studyProgram.id ? 'Beralih…' : 'Kelola Konten'}
+        </button>
+      ),
+    },
+  ];
+
   return (
     <AdminLayout
       title="Dashboard Portal"
@@ -183,17 +258,14 @@ export const AdminPortalOverview: React.FC = () => {
           </Link>
         </div>
 
+        {/*
+         * Keadaan memuat/galat ringkasan ditangani tabel daftar website prodi
+         * di bawah ini (lewat prop `loading` dan `error` DataTable).
+         */}
         {!isSuperAdmin ? (
           <EmptyState
             title="Ringkasan portal hanya untuk Super Admin"
             description="Akun Anda tidak memiliki izin melihat statistik lintas program studi. Hubungi administrator universitas bila Anda membutuhkan akses ini."
-          />
-        ) : superQuery.isLoading ? (
-          <LoadingState label="Memuat ringkasan portal" rows={4} />
-        ) : superQuery.isError ? (
-          <ErrorState
-            message={toApiError(superQuery.error).message}
-            onRetry={() => void superQuery.refetch()}
           />
         ) : (
           <>
@@ -258,75 +330,30 @@ export const AdminPortalOverview: React.FC = () => {
                 </label>
               </div>
 
-              {filteredRows.length === 0 ? (
-                <div className="p-6">
-                  <EmptyState
-                    title={kataKunci ? 'Tidak ada prodi yang cocok' : 'Belum ada website prodi'}
-                    description={
-                      kataKunci
-                        ? 'Coba kata kunci lain, atau kosongkan kolom pencarian.'
-                        : 'Tambahkan fakultas dan program studi lewat menu Struktur Organisasi.'
-                    }
-                  />
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[760px] text-left text-sm">
-                    <thead className="border-b border-slate-200 bg-slate-50/80 text-xs uppercase tracking-wide text-slate-500">
-                      <tr>
-                        <th scope="col" className="px-4 py-3 font-bold">Kode</th>
-                        <th scope="col" className="px-4 py-3 font-bold">Program Studi</th>
-                        <th scope="col" className="px-4 py-3 font-bold">Fakultas</th>
-                        <th scope="col" className="px-4 py-3 font-bold">Hostname</th>
-                        <th scope="col" className="px-4 py-3 font-bold">Status</th>
-                        <th scope="col" className="px-4 py-3 text-right font-bold">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredRows.map((row) => (
-                        <tr key={row.studyProgram.id} className="align-middle transition-colors hover:bg-slate-50/60">
-                          <td className="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-700">
-                            {row.studyProgram.code}
-                          </td>
-                          <td className="px-4 py-3 text-xs font-semibold text-slate-900">
-                            {row.studyProgram.name}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-slate-600">{row.studyProgram.faculty.name}</td>
-                          <td className="px-4 py-3 text-xs">
-                            <span className="font-mono text-[11px] text-slate-700">{row.hostname}</span>
-                            {row.isPrimary ? (
-                              <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">
-                                utama
-                              </span>
-                            ) : null}
-                          </td>
-                          <td className="px-4 py-3">
-                            {row.isActive ? (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                                <CheckCircleIcon className="h-3 w-3" aria-hidden="true" /> Aktif
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600">
-                                <XCircleIcon className="h-3 w-3" aria-hidden="true" /> Nonaktif
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => void handleManage(row)}
-                              disabled={switchingId !== null}
-                              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-[8px] bg-[#1e3a8a] px-3 text-xs font-bold text-white transition-colors hover:bg-[#16305f] disabled:opacity-60"
-                            >
-                              {switchingId === row.studyProgram.id ? 'Beralih…' : 'Kelola Konten'}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {/*
+                * Keadaan memuat, galat, dan kosong ditangani DataTable. Keadaan
+                * kosong di sini bisa berarti kata kunci tidak cocok atau daftar
+                * prodi memang belum berisi.
+                */}
+              <div className="p-4">
+                <DataTable<PortalDomainRow>
+                  rows={filteredRows}
+                  rowKey={(row) => String(row.studyProgram.id)}
+                  loading={superQuery.isLoading}
+                  loadingLabel="Memuat ringkasan portal"
+                  loadingRows={4}
+                  error={superQuery.isError ? toApiError(superQuery.error).message : null}
+                  onRetry={() => void superQuery.refetch()}
+                  emptyTitle={kataKunci ? 'Tidak ada prodi yang cocok' : 'Belum ada website prodi'}
+                  emptyDescription={
+                    kataKunci
+                      ? 'Coba kata kunci lain, atau kosongkan kolom pencarian.'
+                      : 'Tambahkan fakultas dan program studi lewat menu Struktur Organisasi.'
+                  }
+                  minWidth={760}
+                  columns={columns}
+                />
+              </div>
             </section>
           </>
         )}

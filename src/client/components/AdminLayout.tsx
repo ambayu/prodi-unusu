@@ -112,7 +112,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const setActiveTenant = useSiteStore((state) => state.setActiveTenant);
   const enterPortalScope = useSiteStore((state) => state.enterPortalScope);
-  const [availablePrograms, setAvailablePrograms] = useState<Array<{ id: number; name: string; code: string }>>([]);
+  const [availablePrograms, setAvailablePrograms] = useState<
+    Array<{ id: number; name: string; code: string; faculty?: { id?: number; name: string; code?: string } }>
+  >([]);
 
   /**
    * Scope panel admin: `portal` (website universitas) atau `prodi`.
@@ -136,17 +138,22 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
    */
   const portalScope = useSiteStore((state) => state.portalScope);
   const activeTenantId = useSiteStore((state) => state.activeTenantId);
+  const activeFacultyId = useSiteStore((state) => state.activeFacultyId);
   const userLoading = useSiteStore((state) => state.userLoading);
+  const setActiveFaculty = useSiteStore((state) => state.setActiveFaculty);
 
   /**
-   * `true` bila status tenant sudah ditentukan, bukan sekadar belum dimuat.
-   *
-   * `bootstrap` mengisi `userLoading=false` setelah `/admin/access-context`
-   * selesai. Super Admin tanpa penugasan memang bisa berakhir dengan
-   * `activeTenantId = null`, dan itu sah dianggap portal.
+   * Status penentuan scope:
+   * - 'portal': Portal Utama (website universitas)
+   * - 'faculty': Website Fakultas (Dekanat)
+   * - 'prodi': Website Program Studi
    */
   const tenantResolved = !userLoading;
-  const menuScope: AdminMenuScope = portalScope || (tenantResolved && activeTenantId === null) ? 'portal' : 'prodi';
+  const menuScope: AdminMenuScope = activeFacultyId
+    ? 'faculty'
+    : portalScope || (tenantResolved && activeTenantId === null)
+    ? 'portal'
+    : 'prodi';
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -222,7 +229,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     return () => {
       active = false;
     };
-  }, [menuScope, activeTenantId]);
+  }, [menuScope, activeTenantId, activeFacultyId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -290,30 +297,30 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         onClick={() => setMobileOpen(false)}
         title={isCollapsedView ? `${item.label}${item.desc ? ` — ${item.desc}` : ''}` : undefined}
         className={[
-          'group relative w-full flex items-center min-h-[46px] rounded-[12px] text-[13px] font-semibold transition-all duration-150',
-          isCollapsedView ? 'justify-center p-2.5' : 'px-3.5 py-2 gap-3',
+          'group relative w-full flex items-center min-h-[50px] rounded-[12px] transition-all duration-150',
+          isCollapsedView ? 'justify-center p-2.5' : 'px-3.5 py-2.5 gap-3',
           isSelected
-            ? 'bg-[#DBEAFE] text-slate-900 font-bold shadow-2xs border border-blue-200/80'
+            ? 'bg-[#DBEAFE] text-slate-900 shadow-2xs border border-blue-200/80'
             : 'text-slate-700 hover:bg-[#E2EDFB] hover:text-[#1e3a8a]',
         ].join(' ')}
       >
         {/* Ikon Menu */}
         <div
           className={[
-            'w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0 transition-colors',
+            'w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 transition-colors',
             isSelected
               ? 'bg-[#1e3a8a] text-white shadow-2xs'
               : 'bg-[#DBEAFE] text-[#1e3a8a] group-hover:bg-[#bfdbfe]',
           ].join(' ')}
         >
-          <Icon className="w-4 h-4" aria-hidden="true" />
+          <Icon className="w-[18px] h-[18px]" aria-hidden="true" />
         </div>
 
         {/* Label & Subtitle Deskripsi */}
         {!isCollapsedView && (
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-1">
-              <span className="truncate leading-tight text-slate-900 text-[13px] font-bold">
+              <span className="truncate leading-snug text-slate-900 text-[14px] font-bold">
                 {item.label}
               </span>
               {isSelected && (
@@ -321,7 +328,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               )}
             </div>
             {item.desc && (
-              <p className="text-[10px] text-slate-500 font-normal leading-tight truncate mt-0.5">
+              /* slate-600, bukan slate-500: pada latar #F0F4FA dan #DBEAFE
+                 kontrasnya 6.87:1 dan 6.21:1 sehingga lolos WCAG AA. */
+              <p
+                className={`text-[12px] font-normal leading-snug truncate mt-0.5 ${
+                  isSelected ? 'text-[#1e3a8a]' : 'text-slate-600'
+                }`}
+              >
                 {item.desc}
               </p>
             )}
@@ -347,12 +360,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             {!isCollapsedView && (
               <div className="leading-tight truncate">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-[15px] text-slate-900 tracking-tight">PORTAL</span>
-                  <span className="font-extrabold text-[15px] text-[#1e3a8a] tracking-tight">
+                  <span className="font-extrabold text-[16px] text-slate-900 tracking-tight">PORTAL</span>
+                  <span className="font-extrabold text-[16px] text-[#1e3a8a] tracking-tight">
                     {menuScope === 'portal' ? 'UNUSU' : 'PRODI'}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 font-semibold tracking-wide truncate mt-0.5">
+                <p className="text-[12px] text-slate-600 font-semibold tracking-wide truncate mt-0.5">
                   {menuScope === 'portal'
                     ? 'Portal Utama Universitas'
                     : isSuperAdmin
@@ -366,70 +379,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           </Link>
         </div>
 
-        {/* Tenant Scope Card / Pemilih Prodi Aktif */}
-        {!isCollapsedView && (
-          <div className="px-3 pt-3 shrink-0">
-            {isSuperAdmin ? (
-              <div className="rounded-[12px] border border-blue-200 bg-blue-50/80 p-2.5 shadow-2xs">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-900">
-                    PROGRAM STUDI AKTIF
-                  </span>
-                  <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
-                </div>
-                <select
-                  value={menuScope === 'portal' ? PORTAL_SCOPE_VALUE : activeTenantId ?? ''}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === PORTAL_SCOPE_VALUE) {
-                      // Sakelar scope: sidebar berganti ke menu portal, tanpa reload.
-                      enterPortalScope();
-                      adminMenuApi.clearCache();
-                      navigate('/admin/portal-utama');
-                      return;
-                    }
-                    const id = Number(raw);
-                    if (id) {
-                      void setActiveTenant(id);
-                    }
-                  }}
-                  className="w-full rounded-lg border border-blue-300 bg-white px-2 py-1.5 text-xs font-bold text-slate-800 shadow-2xs focus:border-blue-600 focus:outline-none cursor-pointer"
-                >
-                  <optgroup label="Portal Utama (Website Universitas)">
-                    <option value={PORTAL_SCOPE_VALUE}>◈ Portal Utama — Website Universitas</option>
-                  </optgroup>
-                  <optgroup label="Website Program Studi">
-                    {availablePrograms.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.code} - {p.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
-                <p className="mt-1 text-[10px] text-blue-700/80 leading-tight">
-                  {menuScope === 'portal'
-                    ? 'Scope Portal Utama: hanya pengaturan universitas. Pilih prodi untuk mengelola kontennya.'
-                    : 'Scope prodi aktif: mengelola profil, kurikulum, dosen, dan publikasi prodi ini.'}
-                </p>
-              </div>
-            ) : tenant ? (
-              <div className="rounded-[12px] border border-[#CBD5E1] bg-white/80 p-2.5 shadow-2xs">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
-                    {tenant.code || 'PRODI AKTIF'}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs font-bold text-slate-900 truncate">
-                  {tenant.name}
-                </p>
-                <p className="text-[10px] text-slate-500 truncate">
-                  {tenant.facultyName || 'Fakultas UNUSU'}
-                </p>
-              </div>
-            ) : null}
-          </div>
-        )}
+        {/*
+          Kartu "UNIT / PRODI AKTIF" DIHAPUS atas permintaan pemilik sistem
+          (2026-11-16): "disini juga hapus, nanti pilihnya dari atas saja".
+          Pemilihan scope (Portal Utama / Fakultas / Prodi) kini hanya ada di
+          topbar (`Quick Switcher Program Studi`), sehingga tidak ada dua
+          kontrol untuk satu tujuan yang sama di layar.
+        */}
 
         {/* Navigation Section */}
         <div
@@ -440,7 +396,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           {menuLoading ? (
             <div className="space-y-2.5">
               {Array.from({ length: 6 }).map((_, idx) => (
-                <div key={idx} className="h-10 animate-pulse rounded-[12px] bg-slate-200/70" />
+                <div key={idx} className="h-12 animate-pulse rounded-[12px] bg-slate-200/70" />
               ))}
             </div>
           ) : (
@@ -449,11 +405,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               {utamaMenus.length > 0 && (
                 <div>
                   {!isCollapsedView && (
-                    <p className="px-3 pb-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <p className="px-3 pb-2 text-[11px] font-bold text-slate-600 uppercase tracking-widest">
                       UTAMA
                     </p>
                   )}
-                  <nav className="space-y-1" role="navigation" aria-label="Menu Utama">
+                  <nav className="space-y-1.5" role="navigation" aria-label="Menu Utama">
                     {utamaMenus.map((item) => renderMenuItem(item, isCollapsedView))}
                   </nav>
                 </div>
@@ -466,18 +422,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleSection('KONTEN')}
-                      className="w-full flex items-center justify-between px-3 pb-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-800 uppercase tracking-widest transition-colors"
+                      className="w-full flex items-center justify-between px-3 pb-2 text-[11px] font-bold text-slate-600 hover:text-[#1e3a8a] uppercase tracking-widest transition-colors"
                     >
                       <span>KONTEN &amp; AKADEMIK</span>
                       <ChevronDownIcon
-                        className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${
+                        className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
                           collapsedSections['KONTEN'] ? '-rotate-90' : 'rotate-0'
                         }`}
                       />
                     </button>
                   )}
                   {!collapsedSections['KONTEN'] && (
-                    <nav className="space-y-1 animate-fadeIn" role="navigation" aria-label="Menu Konten & Akademik">
+                    <nav className="space-y-1.5 animate-fadeIn" role="navigation" aria-label="Menu Konten & Akademik">
                       {kontenMenus.map((item) => renderMenuItem(item, isCollapsedView))}
                     </nav>
                   )}
@@ -491,18 +447,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleSection('WEBSITE')}
-                      className="w-full flex items-center justify-between px-3 pb-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-800 uppercase tracking-widest transition-colors"
+                      className="w-full flex items-center justify-between px-3 pb-2 text-[11px] font-bold text-slate-600 hover:text-[#1e3a8a] uppercase tracking-widest transition-colors"
                     >
                       <span>PENGATURAN WEBSITE</span>
                       <ChevronDownIcon
-                        className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${
+                        className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
                           collapsedSections['WEBSITE'] ? '-rotate-90' : 'rotate-0'
                         }`}
                       />
                     </button>
                   )}
                   {!collapsedSections['WEBSITE'] && (
-                    <nav className="space-y-1 animate-fadeIn" role="navigation" aria-label="Menu Pengaturan Website">
+                    <nav className="space-y-1.5 animate-fadeIn" role="navigation" aria-label="Menu Pengaturan Website">
                       {websiteMenus.map((item) => renderMenuItem(item, isCollapsedView))}
                     </nav>
                   )}
@@ -516,18 +472,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleSection('TATA KELOLA')}
-                      className="w-full flex items-center justify-between px-3 pb-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-800 uppercase tracking-widest transition-colors"
+                      className="w-full flex items-center justify-between px-3 pb-2 text-[11px] font-bold text-slate-600 hover:text-[#1e3a8a] uppercase tracking-widest transition-colors"
                     >
                       <span>TATA KELOLA AKSES</span>
                       <ChevronDownIcon
-                        className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${
+                        className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
                           collapsedSections['TATA KELOLA'] ? '-rotate-90' : 'rotate-0'
                         }`}
                       />
                     </button>
                   )}
                   {!collapsedSections['TATA KELOLA'] && (
-                    <nav className="space-y-1 animate-fadeIn" role="navigation" aria-label="Menu Tata Kelola Akses">
+                    <nav className="space-y-1.5 animate-fadeIn" role="navigation" aria-label="Menu Tata Kelola Akses">
                       {tataKelolaMenus.map((item) => renderMenuItem(item, isCollapsedView))}
                     </nav>
                   )}
@@ -541,18 +497,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <button
                       type="button"
                       onClick={() => toggleSection('UNIVERSITAS')}
-                      className="w-full flex items-center justify-between px-3 pb-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-800 uppercase tracking-widest transition-colors"
+                      className="w-full flex items-center justify-between px-3 pb-2 text-[11px] font-bold text-slate-600 hover:text-[#1e3a8a] uppercase tracking-widest transition-colors"
                     >
                       <span>TATA KELOLA UNIVERSITAS</span>
                       <ChevronDownIcon
-                        className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${
+                        className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
                           collapsedSections['UNIVERSITAS'] ? '-rotate-90' : 'rotate-0'
                         }`}
                       />
                     </button>
                   )}
                   {!collapsedSections['UNIVERSITAS'] && (
-                    <nav className="space-y-1 animate-fadeIn" role="navigation" aria-label="Menu Tata Kelola Universitas">
+                    <nav className="space-y-1.5 animate-fadeIn" role="navigation" aria-label="Menu Tata Kelola Universitas">
                       {universitasMenus.map((item) => renderMenuItem(item, isCollapsedView))}
                     </nav>
                   )}
@@ -563,7 +519,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               {otherMenus.length > 0 && (
                 <div>
                   {!isCollapsedView && (
-                    <p className="px-3 pb-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <p className="px-3 pb-2 text-[11px] font-bold text-slate-600 uppercase tracking-widest">
                       LAINNYA
                     </p>
                   )}
@@ -593,7 +549,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             type="button"
             onClick={() => setCollapsed(!collapsed)}
             title={collapsed ? 'Perluas Menu' : 'Perkecil Menu'}
-            className="hidden lg:flex w-full min-h-[40px] items-center justify-center gap-2 rounded-[10px] border border-[#CBD5E1] bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors text-xs font-bold shadow-2xs"
+            className="hidden lg:flex w-full min-h-[44px] items-center justify-center gap-2 rounded-[10px] border border-[#CBD5E1] bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors text-[12px] font-bold shadow-2xs"
           >
             {collapsed ? (
               <ChevronDoubleRightIcon className="w-4 h-4 text-[#1e3a8a]" />
@@ -620,7 +576,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         />
       )}
       <div
-        className={`fixed top-0 bottom-0 left-0 z-50 w-[280px] bg-[#F0F4FA] transform transition-transform duration-300 ease-in-out lg:hidden shadow-2xl ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-[300px] bg-[#F0F4FA] transform transition-transform duration-300 ease-in-out lg:hidden shadow-2xl ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -630,7 +586,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* 2. Desktop Fixed Sidebar */}
       <div
         className={`hidden lg:block fixed top-0 bottom-0 left-0 z-40 transition-all duration-300 ${
-          collapsed ? 'w-[84px]' : 'w-[280px]'
+          collapsed ? 'w-[84px]' : 'w-[300px]'
         }`}
       >
         {renderSidebarContent(collapsed, false)}
@@ -639,7 +595,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* 3. Main Workspace Container */}
       <div
         className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
-          collapsed ? 'lg:pl-[84px]' : 'lg:pl-[280px]'
+          collapsed ? 'lg:pl-[84px]' : 'lg:pl-[300px]'
         }`}
       >
         {/* Topbar Header (Tinggi 88px sesuai standar UNUSU) */}
@@ -656,19 +612,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
 
             {/* Breadcrumb Path */}
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 overflow-hidden">
+            <div className="flex items-center gap-2 text-[13px] font-semibold overflow-hidden">
               <Link
                 to={menuScope === 'portal' ? '/admin/portal-utama' : '/admin'}
-                className="flex items-center gap-1.5 text-slate-600 hover:text-[#1e3a8a] transition-colors p-1 rounded-md"
+                className="flex items-center gap-1.5 text-slate-700 hover:text-[#1e3a8a] transition-colors p-1 rounded-md"
                 title={menuScope === 'portal' ? 'Dashboard Portal' : 'Dashboard Prodi'}
               >
-                <HomeIcon className="w-4 h-4 text-slate-400" />
+                <HomeIcon className="w-[18px] h-[18px] text-slate-600" />
                 <span className="hidden sm:inline">
                   {menuScope === 'portal' ? 'Portal Utama' : 'Portal Admin'}
                 </span>
               </Link>
-              <ChevronRightIcon className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-              <span className="px-2.5 py-1 rounded-[8px] bg-slate-100 border border-[#CBD5E1] text-slate-800 font-bold truncate max-w-[180px] sm:max-w-[280px]">
+              <ChevronRightIcon className="w-4 h-4 text-slate-400 shrink-0" />
+              <span className="px-1 py-1 text-slate-900 font-bold truncate max-w-[180px] sm:max-w-[280px]">
                 {title}
               </span>
             </div>
@@ -718,10 +674,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               to="/"
               target="_blank"
               rel="noreferrer"
-              className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-[10px] border border-[#CBD5E1] bg-white text-slate-700 hover:bg-slate-50 hover:text-[#1e3a8a] text-xs font-bold transition-all shadow-2xs min-h-[40px]"
+              className="hidden sm:flex items-center gap-2 px-2.5 py-2 rounded-[10px] text-slate-800 hover:bg-slate-100 hover:text-[#1e3a8a] text-[13px] font-bold transition-colors min-h-[44px]"
               title="Buka Website Publik"
             >
-              <GlobeAltIcon className="w-4 h-4 text-emerald-700" />
+              <GlobeAltIcon className="w-[18px] h-[18px] text-emerald-700" />
               <span>Lihat Website</span>
             </Link>
 
@@ -730,18 +686,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <button
                 type="button"
                 onClick={() => setProfileOpen((prev) => !prev)}
-                className="flex items-center gap-2.5 p-1 sm:px-2.5 sm:py-1.5 rounded-[12px] border border-[#CBD5E1] bg-white hover:bg-slate-50 transition-colors shadow-2xs focus:outline-none"
+                className="flex items-center gap-2.5 p-1 sm:px-2.5 sm:py-1.5 rounded-[12px] hover:bg-slate-100 transition-colors focus:outline-none"
                 aria-expanded={profileOpen}
                 aria-haspopup="true"
               >
                 <div className="w-9 h-9 rounded-full bg-[#1e3a8a] text-white flex items-center justify-center font-bold text-xs ring-2 ring-emerald-300 shadow-2xs shrink-0">
                   {initials}
                 </div>
-                <div className="text-left hidden md:block max-w-[140px] truncate">
-                  <div className="font-bold text-xs text-slate-900 leading-tight truncate">
+                <div className="text-left hidden md:block max-w-[150px] truncate">
+                  <div className="font-bold text-[13px] text-slate-900 leading-tight truncate">
                     {user?.name ?? 'Pengguna'}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium leading-tight truncate mt-0.5">
+                  <div className="text-[11px] text-slate-600 font-medium leading-tight truncate mt-0.5">
                     {isSuperAdmin
                       ? 'Super Admin'
                       : user?.roles?.[0]?.roleName || 'Admin Prodi'}
@@ -756,7 +712,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <p className="font-bold text-sm text-slate-900 truncate">
                       {user?.name ?? 'Pengguna'}
                     </p>
-                    <p className="text-xs text-slate-500 truncate font-mono mt-0.5">
+                    <p className="text-xs text-slate-600 truncate font-mono mt-0.5">
                       {user?.email ?? ''}
                     </p>
                     <div className="mt-2 flex items-center gap-1.5 flex-wrap">
@@ -767,20 +723,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                       </span>
                     </div>
                     {tenant && (
-                      <p className="text-[10px] text-slate-500 mt-2 leading-tight">
-                        Cakupan: <span className="font-bold text-slate-700">{tenant.name}</span>
+                      <p className="text-[11px] text-slate-600 mt-2 leading-snug">
+                        Cakupan: <span className="font-bold text-slate-800">{tenant.name}</span>
                       </p>
                     )}
                   </div>
 
-                  <div className="py-1 text-xs font-semibold text-slate-700">
+                  <div className="py-1 text-[13px] font-semibold text-slate-700">
                     <Link
                       to="/"
                       target="_blank"
                       onClick={() => setProfileOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2 hover:bg-slate-100 hover:text-[#1e3a8a] transition-colors"
                     >
-                      <GlobeAltIcon className="w-4 h-4 text-slate-400" />
+                      <GlobeAltIcon className="w-4 h-4 text-slate-600" />
                       <span>Halaman Depan Website</span>
                     </Link>
                     <Link
@@ -788,7 +744,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                       onClick={() => setProfileOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2 hover:bg-slate-100 hover:text-[#1e3a8a] transition-colors"
                     >
-                      <IdentificationIcon className="w-4 h-4 text-slate-400" />
+                      <IdentificationIcon className="w-4 h-4 text-slate-600" />
                       <span>Biodata &amp; Akun Saya</span>
                     </Link>
                   </div>
@@ -797,7 +753,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-2.5 px-4 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors"
+                      className="flex w-full items-center gap-2.5 px-4 py-2 text-[13px] font-bold text-rose-700 hover:bg-rose-50 transition-colors"
                     >
                       <ArrowRightOnRectangleIcon className="w-4 h-4 text-rose-600" />
                       <span>Keluar dari Akun</span>
@@ -810,7 +766,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         </header>
 
         {/* 4. Canvas Content Area */}
-        <main className="flex-1 p-5 sm:p-7 lg:p-8 bg-[#F1F5F9] min-w-0 max-w-full overflow-x-hidden">
+        {/*
+         * Padding kanvas dibuat sepadan dengan padding body panel (`p-4 sm:p-5`).
+         * Sebelumnya `p-5 sm:p-7 lg:p-8` menyisakan ruang kosong lebar di
+         * sekeliling panel sehingga konten terlihat renggang.
+         */}
+        <main className="flex-1 p-4 sm:p-5 bg-[#F1F5F9] min-w-0 max-w-full overflow-x-hidden">
           {rawContent ? (
             children
           ) : (

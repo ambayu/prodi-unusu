@@ -58,11 +58,20 @@ export class AppError extends Error {
     return new AppError(422, message, 'VALIDATION_ERROR', fieldErrors);
   }
 
+  /** Kegagalan karena kode kesalahan khusus (mis. pemetaan data belum lengkap). */
+  static unprocessableCode(message: string, code: string) {
+    return new AppError(422, message, code);
+  }
+
   static tooMany(message = 'Terlalu banyak percobaan. Coba lagi beberapa saat lagi.', code = 'RATE_LIMITED') {
     return new AppError(429, message, code);
   }
 
   static internal(message = 'Terjadi kesalahan pada server.', code = 'INTERNAL_ERROR') {
     return new AppError(500, message, code);
+  }
+
+  static badGateway(message = 'Layanan tujuan tidak dapat dihubungi.', code = 'BAD_GATEWAY') {
+    return new AppError(502, message, code);
   }
 }

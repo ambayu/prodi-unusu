@@ -148,11 +148,11 @@ function getWidgetOriginMeta(widgetCode: string): {
     case 'document_list':
       return {
         type: 'dynamic',
-        badge: 'Dari Menu: Dokumen',
+        badge: 'Dari Arsip LPM/LPPM',
         badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
-        sourceDesc: 'Data otomatis dari menu Dokumen.',
+        sourceDesc: 'Menampilkan ajakan menuju halaman arsip dokumen prodi.',
         manageRoute: '/admin/dokumen',
-        manageLabel: 'Kelola Dokumen',
+        manageLabel: 'Buka Arsip Dokumen',
       };
     case 'gallery_grid':
       return {
@@ -1351,7 +1351,7 @@ export const AdminBuilder: React.FC = () => {
                 <span className="ml-1.5 rounded bg-white px-1.5 py-0.5 font-mono text-[10px] font-bold text-blue-800">
                   {tenant.code}
                 </span>
-                <span className="ml-1.5 font-normal text-blue-800">â€” {tenant.facultyName}</span>
+                <span className="ml-1.5 font-normal text-blue-800">— {tenant.facultyName}</span>
               </p>
               <a
                 href={tenant.domain ? `http://${tenant.domain}:5180/` : 'http://localhost:5180/'}
@@ -1655,7 +1655,7 @@ export const AdminBuilder: React.FC = () => {
                 <div className="space-y-2">
                   {entri.length === 0 && halamanTanpaMenu.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-center text-[11px] text-slate-500">
-                      Navigasi masih kosong. Tambahkan menu dengan tombol â€œTambahâ€ di atas.
+                      Navigasi masih kosong. Tambahkan menu dengan tombol “Tambah” di atas.
                     </p>
                   ) : null}
 
@@ -1736,7 +1736,7 @@ export const AdminBuilder: React.FC = () => {
                   <div>
                     <p className="text-sm font-bold text-slate-900">{page.title}</p>
                     <p className="font-mono text-[11px] text-slate-500">
-                      {page.slug === 'beranda' ? '/' : `/${page.slug}`} â€¢ {page.sections.length} section
+                      {page.slug === 'beranda' ? '/' : `/${page.slug}`} • {page.sections.length} section
                     </p>
                   </div>
                   {has('builder.create') ? (
@@ -1880,7 +1880,7 @@ export const AdminBuilder: React.FC = () => {
                                       </div>
                                       {typeof config.title === 'string' && config.title ? (
                                         <p className="text-[11px] font-semibold text-slate-800">
-                                          Judul tampil: â€œ{config.title}â€
+                                          Judul tampil: “{config.title}”
                                         </p>
                                       ) : null}
                                       {(() => {
@@ -1892,13 +1892,13 @@ export const AdminBuilder: React.FC = () => {
                                               : '';
                                         return desc ? (
                                           <p className="line-clamp-2 text-[10px] italic text-slate-500">
-                                            â€œ{desc}â€
+                                            “{desc}”
                                           </p>
                                         ) : null;
                                       })()}
                                       <div className="flex items-center gap-2 text-[10px] text-slate-500 flex-wrap">
                                         <span className="font-medium text-slate-700">{summarize(config)}</span>
-                                        <span>â€¢</span>
+                                        <span>•</span>
                                         <span>{origin.sourceDesc}</span>
                                         {origin.manageRoute && (
                                           <a
@@ -2026,7 +2026,7 @@ export const AdminBuilder: React.FC = () => {
               const prefix = origin.type === 'dynamic' ? 'Konten & Akademik' : 'Kustom / Media';
               return (
                 <option key={widget.code} value={widget.code}>
-                  [{prefix}] â€” {getWidgetDisplayName(widget.code, widget.name)}
+                  [{prefix}] — {getWidgetDisplayName(widget.code, widget.name)}
                 </option>
               );
             })}
@@ -2134,7 +2134,7 @@ export const AdminBuilder: React.FC = () => {
               const prefix = origin.type === 'dynamic' ? 'Konten & Akademik' : 'Kustom / Media';
               return (
                 <option key={widget.code} value={widget.code}>
-                  [{prefix}] â€” {getWidgetDisplayName(widget.code, widget.name)}
+                  [{prefix}] — {getWidgetDisplayName(widget.code, widget.name)}
                 </option>
               );
             })}

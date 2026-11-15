@@ -7,6 +7,11 @@ interface FormModalProps {
   description?: string;
   submitLabel?: string;
   busy?: boolean;
+  /**
+   * Pesan galat tingkat formulir (bukan per field). Dirender sebagai alert di
+   * atas isian. Opsional agar pemanggil lama tidak perlu diubah.
+   */
+  error?: string | null;
   onSubmit: (event: React.FormEvent) => void;
   onClose: () => void;
   children: React.ReactNode;
@@ -26,6 +31,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   description,
   submitLabel = 'Simpan',
   busy = false,
+  error = null,
   onSubmit,
   onClose,
   children,
@@ -101,6 +107,14 @@ export const FormModal: React.FC<FormModalProps> = ({
 
         <form onSubmit={onSubmit}>
           <div ref={firstFieldRef} className="max-h-[65vh] space-y-4 overflow-y-auto px-6 py-5">
+            {error ? (
+              <div
+                role="alert"
+                className="rounded-[12px] border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-900"
+              >
+                {error}
+              </div>
+            ) : null}
             {children}
           </div>
 

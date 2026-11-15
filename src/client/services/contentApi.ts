@@ -7,14 +7,38 @@ import type { Paginated } from '../../shared/types/index';
 // Akademik
 // ---------------------------------------------------------
 
+export interface LecturerAssignment {
+  id: number | string;
+  name: string;
+  nidn: string | null;
+}
+
+export interface AcademicSemester {
+  id: number;
+  code: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Course {
   id: number;
   semesterId: number;
+  academicSemesterId?: number | null;
+  academicSemester?: AcademicSemester | null;
   code: string;
   name: string;
   credits: number;
-  courseType: string;
+  /**
+   * Kolom warisan `course_type` di database. Tidak lagi diisi dari formulir
+   * sejak Keterangan menjadi teks bebas; dipertahankan agar data lama terbaca.
+   */
+  courseType?: string;
   description: string | null;
+  lecturersData?: LecturerAssignment[] | null;
   rpsDocuments?: Array<{ id: number; title: string; fileUrl: string; revision: string | null }>;
 }
 
@@ -26,6 +50,29 @@ export interface Semester {
   courses: Course[];
 }
 
+/**
+ * Satu baris mata kuliah pada daftar datar `/admin/kurikulum`.
+ *
+ * Memuat potongan semester induknya karena halaman itu tidak menampilkan
+ * hierarki kurikulum, hanya nomor dan judul semester.
+ */
+export interface CourseRow {
+  id: number;
+  /** Milik prodi langsung sejak 2026-11-16. */
+  studyProgramId: number;
+  /** Warisan posisi 1..14; `null` untuk mata kuliah yang tidak ditautkan kurikulum. */
+  semesterId: number | null;
+  academicSemesterId: number | null;
+  academicSemester: AcademicSemester | null;
+  code: string;
+  name: string;
+  credits: number;
+  description: string | null;
+  lecturersData: LecturerAssignment[] | null;
+  semester: { id: number; semesterNumber: number; title: string; curriculumId: number } | null;
+  rpsDocuments: Array<{ id: number; title: string; fileUrl: string; revision: string | null }>;
+}
+
 export interface Curriculum {
   id: number;
   name: string;
@@ -33,6 +80,8 @@ export interface Curriculum {
   description: string | null;
   isActive: boolean;
   semesters: Semester[];
+  /** Penawaran mata kuliah (ADR-006). Sumber utama halaman publik kini ini. */
+  items?: CurriculumItem[];
 }
 
 export interface CurriculumSummary {
@@ -42,9 +91,65 @@ export interface CurriculumSummary {
   totalRps: number;
 }
 
+/**
+ * Master mata kuliah (`courses`) — hanya identitas.
+ *
+ * Inilah yang diinput di menu **Mata Kuliah**: kode + nama. Detail seperti SKS,
+ * dosen, dan RPS tidak ada di sini; itu milik `CurriculumItem`.
+ */
+export interface CourseMaster {
+  id: number;
+  code: string;
+  name: string;
+  createdAt?: string;
+}
+
+/** RPS yang menempel pada satu penawaran mata kuliah. */
+export interface CurriculumRpsRow {
+  id: number;
+  title: string;
+  fileUrl: string;
+  revision: string | null;
+}
+
+/**
+ * Penawaran mata kuliah di dalam kurikulum (`curriculum_items`).
+ *
+ * Inilah baris tabel halaman **Kurikulum**. `courseId` adalah kolom
+ * "id matakuliah" yang menautkan ke master — satu master boleh ditawarkan di
+ * beberapa kurikulum dengan SKS dan pengampu berbeda (ADR-006).
+ */
+export interface CurriculumItem {
+  id: number;
+  curriculumId: number;
+  courseId: number;
+  academicSemesterId: number | null;
+  credits: number;
+  description: string | null;
+  lecturersData: LecturerAssignment[] | null;
+  sortOrder: number;
+  course: { id: number; code: string; name: string };
+  curriculum?: { id: number; name: string; year: number };
+  academicSemester?: AcademicSemester | null;
+  rpsDocuments: CurriculumRpsRow[];
+}
+
+export const academicSemesterApi = {
+  list: () => api.get<{ semesters: AcademicSemester[] }>('/admin/academic-semesters'),
+  create: (data: { code: string; name: string; startDate: string; endDate: string; isActive?: boolean }) =>
+    api.post('/admin/academic-semesters', data),
+  update: (id: number, data: Partial<AcademicSemester>) => api.put(`/admin/academic-semesters/${id}`, data),
+  remove: (id: number) => api.delete(`/admin/academic-semesters/${id}`),
+};
+
 export const curriculumApi = {
   public: () => api.get<{ curriculums: Curriculum[]; summary: CurriculumSummary }>('/public/curriculum'),
   list: () => api.get<{ curriculums: Curriculum[] }>('/admin/curriculums'),
+  /**
+   * Daftar mata kuliah datar lintas semester untuk halaman `/admin/kurikulum`.
+   * Berbeda dari `list()` yang mengembalikan pohon kurikulum bertingkat.
+   */
+  courses: () => api.get<{ courses: CourseRow[] }>('/admin/courses'),
   createCurriculum: (data: { name: string; year: number; description?: string | null; isActive?: boolean }) =>
     api.post('/admin/curriculums', data),
   updateCurriculum: (id: number, data: Record<string, unknown>) => api.put(`/admin/curriculums/${id}`, data),
@@ -52,17 +157,111 @@ export const curriculumApi = {
   createSemester: (data: { curriculumId: number; semesterNumber: number; title: string }) =>
     api.post('/admin/semesters', data),
   deleteSemester: (id: number) => api.delete(`/admin/semesters/${id}`),
+  /**
+   * Membuat mata kuliah baru.
+   *
+   * `semesterId` (posisi 1..14) sengaja **tidak** dikirim klien: kolom itu
+   * warisan dan kini nullable. Server menautkannya sendiri ke semester pertama
+   * kurikulum tenant agar mata kuliah tetap muncul pada daftar yang difilter
+   * lewat kurikulum. Yang dipilih admin adalah `academicSemesterId` — master
+   * semester kalender (keputusan 2026-11-16).
+   */
   createCourse: (data: {
-    semesterId: number;
+    academicSemesterId: number;
     code: string;
     name: string;
     credits: number;
-    courseType: string;
     description?: string | null;
+    lecturersData?: LecturerAssignment[] | null;
   }) => api.post('/admin/courses', data),
   updateCourse: (id: number, data: Record<string, unknown>) => api.put(`/admin/courses/${id}`, data),
   deleteCourse: (id: number) => api.delete(`/admin/courses/${id}`),
 };
+
+/**
+ * Master mata kuliah — menu **Mata Kuliah**.
+ *
+ * Hanya kode dan nama. Detail penawaran ada di `curriculumItemApi`.
+ */
+export const courseMasterApi = {
+  list: () => api.get<{ courses: CourseMaster[] }>('/admin/master-courses'),
+  create: (data: { code: string; name: string }) => api.post<{ course: CourseMaster }>('/admin/master-courses', data),
+  update: (id: number, data: { code?: string; name?: string }) =>
+    api.put<{ course: CourseMaster }>(`/admin/master-courses/${id}`, data),
+  remove: (id: number) => api.delete(`/admin/master-courses/${id}`),
+};
+
+/**
+ * Penawaran mata kuliah pada kurikulum — halaman **Kurikulum**.
+ *
+ * `create` menerima `courseId` (id master) plus detail penawaran. Server
+ * memverifikasi bahwa master dan kurikulum sama-sama milik prodi aktif.
+ */
+export const curriculumItemApi = {
+  list: (curriculumId?: number) =>
+    api.get<{ items: CurriculumItem[] }>('/admin/curriculum-items', {
+      params: curriculumId ? { curriculumId } : undefined,
+    }),
+  create: (data: {
+    curriculumId: number;
+    courseId: number;
+    academicSemesterId?: number | null;
+    credits: number;
+    description?: string | null;
+    lecturersData?: LecturerAssignment[] | null;
+  }) => api.post<{ item: CurriculumItem }>('/admin/curriculum-items', data),
+  update: (id: number, data: Record<string, unknown>) =>
+    api.put<{ item: CurriculumItem }>(`/admin/curriculum-items/${id}`, data),
+  remove: (id: number) => api.delete(`/admin/curriculum-items/${id}`),
+};
+
+// ---------------------------------------------------------
+// RPS (Rencana Pembelajaran Semester)
+// ---------------------------------------------------------
+
+/**
+ * Unggah berkas RPS untuk satu mata kuliah.
+ *
+ * Memakai `FormData` sehingga `Content-Type` sengaja dikosongkan agar browser
+ * menuliskan sendiri `multipart/form-data` beserta boundary-nya. Header CSRF
+ * tetap dipasang oleh interceptor `api`.
+ */
+export const rpsApi = {
+  upload: (courseId: number, file: File, title?: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (title) form.append('title', title);
+    return api.post<{ rps: { id: number; title: string; fileUrl: string; revision: string | null } }>(
+      `/admin/courses/${courseId}/rps`,
+      form,
+      { headers: { 'Content-Type': undefined } },
+    );
+  },
+  remove: (id: number) => api.delete(`/admin/rps/${id}`),
+};
+
+/**
+ * RPS untuk penawaran mata kuliah (`curriculum_items`).
+ *
+ * Dipisahkan dari `rpsApi` karena tujuannya berbeda: `rpsApi` menulis ke record
+ * warisan `curriculum_courses`, sedangkan ini menulis ke `curriculum_rps`.
+ */
+export const curriculumRpsApi = {
+  upload: (itemId: number, file: File, title?: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (title) form.append('title', title);
+    return api.post<{ rps: { id: number; title: string; fileUrl: string; revision: string | null } }>(
+      `/admin/curriculum-items/${itemId}/rps`,
+      form,
+      { headers: { 'Content-Type': undefined } },
+    );
+  },
+  remove: (id: number) => api.delete(`/admin/curriculum-rps/${id}`),
+};
+
+/** Batas ukuran berkas RPS, sejalan dengan `config.upload.rpsMaxBytes` di server. */
+export const RPS_MAX_BYTES = 10 * 1024 * 1024;
 
 // ---------------------------------------------------------
 // Dosen
@@ -84,38 +283,161 @@ export interface Lecturer {
 
 export const lecturerApi = {
   public: () => api.get<{ lecturers: Lecturer[] }>('/public/lecturers'),
-  list: () => api.get<{ lecturers: Lecturer[] }>('/admin/lecturers'),
-  create: (data: Partial<Lecturer>) => api.post('/admin/lecturers', data),
-  update: (id: number, data: Partial<Lecturer>) => api.put(`/admin/lecturers/${id}`, data),
-  remove: (id: number) => api.delete(`/admin/lecturers/${id}`),
+  list: (params?: { search?: string }) => api.get<{ lecturers: Lecturer[]; allLecturers?: Lecturer[] }>('/admin/lecturers', { params }),
+  all: () => api.get<{ lecturers: Lecturer[] }>('/admin/lecturers/all'),
 };
 
 // ---------------------------------------------------------
-// Dokumen
+// Arsip Dokumen (LPM/LPPM)
 // ---------------------------------------------------------
 
-export interface DocumentItem {
+/*
+ * Arsip dokumen mutu TIDAK disimpan di aplikasi ini: sumbernya aplikasi LPM &
+ * LPPM yang dibaca lewat ONE UNUSU. Karena itu tidak ada endpoint tulis —
+ * prodi hanya dapat melihat, mempratinjau, dan mengunduh.
+ */
+
+export type ArsipSumber = 'lpm' | 'lppm';
+
+/** Satu dokumen arsip seperti yang disajikan panel admin prodi. */
+export interface ArsipDokumenItem {
   id: number;
-  code: string | null;
-  title: string;
-  category: string;
-  description: string | null;
-  year: number;
-  fileUrl: string;
-  fileSize: number | null;
+  sumber: ArsipSumber;
+  judul: string;
+  nomor: string | null;
+  kategori: string | null;
+  tahun: number | null;
+  status: string | null;
+  fileUrl: string | null;
   mimeType: string | null;
-  isPublic: boolean;
-  downloadCount: number;
-  createdAt: string;
+  prodiCode: string | null;
+  prodiName: string | null;
+  updatedAt: string | null;
 }
 
-export const documentApi = {
-  public: () => api.get<{ documents: DocumentItem[] }>('/public/documents'),
-  list: () => api.get<{ documents: DocumentItem[] }>('/admin/documents'),
-  create: (data: Partial<DocumentItem>) => api.post('/admin/documents', data),
-  update: (id: number, data: Partial<DocumentItem>) => api.put(`/admin/documents/${id}`, data),
-  remove: (id: number) => api.delete(`/admin/documents/${id}`),
+/** Dokumen arsip pada halaman publik: tanpa URL berkas mentah. */
+export interface ArsipDokumenPublik {
+  id: number;
+  sumber: ArsipSumber;
+  judul: string;
+  nomor: string | null;
+  kategori: string | null;
+  tahun: number | null;
+  status: string | null;
+  fileTersedia: boolean;
+  mimeType: string | null;
+}
+
+export interface ArsipMeta {
+  prodiCode: string;
+  prodiName: string;
+  total?: number;
+  sumberGagal?: ArsipSumber[];
+  passwordActive: boolean;
+  passwordSetAt?: string | null;
+  terkunci?: boolean;
+}
+
+export interface ArsipPasswordStatus {
+  passwordActive: boolean;
+  setAt: string | null;
+  version: number;
+}
+
+export const arsipDokumenApi = {
+  /** Daftar arsip untuk panel admin prodi. */
+  adminList: (params?: { search?: string; status?: string; tahun?: number }) =>
+    api.get<{ items: ArsipDokumenItem[]; meta: ArsipMeta }>('/admin/arsip-dokumen', { params }),
+
+  /** Status kata sandi arsip prodi aktif. */
+  passwordStatus: () => api.get<ArsipPasswordStatus>('/admin/dokumen-password'),
+
+  /** Memasang atau mengganti kata sandi arsip prodi. */
+  setPassword: (password: string) => api.put<ArsipPasswordStatus & { message?: string }>('/admin/dokumen-password', { password }),
+
+  /**
+   * Metadata arsip publik: daftar dokumen TERBUKA untuk siapa pun.
+   *
+   * Daftar sengaja tidak dilindungi kata sandi agar pengunjung dapat melihat
+   * dokumen apa saja yang tersedia. Yang dilindungi adalah isi berkasnya.
+   */
+  publicInfo: (params?: { search?: string; status?: string; tahun?: number }) =>
+    api.get<{ items: ArsipDokumenPublik[]; meta: ArsipMeta }>('/public/arsip-dokumen', { params }),
+
+  /**
+   * Memeriksa kata sandi prodi sebelum membuka berkas.
+   *
+   * Kata sandi hanya diperiksa, bukan ditukar dengan tiket: setiap pratinjau
+   * dan unduhan mengirim ulang kata sandi yang sama, sehingga berlaku kapan
+   * saja tanpa batas waktu maupun batas percobaan.
+   */
+  unlock: (password: string) =>
+    api.post<{ valid: boolean; meta: ArsipMeta }>('/public/arsip-dokumen/unlock', {
+      password,
+    }),
 };
+
+/**
+ * Sumber pengambilan berkas arsip.
+ *
+ * - `admin`: memakai sesi login pengelola prodi; tidak perlu kata sandi arsip.
+ * - `publik`: memakai kata sandi arsip yang diketik pengunjung.
+ */
+export type ArsipBerkasMode = 'admin' | 'publik';
+
+/**
+ * Mengambil berkas arsip (pratinjau atau unduhan).
+ *
+ * Memakai `fetch` + `blob`, bukan URL biasa pada `<iframe>`/`<a>`, agar kata
+ * sandi dikirim lewat header dan tidak pernah tercatat di URL, riwayat
+ * peramban, maupun log server.
+ *
+ * Pengelola prodi yang sudah login memakai rute admin: hak membuka berkas
+ * sudah dibuktikan oleh sesi login, sehingga kata sandi arsip tidak perlu
+ * diketik ulang. Ini tidak melemahkan perlindungan publik — rute admin tetap
+ * tertutup bagi pengunjung biasa.
+ */
+async function ambilBerkasArsip(
+  id: number,
+  mode: 'preview' | 'download',
+  password: string,
+  sumber: ArsipBerkasMode = 'publik',
+): Promise<Blob> {
+  const url =
+    sumber === 'admin'
+      ? `/api/v1/admin/arsip-dokumen/${id}/file${mode === 'download' ? '?download=1' : ''}`
+      : `/api/v1/public/arsip-dokumen/${id}/${mode}`;
+
+  const response =
+    sumber === 'admin'
+      ? await fetch(url, { method: 'GET', credentials: 'include' })
+      : await fetch(url, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'X-Arsip-Password': password },
+        });
+
+  if (!response.ok) {
+    let pesan = 'Berkas dokumen tidak dapat dibuka.';
+    try {
+      const payload = (await response.json()) as { message?: string };
+      if (payload?.message) pesan = payload.message;
+    } catch {
+      // Respons bukan JSON (mis. HTML galat proxy): pakai pesan umum.
+    }
+    throw new Error(pesan);
+  }
+
+  return response.blob();
+}
+
+/** Pratinjau PDF untuk ditampilkan di dalam halaman. */
+export const arsipPreviewApi = (id: number, password: string, sumber: ArsipBerkasMode = 'publik') =>
+  ambilBerkasArsip(id, 'preview', password, sumber);
+
+/** Unduhan berkas arsip sebagai blob siap simpan. */
+export const arsipDownloadApi = (id: number, password: string, sumber: ArsipBerkasMode = 'publik') =>
+  ambilBerkasArsip(id, 'download', password, sumber);
 
 // ---------------------------------------------------------
 // Sarana & Prasarana

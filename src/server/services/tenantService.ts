@@ -79,6 +79,104 @@ export function isLoopbackHostname(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 }
 
+function toFacultyTenantContext(
+  faculty: {
+    id: number;
+    code: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    isActive: boolean;
+    theme: {
+      primaryColor: string;
+      secondaryColor: string;
+      accentColor: string;
+      backgroundColor: string;
+      foregroundColor: string;
+      fontHeading: string;
+      fontBody: string;
+      radius: string;
+      shadow: string;
+      buttonStyle: string;
+      headerLayout: string;
+      footerLayout: string;
+      containerWidth: string;
+    } | null;
+    websiteSetting: {
+      siteTitle: string;
+      siteTagline: string | null;
+      univName: string;
+      facultyName: string | null;
+      logoUrl: string | null;
+      faviconUrl: string | null;
+      seoTitle: string | null;
+      seoDescription: string | null;
+      seoKeywords: string | null;
+      seoImageUrl: string | null;
+      copyrightText: string | null;
+    } | null;
+    contactInfo: {
+      address: string | null;
+      email: string | null;
+      phone: string | null;
+      whatsapp: string | null;
+      mapsEmbedUrl: string | null;
+      instagramUrl: string | null;
+      facebookUrl: string | null;
+      youtubeUrl: string | null;
+    } | null;
+  },
+  hostname: string,
+): TenantContext {
+  const theme = faculty.theme;
+  const setting = faculty.websiteSetting;
+
+  return {
+    id: faculty.id,
+    tenantType: 'faculty',
+    facultyId: faculty.id,
+    facultyName: faculty.name,
+    facultyCode: faculty.code,
+    code: faculty.code,
+    name: faculty.name,
+    slug: faculty.slug,
+    degree: 'Fakultas',
+    description: faculty.description,
+    logoUrl: setting?.logoUrl ?? '/logo-unusu.jpg',
+    status: faculty.isActive ? 'active' : 'inactive',
+    domain: hostname,
+    theme: {
+      primaryColor: theme?.primaryColor ?? '#166534',
+      secondaryColor: theme?.secondaryColor ?? '#0f172a',
+      accentColor: theme?.accentColor ?? '#fbbf24',
+      backgroundColor: theme?.backgroundColor ?? '#FFFFFF',
+      foregroundColor: theme?.foregroundColor ?? '#111827',
+      fontHeading: theme?.fontHeading ?? 'Plus Jakarta Sans',
+      fontBody: theme?.fontBody ?? 'Plus Jakarta Sans',
+      radius: theme?.radius ?? '0.75rem',
+      shadow: theme?.shadow ?? 'sm',
+      buttonStyle: theme?.buttonStyle ?? 'solid',
+      headerLayout: theme?.headerLayout ?? 'modern',
+      footerLayout: theme?.footerLayout ?? 'multi-column',
+      containerWidth: theme?.containerWidth ?? '1280px',
+    },
+    websiteSetting: {
+      siteTitle: setting?.siteTitle ?? faculty.name,
+      siteTagline: setting?.siteTagline ?? null,
+      univName: setting?.univName ?? 'Universitas Nahdlatul Ulama Sumatera Utara',
+      facultyName: faculty.name,
+      logoUrl: setting?.logoUrl ?? '/logo-unusu.jpg',
+      faviconUrl: setting?.faviconUrl ?? '/logo-unusu.jpg',
+      seoTitle: setting?.seoTitle ?? faculty.name,
+      seoDescription: setting?.seoDescription ?? faculty.description,
+      seoKeywords: setting?.seoKeywords ?? null,
+      seoImageUrl: setting?.seoImageUrl ?? null,
+      copyrightText: setting?.copyrightText ?? null,
+    },
+    contact: faculty.contactInfo,
+  };
+}
+
 function toTenantContext(
   studyProgram: {
     id: number;
@@ -137,6 +235,7 @@ function toTenantContext(
 
   return {
     id: studyProgram.id,
+    tenantType: 'prodi',
     facultyId: studyProgram.facultyId,
     facultyName: studyProgram.faculty.name,
     facultyCode: studyProgram.faculty.code,
@@ -187,12 +286,18 @@ const tenantInclude = {
   contactInfo: true,
 } as const;
 
+const facultyInclude = {
+  theme: true,
+  websiteSetting: true,
+  contactInfo: true,
+} as const;
+
 /**
  * Menyelesaikan permukaan dan tenant dari hostname.
  *
  * Aturan dari docs/ARCHITECTURE.md bagian 4: domain publik yang tidak dikenal
  * atau nonaktif harus ditolak, bukan diarahkan ke tenant default. Fallback
- * seperti itu akan membuat satu prodi tampil di semua domain yang salah
+ * seperti itu akan membuat satu prodi/fakultas tampil di semua domain yang salah
  * konfigurasi.
  *
  * Pengecualian hanya berlaku untuk host loopback pada mode pengembangan: di
@@ -212,15 +317,25 @@ export async function resolveSite(hostname: string, surface: SiteSurface): Promi
     where: { hostname: lookupHostname },
     include: {
       studyProgram: { include: tenantInclude },
+      faculty: { include: facultyInclude },
     },
   });
 
-  if (domain && domain.isActive && domain.studyProgram.status === 'active') {
-    return {
-      surface,
-      hostname,
-      tenant: toTenantContext(domain.studyProgram, lookupHostname),
-    };
+  if (domain && domain.isActive) {
+    if (domain.studyProgram && domain.studyProgram.status === 'active') {
+      return {
+        surface,
+        hostname,
+        tenant: toTenantContext(domain.studyProgram, lookupHostname),
+      };
+    }
+    if (domain.faculty && domain.faculty.isActive) {
+      return {
+        surface,
+        hostname,
+        tenant: toFacultyTenantContext(domain.faculty, lookupHostname),
+      };
+    }
   }
 
   // Cadangan khusus pengembangan lokal.
@@ -248,7 +363,7 @@ export async function resolveSite(hostname: string, surface: SiteSurface): Promi
 
   if (!domain) {
     throw AppError.notFound(
-      `Domain "${lookupHostname}" belum terdaftar sebagai website program studi. Hubungi administrator universitas.`,
+      `Domain "${lookupHostname}" belum terdaftar sebagai website unit atau program studi. Hubungi administrator universitas.`,
       'DOMAIN_NOT_REGISTERED',
     );
   }
@@ -260,8 +375,9 @@ export async function resolveSite(hostname: string, surface: SiteSurface): Promi
     );
   }
 
+  const unitName = domain.studyProgram?.name ?? domain.faculty?.name ?? lookupHostname;
   throw AppError.forbidden(
-    `Website "${domain.studyProgram.name}" sedang tidak aktif.`,
+    `Website "${unitName}" sedang tidak aktif.`,
     'TENANT_INACTIVE',
   );
 }

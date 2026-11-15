@@ -37,23 +37,41 @@ model Faculty {
   userRoleAssignments UserRole[]
   permissionGroups    PermissionGroup[]
 
+  // Tenancy Mandiri Fakultas (ADR-001)
+  domains             Domain[]
+  websiteSetting      WebsiteSetting?
+  theme               Theme?
+  menus               Menu[]
+  pages               Page[]
+  posts               Post[]
+  postCategories      PostCategory[]
+  galleries           Gallery[]
+  contactInfo         ContactInfo?
+  messages            ContactMessage[]
+  ProfileContent      ProfileContent?
+  VisionMission       VisionMission?
+
   @@index([isActive, sortOrder])
   @@map("faculties")
 }
 
 model StudyProgram {
-  id          Int      @id @default(autoincrement())
-  facultyId   Int      @map("faculty_id")
-  code        String   @unique @db.VarChar(20)
-  name        String   @db.VarChar(150)
-  slug        String   @unique @db.VarChar(150)
-  degree      String   @default("S1") @db.VarChar(10)
-  description String?  @db.Text
-  logoUrl     String?  @map("logo_url") @db.VarChar(500)
-  status      String   @default("active") @db.VarChar(20)
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                 Int      @id @default(autoincrement())
+  facultyId          Int      @map("faculty_id")
+  code               String   @unique @db.VarChar(20)
+  // Kode prodi pada arsip dokumen LPM/LPPM (`prodiCode`). Dipakai untuk
+  // memfilter arsip mutu yang ditujukan kepada prodi ini saja. Bila kosong,
+  // arsip dokumen prodi belum dapat ditampilkan (fail-closed).
+  externalProdiCode  String?  @unique @map("external_prodi_code") @db.VarChar(20)
+  name               String   @db.VarChar(150)
+  slug               String   @unique @db.VarChar(150)
+  degree             String   @default("S1") @db.VarChar(10)
+  description        String?  @db.Text
+  logoUrl            String?  @map("logo_url") @db.VarChar(500)
+  status             String   @default("active") @db.VarChar(20)
+  sortOrder          Int      @default(0) @map("sort_order")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   faculty             Faculty           @relation(fields: [facultyId], references: [id], onDelete: Restrict)
   domains             Domain[]
@@ -63,8 +81,9 @@ model StudyProgram {
   menus               Menu[]
   pages               Page[]
   curriculums         Curriculum[]
+  curriculumCourses   CurriculumCourse[]
+  courses             Course[]
   lecturers           Lecturer[]
-  documents           Document[]
   facilities          Facility[]
   posts               Post[]
   postCategories      PostCategory[]
@@ -84,7 +103,8 @@ model StudyProgram {
 
 model Domain {
   id             Int       @id @default(autoincrement())
-  studyProgramId Int       @map("study_program_id")
+  studyProgramId Int?      @map("study_program_id")
+  facultyId      Int?      @map("faculty_id")
   hostname       String    @unique @db.VarChar(255)
   isPrimary      Boolean   @default(false) @map("is_primary")
   isActive       Boolean   @default(true) @map("is_active")
@@ -94,9 +114,11 @@ model Domain {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@index([studyProgramId])
+  @@index([facultyId])
   @@index([isActive])
   @@map("domains")
 }
@@ -273,7 +295,8 @@ model Session {
 
 model WebsiteSetting {
   id             Int      @id @default(autoincrement())
-  studyProgramId Int      @unique @map("study_program_id")
+  studyProgramId Int?     @unique @map("study_program_id")
+  facultyId      Int?     @unique @map("faculty_id")
   siteTitle      String   @map("site_title") @db.VarChar(200)
   siteTagline    String?  @map("site_tagline") @db.VarChar(255)
   univName       String   @default("Universitas Nahdlatul Ulama Sumatera Utara") @map("univ_name") @db.VarChar(200)
@@ -285,17 +308,25 @@ model WebsiteSetting {
   seoKeywords    String?  @map("seo_keywords") @db.VarChar(500)
   seoImageUrl    String?  @map("seo_image_url") @db.VarChar(500)
   copyrightText  String?  @map("copyright_text") @db.VarChar(255)
+  // Kata sandi arsip dokumen prodi (satu kunci untuk seluruh dokumennya).
+  // Disimpan sebagai scrypt `scrypt$N$r$p$salt$hash`, tidak pernah plaintext.
+  // Selama NULL, arsip prodi tertutup untuk publik (fail-closed).
+  documentPasswordHash    String?   @map("document_password_hash") @db.VarChar(255)
+  documentPasswordSetAt   DateTime? @map("document_password_set_at")
+  documentPasswordVersion Int       @default(0) @map("document_password_version")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@map("website_settings")
 }
 
 model Theme {
   id              Int      @id @default(autoincrement())
-  studyProgramId  Int      @unique @map("study_program_id")
+  studyProgramId  Int?     @unique @map("study_program_id")
+  facultyId       Int?     @unique @map("faculty_id")
   primaryColor    String   @default("#1e3a8a") @map("primary_color") @db.VarChar(20)
   secondaryColor  String   @default("#0f172a") @map("secondary_color") @db.VarChar(20)
   accentColor     String   @default("#fbbf24") @map("accent_color") @db.VarChar(20)
@@ -312,14 +343,16 @@ model Theme {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@map("themes")
 }
 
 model Menu {
   id             Int      @id @default(autoincrement())
-  studyProgramId Int      @map("study_program_id")
+  studyProgramId Int?     @map("study_program_id")
+  facultyId      Int?     @map("faculty_id")
   parentId       Int?     @map("parent_id")
   title          String   @db.VarChar(100)
   url            String   @db.VarChar(500)
@@ -330,11 +363,13 @@ model Menu {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
-  parent       Menu?        @relation("MenuHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children     Menu[]       @relation("MenuHierarchy")
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  parent       Menu?         @relation("MenuHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children     Menu[]        @relation("MenuHierarchy")
 
   @@index([studyProgramId, isActive, sortOrder])
+  @@index([facultyId, isActive, sortOrder])
   @@index([parentId])
   @@map("menus")
 }
@@ -345,9 +380,8 @@ model Menu {
 
 model Page {
   id             Int       @id @default(autoincrement())
-  // Null hanya untuk halaman milik PORTAL PUSAT (tanpa tenant), misalnya
-  // halaman sistem `__portal_hero__` tempat banner beranda portal disimpan.
   studyProgramId Int?      @map("study_program_id")
+  facultyId      Int?      @map("faculty_id")
   slug           String    @db.VarChar(150)
   title          String    @db.VarChar(200)
   layout         String    @default("default") @db.VarChar(50)
@@ -360,11 +394,12 @@ model Page {
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   sections     PageSection[]
   versions     PageVersion[]
 
-  @@unique([studyProgramId, slug], name: "page_tenant_slug_unique")
   @@index([studyProgramId, isPublished])
+  @@index([facultyId, isPublished])
   @@map("pages")
 }
 
@@ -498,10 +533,102 @@ model Curriculum {
 
   studyProgram StudyProgram         @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
   semesters    CurriculumSemester[]
+  items        CurriculumItem[]
 
   @@unique([studyProgramId, year])
   @@index([studyProgramId, isActive])
   @@map("curriculums")
+}
+
+// Master mata kuliah milik program studi.
+//
+// Hanya memuat identitas mata kuliah (kode + nama). Detail penawaran seperti
+// SKS, semester, dosen pengampu, dan RPS TIDAK disimpan di sini, melainkan di
+// `CurriculumItem`. Pemisahan ini membuat satu mata kuliah dapat ditawarkan di
+// beberapa kurikulum sekaligus dengan bobot dan pengampu yang berbeda
+// (keputusan pemilik sistem 2026-11-16, ADR-006).
+model Course {
+  id             Int      @id @default(autoincrement())
+  studyProgramId Int      @map("study_program_id")
+  code           String   @db.VarChar(30)
+  name           String   @db.VarChar(200)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  studyProgram StudyProgram     @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  items        CurriculumItem[]
+
+  @@unique([studyProgramId, code])
+  @@index([studyProgramId, name])
+  @@map("courses")
+}
+
+// Penawaran satu mata kuliah di dalam sebuah kurikulum.
+//
+// Inilah baris yang diisi admin pada halaman `/admin/kurikulum`: memilih mata
+// kuliah master (`courseId`), lalu melengkapi semester, bobot SKS, keterangan,
+// dosen pengampu, dan RPS untuk penawaran tersebut. RPS menempel di sini —
+// bukan di master — karena dokumen RPS melekat pada penawaran, bukan pada
+// identitas mata kuliah.
+model CurriculumItem {
+  id                 Int      @id @default(autoincrement())
+  curriculumId       Int      @map("curriculum_id")
+  courseId           Int      @map("course_id")
+  academicSemesterId Int?     @map("academic_semester_id")
+  credits            Int      @default(2)
+  description        String?  @db.Text
+  lecturersData      Json?    @map("lecturers_data")
+  sortOrder          Int      @default(0) @map("sort_order")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  curriculum       Curriculum        @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  course           Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  academicSemester AcademicSemester? @relation(fields: [academicSemesterId], references: [id], onDelete: SetNull)
+  rpsDocuments     CurriculumRps[]
+
+  // Satu mata kuliah hanya boleh muncul sekali dalam kurikulum yang sama.
+  @@unique([curriculumId, courseId])
+  @@index([curriculumId, sortOrder])
+  @@index([courseId])
+  @@index([academicSemesterId])
+  @@map("curriculum_items")
+}
+
+// Dokumen RPS untuk satu penawaran mata kuliah (`CurriculumItem`).
+//
+// Dipisahkan dari `RpsDocument` (warisan) agar penawaran baru punya jalur
+// penyimpanan sendiri tanpa mengganggu data lama.
+model CurriculumRps {
+  id               Int      @id @default(autoincrement())
+  curriculumItemId Int      @map("curriculum_item_id")
+  title            String   @db.VarChar(200)
+  fileUrl          String   @map("file_url") @db.VarChar(500)
+  revision         String?  @db.VarChar(50)
+  isPublic         Boolean  @default(true) @map("is_public")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  curriculumItem CurriculumItem @relation(fields: [curriculumItemId], references: [id], onDelete: Cascade)
+
+  @@index([curriculumItemId])
+  @@map("curriculum_rps")
+}
+
+model AcademicSemester {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @db.VarChar(50)
+  name      String   @db.VarChar(100)
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  courses CurriculumCourse[]
+  curriculumItems CurriculumItem[]
+
+  @@map("academic_semesters")
 }
 
 model CurriculumSemester {
@@ -519,21 +646,38 @@ model CurriculumSemester {
 }
 
 model CurriculumCourse {
-  id          Int      @id @default(autoincrement())
-  semesterId  Int      @map("semester_id")
-  code        String   @db.VarChar(30)
-  name        String   @db.VarChar(200)
-  credits     Int      @default(3)
-  courseType  String   @default("Wajib") @map("course_type") @db.VarChar(30)
-  description String?  @db.Text
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                 Int       @id @default(autoincrement())
+  // Mata kuliah MILIK PRODI secara langsung (keputusan pemilik sistem 2026-11-16:
+  // "matakuliah di input nanti per prodi"). Kolom ini menggantikan ketergantungan
+  // pada `semester_id` sebagai satu-satunya jalur isolasi tenant.
+  //
+  // Sebelumnya kepemilikan tenant hanya dapat diturunkan lewat
+  // semester -> kurikulum -> study_program_id. Akibatnya mata kuliah tanpa
+  // semester tidak bisa dibedakan per prodi dan terpaksa disembunyikan dari
+  // daftar. Dengan kolom eksplisit ini, mata kuliah tetap sah tanpa semester.
+  studyProgramId     Int       @map("study_program_id")
+  // Warisan: posisi semester 1..14 pada curriculum_semesters. Tidak lagi diisi UI.
+  semesterId         Int?      @map("semester_id")
+  academicSemesterId Int?      @map("academic_semester_id")
+  code               String    @db.VarChar(30)
+  name               String    @db.VarChar(200)
+  credits            Int       @default(3)
+  courseType         String    @default("Wajib") @map("course_type") @db.VarChar(30)
+  description        String?   @db.Text
+  lecturersData      Json?     @map("lecturers_data")
+  sortOrder          Int       @default(0) @map("sort_order")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  semester     CurriculumSemester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
-  rpsDocuments RpsDocument[]
+  studyProgram     StudyProgram          @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  semester         CurriculumSemester?   @relation(fields: [semesterId], references: [id], onDelete: SetNull)
+  academicSemester AcademicSemester?     @relation(fields: [academicSemesterId], references: [id], onDelete: SetNull)
+  rpsDocuments     RpsDocument[]
 
+  @@index([studyProgramId, academicSemesterId])
+  @@index([studyProgramId, code])
   @@index([semesterId, sortOrder])
+  @@index([academicSemesterId])
   @@index([code])
   @@map("curriculum_courses")
 }
@@ -577,28 +721,11 @@ model Lecturer {
   @@map("lecturers")
 }
 
-model Document {
-  id             Int      @id @default(autoincrement())
-  studyProgramId Int      @map("study_program_id")
-  code           String?  @db.VarChar(50)
-  title          String   @db.VarChar(255)
-  category       String   @db.VarChar(100)
-  description    String?  @db.Text
-  year           Int      @default(2026)
-  fileUrl        String   @map("file_url") @db.VarChar(500)
-  fileSize       Int?     @map("file_size")
-  mimeType       String?  @map("mime_type") @db.VarChar(120)
-  isPublic       Boolean  @default(true) @map("is_public")
-  downloadCount  Int      @default(0) @map("download_count")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
-
-  @@index([studyProgramId, isPublic])
-  @@index([category])
-  @@map("documents")
-}
+// Model `Document` (bank dokumen lokal) sudah DIHAPUS.
+//
+// Arsip dokumen prodi kini bersumber dari aplikasi LPM & LPPM melalui
+// ONE UNUSU API Hub (`/inter-service/dokumen-lpm` dan `-lppm`) dan hanya
+// dibaca. Lihat `services/arsipDokumenService.ts`.
 
 model Facility {
   id             Int      @id @default(autoincrement())
@@ -621,21 +748,26 @@ model Facility {
 
 model PostCategory {
   id             Int      @id @default(autoincrement())
-  studyProgramId Int      @map("study_program_id")
+  studyProgramId Int?     @map("study_program_id")
+  facultyId      Int?     @map("faculty_id")
   name           String   @db.VarChar(100)
   slug           String   @db.VarChar(120)
   createdAt      DateTime @default(now()) @map("created_at")
 
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   posts        Post[]
 
   @@unique([studyProgramId, slug])
+  @@index([studyProgramId])
+  @@index([facultyId])
   @@map("post_categories")
 }
 
 model Post {
   id             Int       @id @default(autoincrement())
-  studyProgramId Int       @map("study_program_id")
+  studyProgramId Int?      @map("study_program_id")
+  facultyId      Int?      @map("faculty_id")
   categoryId     Int?      @map("category_id")
   authorId       Int?      @map("author_id")
   title          String    @db.VarChar(255)
@@ -653,19 +785,21 @@ model Post {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram  @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   category     PostCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   author       User?         @relation("PostAuthor", fields: [authorId], references: [id], onDelete: SetNull)
 
-  @@unique([studyProgramId, slug], name: "post_tenant_slug_unique")
   @@index([studyProgramId, status, publishedAt])
+  @@index([facultyId, status, publishedAt])
   @@index([categoryId])
   @@map("posts")
 }
 
 model Gallery {
   id             Int       @id @default(autoincrement())
-  studyProgramId Int       @map("study_program_id")
+  studyProgramId Int?      @map("study_program_id")
+  facultyId      Int?      @map("faculty_id")
   title          String    @db.VarChar(200)
   slug           String    @db.VarChar(200)
   description    String?   @db.Text
@@ -676,11 +810,12 @@ model Gallery {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram  @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   items        GalleryItem[]
 
-  @@unique([studyProgramId, slug], name: "gallery_tenant_slug_unique")
   @@index([studyProgramId, isPublished])
+  @@index([facultyId, isPublished])
   @@map("galleries")
 }
 
@@ -701,7 +836,8 @@ model GalleryItem {
 
 model ContactInfo {
   id             Int      @id @default(autoincrement())
-  studyProgramId Int      @unique @map("study_program_id")
+  studyProgramId Int?     @unique @map("study_program_id")
+  facultyId      Int?     @unique @map("faculty_id")
   address        String?  @db.Text
   email          String?  @db.VarChar(190)
   phone          String?  @db.VarChar(50)
@@ -713,14 +849,16 @@ model ContactInfo {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@map("contact_infos")
 }
 
 model ContactMessage {
   id             Int      @id @default(autoincrement())
-  studyProgramId Int      @map("study_program_id")
+  studyProgramId Int?     @map("study_program_id")
+  facultyId      Int?     @map("faculty_id")
   name           String   @db.VarChar(150)
   email          String   @db.VarChar(190)
   subject        String?  @db.VarChar(200)
@@ -728,16 +866,19 @@ model ContactMessage {
   isRead         Boolean  @default(false) @map("is_read")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@index([studyProgramId, isRead])
+  @@index([facultyId, isRead])
   @@map("contact_messages")
 }
 
 // Profil dan Visi Misi disimpan terstruktur per tenant.
 model ProfileContent {
   id             Int      @id @default(autoincrement())
-  studyProgramId Int      @unique @map("study_program_id")
+  studyProgramId Int?     @unique @map("study_program_id")
+  facultyId      Int?     @unique @map("faculty_id")
   history        String?  @db.Text
   overview       String?  @db.Text
   objectives     String?  @db.Text
@@ -747,14 +888,16 @@ model ProfileContent {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@map("profile_contents")
 }
 
 model VisionMission {
   id             Int      @id @default(autoincrement())
-  studyProgramId Int      @unique @map("study_program_id")
+  studyProgramId Int?     @unique @map("study_program_id")
+  facultyId      Int?     @unique @map("faculty_id")
   vision         String?  @db.Text
   missions       String?  @db.Text
   objectives     String?  @db.Text
@@ -762,7 +905,8 @@ model VisionMission {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@map("visions_missions")
 }

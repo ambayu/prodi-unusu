@@ -122,6 +122,34 @@ export function toApiError(error: unknown): ApiError {
 }
 
 /**
+ * Periksa status sesi terpusat di Identity Provider (ONE UNUSU).
+ * - authenticated: true -> sesi ONE UNUSU aktif.
+ * - authenticated: false -> pengguna telah logout dari ONE UNUSU.
+ * - authenticated: null -> gagal menghubungi server SSO (offline/network error).
+ */
+export const checkOneUnusuSession = async () => {
+  const ssoApiUrl = import.meta.env.VITE_SSO_API_URL || 'http://localhost:5000/api';
+  try {
+    const res = await axios.get<{
+      status: boolean;
+      authenticated: boolean;
+      user?: { username: string; nama: string; role: string };
+      message?: string;
+    }>(`${ssoApiUrl}/sso/session-check`, {
+      withCredentials: true,
+      timeout: 3500,
+    });
+    return res.data;
+  } catch (err: any) {
+    return {
+      status: false,
+      authenticated: null,
+      message: err.message,
+    };
+  }
+};
+
+/**
  * Label manusia untuk kunci field yang biasanya muncul di pesan validasi.
  *
  * Kunci dari Zod berbentuk path (`heroSliderConfig.slides.0.imageUrl`), yang

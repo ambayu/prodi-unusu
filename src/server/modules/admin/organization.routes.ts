@@ -116,7 +116,6 @@ router.get(
             pages: true,
             posts: true,
             lecturers: true,
-            documents: true,
             facilities: true,
             galleries: true,
             curriculums: true,
@@ -246,15 +245,14 @@ router.delete(
 
     const program = await prisma.studyProgram.findUnique({
       where: { id },
-      include: { _count: { select: { posts: true, lecturers: true, documents: true, pages: true } } },
+      include: { _count: { select: { posts: true, lecturers: true, pages: true } } },
     });
 
     if (!program) {
       throw AppError.notFound('Program studi tidak ditemukan.');
     }
 
-    const hasContent =
-      program._count.posts + program._count.lecturers + program._count.documents + program._count.pages > 0;
+    const hasContent = program._count.posts + program._count.lecturers + program._count.pages > 0;
 
     if (hasContent) {
       throw AppError.conflict(
@@ -362,9 +360,9 @@ router.delete(
       throw AppError.notFound('Domain tidak ditemukan.');
     }
 
-    if (existing.studyProgram._count.domains <= 1) {
+    if (existing.studyProgram && existing.studyProgram._count.domains <= 1) {
       throw AppError.conflict(
-        'Domain terakhir tidak dapat dihapus. Website prodi akan tidak dapat diakses sama sekali.',
+        'Domain terakhir tidak dapat dihapus. Website unit atau prodi akan tidak dapat diakses sama sekali.',
         'LAST_DOMAIN',
       );
     }

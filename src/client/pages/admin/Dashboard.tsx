@@ -118,12 +118,6 @@ export const Dashboard: React.FC = () => {
                 icon={BookOpenIcon}
               />
               <MetricCard
-                label="Dokumen Mutu &amp; SOP"
-                value={stats.documents}
-                detail="Repositori dokumen resmi"
-                icon={DocumentTextIcon}
-              />
-              <MetricCard
                 label="Tenaga Pengajar"
                 value={stats.lecturers}
                 detail="Dosen aktif terdaftar"
@@ -280,7 +274,7 @@ export const Dashboard: React.FC = () => {
                 <ErrorState message={toApiError(superQuery.error).message} onRetry={() => void superQuery.refetch()} />
               </div>
             ) : superStats ? (
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                 {[
                   { label: 'Fakultas', value: superStats.faculties },
                   { label: 'Program Studi', value: superStats.studyPrograms },
@@ -288,7 +282,6 @@ export const Dashboard: React.FC = () => {
                   { label: 'Domain Nonaktif', value: superStats.inactiveDomains },
                   { label: 'Pengguna', value: superStats.users },
                   { label: 'Berita', value: superStats.totalPosts },
-                  { label: 'Dokumen', value: superStats.totalDocuments },
                 ].map((item) => (
                   <div key={item.label} className="rounded-[10px] border border-[#CBD5E1]/60 bg-slate-50/70 p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{item.label}</p>

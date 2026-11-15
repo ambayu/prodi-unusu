@@ -29,7 +29,6 @@ router.get(
       semesters,
       courses,
       lecturers,
-      documents,
       facilities,
       postsPublished,
       postsDraft,
@@ -42,7 +41,6 @@ router.get(
       prisma.curriculumSemester.count({ where: { curriculum: { studyProgramId } } }),
       prisma.curriculumCourse.count({ where: { semester: { curriculum: { studyProgramId } } } }),
       prisma.lecturer.count({ where: { studyProgramId, isActive: true } }),
-      prisma.document.count({ where: { studyProgramId } }),
       prisma.facility.count({ where: { studyProgramId } }),
       prisma.post.count({ where: { studyProgramId, status: 'published' } }),
       prisma.post.count({ where: { studyProgramId, status: 'draft' } }),
@@ -79,7 +77,6 @@ router.get(
         courses,
         totalCredits: creditsAggregate._sum.credits ?? 0,
         lecturers,
-        documents,
         facilities,
         postsPublished,
         postsDraft,
@@ -103,7 +100,7 @@ router.get(
       throw AppError.forbidden('Ringkasan lintas tenant hanya untuk Super Admin.', 'SUPER_ADMIN_ONLY');
     }
 
-    const [faculties, studyPrograms, activeDomains, inactiveDomains, users, totalPosts, totalDocuments] =
+    const [faculties, studyPrograms, activeDomains, inactiveDomains, users, totalPosts] =
       await Promise.all([
         prisma.faculty.count(),
         prisma.studyProgram.count(),
@@ -111,7 +108,6 @@ router.get(
         prisma.domain.count({ where: { isActive: false } }),
         prisma.user.count({ where: { isActive: true } }),
         prisma.post.count(),
-        prisma.document.count(),
       ]);
 
     const domains = await prisma.domain.findMany({
@@ -147,7 +143,6 @@ router.get(
         inactiveDomains,
         users,
         totalPosts,
-        totalDocuments,
       },
       domains,
       recentAudit,

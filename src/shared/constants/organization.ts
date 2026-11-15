@@ -242,8 +242,9 @@ export const PERMISSION_GROUPS: Array<{ code: string; name: string; permissions:
   },
   {
     code: 'EDITOR_DOKUMEN',
-    name: 'Editor Dokumen',
-    permissions: ['documents.view', 'documents.create', 'documents.update', 'documents.delete', 'media.view', 'media.upload'],
+    name: 'Pengelola Arsip Dokumen',
+    // Arsip mutu dikelola LPM/LPPM; di sini hanya hak baca arsip prodi.
+    permissions: ['documents.view'],
   },
   {
     code: 'EDITOR_KURIKULUM',
@@ -290,7 +291,7 @@ export const ADMIN_MENUS: Array<{
   { menuKey: 'content.profile', label: 'Profil', route: '/admin/konten/profil', icon: 'UserIcon', parentKey: 'content', sortOrder: 31, requiredPermission: 'profile.view', scopeType: 'prodi' },
   { menuKey: 'content.vision', label: 'Visi & Misi Program Studi', route: '/admin/konten/visi-misi', icon: 'EyeIcon', parentKey: 'content', sortOrder: 32, requiredPermission: 'vision_mission.view', scopeType: 'prodi' },
   { menuKey: 'content.curriculum', label: 'Kurikulum', route: '/admin/kurikulum', icon: 'BookOpenIcon', parentKey: 'content', sortOrder: 33, requiredPermission: 'curriculum.view', scopeType: 'prodi' },
-  { menuKey: 'content.documents', label: 'Dokumen', route: '/admin/dokumen', icon: 'FolderOpenIcon', parentKey: 'content', sortOrder: 34, requiredPermission: 'documents.view', scopeType: 'prodi' },
+  { menuKey: 'content.documents', label: 'Arsip Dokumen (LPM/LPPM)', route: '/admin/dokumen', icon: 'FolderOpenIcon', parentKey: 'content', sortOrder: 34, requiredPermission: 'documents.view', scopeType: 'prodi' },
   { menuKey: 'content.lecturers', label: 'Dosen', route: '/admin/dosen', icon: 'UserGroupIcon', parentKey: 'content', sortOrder: 35, requiredPermission: 'lecturers.view', scopeType: 'prodi' },
   { menuKey: 'content.facilities', label: 'Sarpras', route: '/admin/sarpras', icon: 'BuildingOfficeIcon', parentKey: 'content', sortOrder: 36, requiredPermission: 'facilities.view', scopeType: 'prodi' },
   { menuKey: 'content.posts', label: 'Berita', route: '/admin/berita', icon: 'NewspaperIcon', parentKey: 'content', sortOrder: 37, requiredPermission: 'posts.view', scopeType: 'prodi' },
@@ -304,6 +305,7 @@ export const ADMIN_MENUS: Array<{
   { menuKey: 'management.audit', label: 'Audit Aktivitas', route: '/admin/audit', icon: 'ClipboardDocumentListIcon', parentKey: 'management', sortOrder: 53, requiredPermission: 'audit_logs.view', scopeType: 'prodi' },
 
   { menuKey: 'super.organization', label: 'Manajemen Organisasi', route: '/admin/organisasi', icon: 'BuildingLibraryIcon', sortOrder: 60, requiredPermission: 'organization.view', scopeType: 'global' },
+  { menuKey: 'super.semester', label: 'Master Semester', route: '/admin/semester', icon: 'BookOpenIcon', sortOrder: 60.5, requiredPermission: 'organization.view', scopeType: 'global' },
   { menuKey: 'super.tenants', label: 'Daftar Website', route: '/admin/website-list', icon: 'GlobeAltIcon', sortOrder: 61, requiredPermission: 'tenant.view', scopeType: 'global' },
   { menuKey: 'super.domains', label: 'Domain', route: '/admin/domain', icon: 'LinkIcon', sortOrder: 62, requiredPermission: 'domain.view', scopeType: 'global' },
   { menuKey: 'super.widgets', label: 'Widget Library', route: '/admin/widget', icon: 'Squares2X2Icon', sortOrder: 63, requiredPermission: 'widgets.view', scopeType: 'global' },
@@ -375,9 +377,6 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'curriculum.delete',
     'curriculum.publish',
     'documents.view',
-    'documents.create',
-    'documents.update',
-    'documents.delete',
     'lecturers.view',
     'lecturers.create',
     'lecturers.update',

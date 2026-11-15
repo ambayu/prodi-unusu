@@ -164,7 +164,17 @@ export const FacultiesPage: React.FC = () => {
                       {faculty.code}
                     </span>
                     <div>
-                      <h2 className="text-xl font-extrabold text-slate-900">{faculty.name}</h2>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-xl font-extrabold text-slate-900">{faculty.name}</h2>
+                        {faculty.slug && (
+                          <Link
+                            to={`/fakultas/${faculty.slug}`}
+                            className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-1"
+                          >
+                            Halaman Fakultas &rarr;
+                          </Link>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500 font-medium mt-0.5">
                         Universitas Nahdlatul Ulama Sumatera Utara
                       </p>

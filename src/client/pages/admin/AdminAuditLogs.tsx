@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowPathIcon, ClipboardDocumentListIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
-import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
+import { DataTable } from '../../components/ui/DataTable';
 import { toApiError } from '../../services/api';
 import { dashboardApi, type AuditEntry } from '../../services/adminApi';
 
@@ -124,83 +124,90 @@ export const AdminAuditLogs: React.FC = () => {
           </button>
         </div>
 
-        {logsQuery.isLoading ? (
-          <LoadingState label="Memuat riwayat aktivitas" rows={5} />
-        ) : logsQuery.isError ? (
-          <ErrorState
-            message={toApiError(logsQuery.error).message}
-            onRetry={() => void logsQuery.refetch()}
-          />
-        ) : logs.length === 0 ? (
-          <EmptyState
-            title={kataKunci ? 'Tidak ada aktivitas yang cocok' : 'Belum ada aktivitas tercatat'}
-            description={
-              kataKunci
-                ? 'Coba kata kunci lain, atau kosongkan kolom pencarian untuk melihat seluruh riwayat.'
-                : 'Setiap penambahan, perubahan, dan penghapusan data akan muncul di sini secara otomatis.'
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto rounded-[14px] border border-slate-200 bg-white">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50/80 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th scope="col" className="px-4 py-3 font-bold">Waktu</th>
-                  <th scope="col" className="px-4 py-3 font-bold">Pengguna</th>
-                  <th scope="col" className="px-4 py-3 font-bold">Aksi</th>
-                  <th scope="col" className="px-4 py-3 font-bold">Modul</th>
-                  <th scope="col" className="px-4 py-3 font-bold">Objek</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {logs.map((entri) => (
-                  <tr key={entri.id} className="align-top transition-colors hover:bg-slate-50/60">
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
-                      {formatWaktu(entri.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-slate-800">
-                      {entri.user?.name ?? (
-                        <span className="font-normal italic text-slate-400">Sistem</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${
-                          NADA_AKSI[entri.action] ?? 'border-slate-200 bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        {LABEL_AKSI[entri.action] ?? entri.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-600">
-                      {LABEL_MODUL[entri.module] ?? entri.module}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">
-                      {entri.targetType ? (
-                        <>
-                          <span className="font-semibold text-slate-700">{entri.targetType}</span>
-                          {entri.targetId ? ` #${entri.targetId}` : ''}
-                        </>
-                      ) : (
-                        <span className="italic text-slate-400">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {logs.length > 0 ? (
-          <p className="flex items-center gap-1.5 text-xs text-slate-500">
-            <ClipboardDocumentListIcon className="h-4 w-4" aria-hidden="true" />
-            <span>
-              Menampilkan {logs.length} aktivitas
-              {kataKunci ? ` dari hasil pencarian "${kataKunci}"` : ''}.
-            </span>
-          </p>
-        ) : null}
+        {/*
+         * Keadaan loading/galat/kosong ditangani DataTable. Footer jumlah
+         * aktivitas dipasang lewat prop `footer` agar hanya tampil saat ada data.
+         */}
+        <DataTable<AuditEntry>
+          rows={logs}
+          rowKey={(entri) => String(entri.id)}
+          loading={logsQuery.isLoading}
+          loadingLabel="Memuat riwayat aktivitas"
+          loadingRows={5}
+          error={logsQuery.isError ? toApiError(logsQuery.error).message : null}
+          onRetry={() => void logsQuery.refetch()}
+          emptyTitle={kataKunci ? 'Tidak ada aktivitas yang cocok' : 'Belum ada aktivitas tercatat'}
+          emptyDescription={
+            kataKunci
+              ? 'Coba kata kunci lain, atau kosongkan kolom pencarian untuk melihat seluruh riwayat.'
+              : 'Setiap penambahan, perubahan, dan penghapusan data akan muncul di sini secara otomatis.'
+          }
+          minWidth={640}
+          footer={
+            <p className="flex items-center gap-1.5 text-xs text-slate-500">
+              <ClipboardDocumentListIcon className="h-4 w-4" aria-hidden="true" />
+              <span>
+                Menampilkan {logs.length} aktivitas
+                {kataKunci ? ` dari hasil pencarian "${kataKunci}"` : ''}.
+              </span>
+            </p>
+          }
+          columns={[
+            {
+              key: 'waktu',
+              header: 'Waktu',
+              width: 160,
+              cellClassName: 'whitespace-nowrap text-slate-600',
+              render: (entri) => formatWaktu(entri.createdAt),
+            },
+            {
+              key: 'pengguna',
+              header: 'Pengguna',
+              width: 160,
+              cellClassName: 'font-semibold text-slate-800',
+              render: (entri) =>
+                entri.user?.name ?? (
+                  <span className="font-normal italic text-slate-400">Sistem</span>
+                ),
+            },
+            {
+              key: 'aksi',
+              header: 'Aksi',
+              width: 160,
+              render: (entri) => (
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+                    NADA_AKSI[entri.action] ?? 'border-slate-200 bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  {LABEL_AKSI[entri.action] ?? entri.action}
+                </span>
+              ),
+            },
+            {
+              key: 'modul',
+              header: 'Modul',
+              width: 140,
+              cellClassName: 'text-slate-600',
+              render: (entri) => LABEL_MODUL[entri.module] ?? entri.module,
+            },
+            {
+              key: 'objek',
+              header: 'Objek',
+              /* Satu-satunya kolom tanpa lebar tetap: target bisa berupa nama panjang. */
+              cellClassName: 'text-slate-500',
+              render: (entri) =>
+                entri.targetType ? (
+                  <>
+                    <span className="font-semibold text-slate-700">{entri.targetType}</span>
+                    {entri.targetId ? ` #${entri.targetId}` : ''}
+                  </>
+                ) : (
+                  <span className="italic text-slate-400">—</span>
+                ),
+            },
+          ]}
+        />
       </div>
     </AdminLayout>
   );

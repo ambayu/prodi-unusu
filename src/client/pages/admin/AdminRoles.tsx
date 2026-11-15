@@ -3,13 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShieldCheckIcon,
   PlusIcon,
-  PencilSquareIcon,
-  TrashIcon,
   KeyIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
-import { LoadingState, ErrorState, EmptyState } from '../../components/ui/States';
+import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/RowActions';
+import { LoadingState } from '../../components/ui/States';
 import { FormModal, Field } from '../../components/ui/FormModal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../components/ui/Toast';
@@ -116,6 +116,101 @@ export const AdminRoles: React.FC = () => {
     }
   };
 
+  /**
+   * Definisi kolom tabel peran. Kolom "Nama Peran & Kode" sengaja dibiarkan
+   * tanpa `width` agar menyerap sisa ruang, sedangkan kolom lain lebarnya tetap
+   * supaya badge jumlah pengguna dan izin tidak saling menimpa.
+   */
+  const roleColumns: Array<DataTableColumn<RoleItem>> = [
+    {
+      key: 'nama',
+      header: 'Nama Peran & Kode',
+      render: (role) => {
+        const isProdiRole = role.code.startsWith('ADMIN_PRODI');
+        return (
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] ${
+                role.code === 'SUPER_ADMIN'
+                  ? 'bg-rose-50 text-rose-700'
+                  : isProdiRole
+                  ? 'bg-emerald-50 text-emerald-800'
+                  : 'bg-blue-50 text-[#1e3a8a]'
+              }`}
+            >
+              <ShieldCheckIcon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-slate-900 text-xs sm:text-sm">{role.name}</p>
+              <p className="font-mono text-[10px] text-slate-500 font-semibold">{role.code}</p>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'deskripsi',
+      header: 'Deskripsi',
+      width: 320,
+      render: (role) => (
+        <p className="text-xs text-slate-600 line-clamp-2 max-w-sm">{role.description || '-'}</p>
+      ),
+    },
+    {
+      key: 'pengguna',
+      header: 'Jumlah Pengguna',
+      width: 150,
+      align: 'center',
+      render: (role) => (
+        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700 border border-[#CBD5E1]/60">
+          <UsersIcon className="h-3 w-3 text-slate-400" />
+          {role.userCount}
+        </span>
+      ),
+    },
+    {
+      key: 'izin',
+      header: 'Izin Terpasang',
+      width: 150,
+      align: 'center',
+      render: (role) => (
+        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-[#1e3a8a] border border-blue-200">
+          <KeyIcon className="h-3 w-3 text-[#1e3a8a]" />
+          {role.code === 'SUPER_ADMIN' ? 'Semua (*)' : `${role.permissionCount} Izin`}
+        </span>
+      ),
+    },
+  ];
+
+  /*
+   * Kolom aksi hanya muncul bagi Super Admin, sama seperti `<th>` bersyarat
+   * pada tabel manual sebelumnya.
+   */
+  if (isSuperAdmin) {
+    roleColumns.push({
+      key: 'aksi',
+      header: 'Aksi',
+      width: 110,
+      align: 'right',
+      render: (role) => (
+        <RowActions>
+          <EditRowButton
+            label="Ubah peran &amp; izin"
+            konteks={role.name}
+            onClick={() => openEdit(role)}
+          />
+          {role.code !== 'SUPER_ADMIN' && role.userCount === 0 && (
+            <DeleteRowButton
+              label="Hapus peran"
+              konteks={role.name}
+              onClick={() => setDeleteTarget(role)}
+            />
+          )}
+        </RowActions>
+      ),
+    });
+  }
+
   return (
     <AdminLayout
       title="Manajemen Peran (Roles)"
@@ -133,102 +228,23 @@ export const AdminRoles: React.FC = () => {
         ) : null
       }
     >
-      {rolesQuery.isLoading ? (
-        <LoadingState label="Memuat data peran" rows={4} />
-      ) : rolesQuery.isError ? (
-        <ErrorState
-          message={toApiError(rolesQuery.error).message}
-          onRetry={() => void rolesQuery.refetch()}
-        />
-      ) : (rolesQuery.data ?? []).length === 0 ? (
-        <EmptyState
-          title="Belum ada peran"
-          description="Tambahkan peran untuk mengatur hak akses akun pengguna."
-        />
-      ) : (
-        <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white shadow-xs">
-          <table className="table-base">
-            <thead>
-              <tr>
-                <th>Nama Peran &amp; Kode</th>
-                <th>Deskripsi</th>
-                <th className="text-center">Jumlah Pengguna</th>
-                <th className="text-center">Izin Terpasang</th>
-                {isSuperAdmin && <th className="text-right">Aksi</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {(rolesQuery.data ?? []).map((role) => {
-                const isProdiRole = role.code.startsWith('ADMIN_PRODI');
-                return (
-                  <tr key={role.id}>
-                    <td>
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] ${
-                            role.code === 'SUPER_ADMIN'
-                              ? 'bg-rose-50 text-rose-700'
-                              : isProdiRole
-                              ? 'bg-emerald-50 text-emerald-800'
-                              : 'bg-blue-50 text-[#1e3a8a]'
-                          }`}
-                        >
-                          <ShieldCheckIcon className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900 text-xs sm:text-sm">{role.name}</p>
-                          <p className="font-mono text-[10px] text-slate-500 font-semibold">{role.code}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <p className="text-xs text-slate-600 line-clamp-2 max-w-sm">
-                        {role.description || '-'}
-                      </p>
-                    </td>
-                    <td className="text-center">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700 border border-[#CBD5E1]/60">
-                        <UsersIcon className="h-3 w-3 text-slate-400" />
-                        {role.userCount}
-                      </span>
-                    </td>
-                    <td className="text-center">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-[#1e3a8a] border border-blue-200">
-                        <KeyIcon className="h-3 w-3 text-[#1e3a8a]" />
-                        {role.code === 'SUPER_ADMIN' ? 'Semua (*)' : `${role.permissionCount} Izin`}
-                      </span>
-                    </td>
-                    {isSuperAdmin && (
-                      <td className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(role)}
-                            className="inline-flex items-center gap-1 p-1.5 text-xs font-bold text-slate-600 hover:text-[#1e3a8a] hover:bg-slate-100 rounded-[8px] transition-colors"
-                            title="Edit Peran & Izin"
-                          >
-                            <PencilSquareIcon className="h-4 w-4" />
-                          </button>
-                          {role.code !== 'SUPER_ADMIN' && role.userCount === 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setDeleteTarget(role)}
-                              className="inline-flex items-center gap-1 p-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-[8px] transition-colors"
-                              title="Hapus Peran"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/*
+       * Keadaan loading/galat/kosong ditangani DataTable sehingga halaman tidak
+       * lagi menulis percabangan sendiri.
+       */}
+      <DataTable<RoleItem>
+        rows={rolesQuery.data ?? []}
+        rowKey={(role) => String(role.id)}
+        loading={rolesQuery.isLoading}
+        loadingLabel="Memuat data peran"
+        loadingRows={4}
+        error={rolesQuery.isError ? toApiError(rolesQuery.error).message : null}
+        onRetry={() => void rolesQuery.refetch()}
+        emptyTitle="Belum ada peran"
+        emptyDescription="Tambahkan peran untuk mengatur hak akses akun pengguna."
+        minWidth={820}
+        columns={roleColumns}
+      />
 
       {/* Modal Tambah/Edit Role */}
       <FormModal

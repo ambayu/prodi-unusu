@@ -1,549 +1,724 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, TrashIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  UserGroupIcon,
+  DocumentTextIcon,
+} from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
-import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
+import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { Field, FormModal } from '../../components/ui/FormModal';
+import { FormModal, Field } from '../../components/ui/FormModal';
+import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/RowActions';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
-import { curriculumApi, type Course, type Curriculum } from '../../services/contentApi';
-import { toApiError, firstFieldError } from '../../services/api';
+import {
+  courseMasterApi,
+  curriculumApi,
+  curriculumItemApi,
+  curriculumRpsApi,
+  academicSemesterApi,
+  lecturerApi,
+  RPS_MAX_BYTES,
+  type CourseMaster,
+  type Curriculum,
+  type CurriculumItem,
+  type LecturerAssignment,
+} from '../../services/contentApi';
+import { firstFieldError, toApiError } from '../../services/api';
+
+const ALL = '__all__';
+
+/** Baris dosen dari API Hub; bentuknya lebih longgar daripada `Lecturer` lokal. */
+interface DosenOption {
+  id: number | string;
+  name: string;
+  nidn?: string | null;
+}
+
+interface Draft {
+  courseId: string;
+  curriculumId: string;
+  academicSemesterId: string;
+  credits: string;
+  description: string;
+  lecturersData: LecturerAssignment[];
+}
+
+const emptyDraft = (curriculumId: string): Draft => ({
+  courseId: '',
+  curriculumId,
+  academicSemesterId: '',
+  credits: '2',
+  description: '',
+  lecturersData: [],
+});
 
 /**
- * Pengelolaan kurikulum: kurikulum, semester, dan mata kuliah.
+ * Penawaran mata kuliah pada kurikulum (`/admin/kurikulum`).
  *
- * Seluruh angka ringkasan dihitung dari data yang benar-benar tersimpan,
- * bukan dari konstanta, sesuai aturan bahwa statistik akademik berasal dari
- * database.
+ * Tabel ini menautkan **master mata kuliah** (`courses`, dikelola di menu Mata
+ * Kuliah) dengan detail penawaran: semester, bobot SKS, keterangan, dosen
+ * pengampu, dan RPS. Kolom "id matakuliah" diwakili oleh pilihan `courseId`
+ * pada formulir — satu master boleh ditawarkan di beberapa kurikulum dengan
+ * SKS dan pengampu berbeda (ADR-006).
+ *
+ * Kode dan nama mata kuliah **tidak** diketik di sini; keduanya mengikuti
+ * master sehingga tidak mungkin berbeda antarkurikulum.
  */
 export const AdminCurriculum: React.FC = () => {
   const queryClient = useQueryClient();
   const toast = useToast();
   const { has } = usePermission();
 
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
-  const [curriculumFormOpen, setCurriculumFormOpen] = useState(false);
-  const [curriculumDraft, setCurriculumDraft] = useState<{ name: string; year: number; description: string; isActive: boolean }>({
-    name: '',
-    year: new Date().getFullYear(),
-    description: '',
-    isActive: true,
+  const [search, setSearch] = useState('');
+  const [curriculumFilter, setCurriculumFilter] = useState<string>(ALL);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<CurriculumItem | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft>(emptyDraft(''));
+  const [dosenSearch, setDosenSearch] = useState('');
+  const [rpsFile, setRpsFile] = useState<File | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CurriculumItem | null>(null);
+
+  const itemsQuery = useQuery({
+    queryKey: ['admin', 'curriculum-items'],
+    queryFn: () => curriculumItemApi.list().then((res) => res.data.items),
   });
 
-  const [semesterFormOpen, setSemesterFormOpen] = useState(false);
-  const [semesterTarget, setSemesterTarget] = useState<Curriculum | null>(null);
-  const [semesterDraft, setSemesterDraft] = useState({ semesterNumber: 1, title: 'Semester 1' });
-
-  const [courseFormOpen, setCourseFormOpen] = useState(false);
-  const [courseTarget, setCourseTarget] = useState<number | null>(null);
-  const [courseEditing, setCourseEditing] = useState<Course | null>(null);
-  const [courseDraft, setCourseDraft] = useState({
-    code: '',
-    name: '',
-    credits: 3,
-    courseType: 'Wajib',
-    description: '',
-  });
-
-  const [deleteTarget, setDeleteTarget] = useState<{ kind: 'curriculum' | 'course'; id: number; label: string } | null>(
-    null,
-  );
-
-  const listQuery = useQuery({
+  const curriculumsQuery = useQuery({
     queryKey: ['admin', 'curriculums'],
     queryFn: () => curriculumApi.list().then((res) => res.data.curriculums),
   });
 
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ['admin', 'curriculums'] });
-    void queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+  const mastersQuery = useQuery({
+    queryKey: ['admin', 'master-courses'],
+    queryFn: () => courseMasterApi.list().then((res) => res.data.courses),
+  });
+
+  const semestersQuery = useQuery({
+    queryKey: ['admin', 'academic-semesters'],
+    queryFn: () => academicSemesterApi.list().then((res) => res.data.semesters),
+  });
+
+  const lecturersQuery = useQuery({
+    queryKey: ['admin', 'lecturers'],
+    queryFn: () => lecturerApi.list().then((res) => res.data.lecturers as unknown as DosenOption[]),
+  });
+
+  const items = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data]);
+  const curriculums: Curriculum[] = useMemo(() => curriculumsQuery.data ?? [], [curriculumsQuery.data]);
+  const masters: CourseMaster[] = useMemo(() => mastersQuery.data ?? [], [mastersQuery.data]);
+  const semesters = useMemo(() => semestersQuery.data ?? [], [semestersQuery.data]);
+  const dosenOptions = useMemo(() => lecturersQuery.data ?? [], [lecturersQuery.data]);
+
+  const filteredDosen = useMemo(() => {
+    const keyword = dosenSearch.trim().toLowerCase();
+    if (!keyword) return dosenOptions.slice(0, 8);
+    return dosenOptions
+      .filter(
+        (dosen) =>
+          dosen.name.toLowerCase().includes(keyword) ||
+          (dosen.nidn ?? '').toLowerCase().includes(keyword),
+      )
+      .slice(0, 8);
+  }, [dosenOptions, dosenSearch]);
+
+  const filtered = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    return items.filter((item) => {
+      if (curriculumFilter !== ALL && String(item.curriculumId) !== curriculumFilter) return false;
+      if (!keyword) return true;
+      return (
+        item.course.code.toLowerCase().includes(keyword) ||
+        item.course.name.toLowerCase().includes(keyword)
+      );
+    });
+  }, [items, search, curriculumFilter]);
+
+  const totalCredits = filtered.reduce((sum, item) => sum + item.credits, 0);
+
+  /** Master yang belum ditawarkan pada kurikulum terpilih — mencegah duplikat. */
+  const availableMasters = useMemo(() => {
+    if (editing) return masters;
+    const used = new Set(
+      items.filter((item) => String(item.curriculumId) === draft.curriculumId).map((item) => item.courseId),
+    );
+    return masters.filter((master) => !used.has(master.id));
+  }, [masters, items, draft.curriculumId, editing]);
+
+  const resetForm = () => {
+    setDraft(emptyDraft(curriculums[0] ? String(curriculums[0].id) : ''));
+    setFormError(null);
+    setEditing(null);
+    setDosenSearch('');
+    setRpsFile(null);
   };
 
-  const createCurriculum = useMutation({
-    mutationFn: () =>
-      curriculumApi.createCurriculum({
-        name: curriculumDraft.name,
-        year: curriculumDraft.year,
-        description: curriculumDraft.description || null,
-        isActive: curriculumDraft.isActive,
-      }),
-    onSuccess: () => {
-      toast.success('Kurikulum berhasil dibuat.');
-      setCurriculumFormOpen(false);
-      invalidate();
-    },
-    onError: (error) => {
-      const apiError = toApiError(error);
-      toast.error(firstFieldError(apiError) ?? apiError.message);
-    },
-  });
+  const openCreate = () => {
+    resetForm();
+    setModalOpen(true);
+  };
 
-  const createSemester = useMutation({
-    mutationFn: () =>
-      curriculumApi.createSemester({
-        curriculumId: semesterTarget!.id,
-        semesterNumber: semesterDraft.semesterNumber,
-        title: semesterDraft.title,
-      }),
-    onSuccess: () => {
-      toast.success('Semester berhasil ditambahkan.');
-      setSemesterFormOpen(false);
-      invalidate();
-    },
-    onError: (error) => {
-      const apiError = toApiError(error);
-      toast.error(firstFieldError(apiError) ?? apiError.message);
-    },
-  });
+  const openEdit = (item: CurriculumItem) => {
+    setDraft({
+      courseId: String(item.courseId),
+      curriculumId: String(item.curriculumId),
+      academicSemesterId: item.academicSemesterId ? String(item.academicSemesterId) : '',
+      credits: String(item.credits),
+      description: item.description ?? '',
+      lecturersData: item.lecturersData ?? [],
+    });
+    setFormError(null);
+    setEditing(item);
+    setDosenSearch('');
+    setRpsFile(null);
+    setModalOpen(true);
+  };
 
-  const saveCourse = useMutation({
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'curriculum-items'] });
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'curriculums'] });
+  };
+
+  const saveMutation = useMutation({
     mutationFn: async () => {
-      // Isian SKS dinormalisasi di sini, bukan saat mengetik, supaya pengguna
-      // bebas mengosongkan kolom tanpa angka 0 muncul kembali.
-      const credits = Number(courseDraft.credits);
-      if (!Number.isInteger(credits) || credits < 0) {
-        throw new Error('SKS wajib diisi dengan angka 0 sampai 12.');
-      }
+      const payload = {
+        curriculumId: Number(draft.curriculumId),
+        courseId: Number(draft.courseId),
+        academicSemesterId: draft.academicSemesterId ? Number(draft.academicSemesterId) : null,
+        credits: Number(draft.credits),
+        description: draft.description.trim() || null,
+        lecturersData: draft.lecturersData,
+      };
 
-      if (courseEditing) {
-        await curriculumApi.updateCourse(courseEditing.id, {
-          code: courseDraft.code,
-          name: courseDraft.name,
-          credits,
-          courseType: courseDraft.courseType,
-          description: courseDraft.description || null,
-        });
-        return;
-      }
+      const saved = editing
+        ? await curriculumItemApi.update(editing.id, payload)
+        : await curriculumItemApi.create(payload);
 
-      await curriculumApi.createCourse({
-        semesterId: courseTarget!,
-        code: courseDraft.code,
-        name: courseDraft.name,
-        credits,
-        courseType: courseDraft.courseType,
-        description: courseDraft.description || null,
-      });
+      // RPS opsional: diunggah setelah penawaran tersimpan agar punya id.
+      if (rpsFile) {
+        await curriculumRpsApi.upload(saved.data.item.id, rpsFile);
+      }
+      return saved.data.item;
     },
     onSuccess: () => {
-      toast.success(courseEditing ? 'Mata kuliah berhasil diperbarui.' : 'Mata kuliah berhasil ditambahkan.');
-      setCourseFormOpen(false);
-      setCourseEditing(null);
+      toast.success(editing ? 'Mata kuliah kurikulum berhasil diperbarui.' : 'Mata kuliah berhasil ditambahkan ke kurikulum.');
+      setModalOpen(false);
+      resetForm();
       invalidate();
     },
     onError: (error) => {
       const apiError = toApiError(error);
-      toast.error(firstFieldError(apiError) ?? apiError.message);
+      setFormError(firstFieldError(apiError) ?? apiError.message);
     },
   });
 
   const removeMutation = useMutation({
-    mutationFn: (target: { kind: 'curriculum' | 'course'; id: number }) =>
-      target.kind === 'curriculum' ? curriculumApi.deleteCurriculum(target.id) : curriculumApi.deleteCourse(target.id),
+    mutationFn: (id: number) => curriculumItemApi.remove(id),
     onSuccess: () => {
-      toast.success('Data berhasil dihapus.');
+      toast.success('Mata kuliah berhasil dihapus dari kurikulum.');
       setDeleteTarget(null);
       invalidate();
     },
     onError: (error) => toast.error(toApiError(error).message),
   });
 
-  const summary = useMemo(() => {
-    const curriculums = listQuery.data ?? [];
-    let semesters = 0;
-    let courses = 0;
-    let credits = 0;
-    for (const curriculum of curriculums) {
-      semesters += curriculum.semesters.length;
-      for (const semester of curriculum.semesters) {
-        courses += semester.courses.length;
-        for (const course of semester.courses) credits += course.credits;
-      }
-    }
-    return { semesters, courses, credits };
-  }, [listQuery.data]);
+  const removeRpsMutation = useMutation({
+    mutationFn: (id: number) => curriculumRpsApi.remove(id),
+    onSuccess: () => {
+      toast.success('RPS berhasil dihapus.');
+      invalidate();
+      // `editing` tetap terbuka; muat ulang datanya dari daftar terbaru.
+      setEditing((prev) => {
+        if (!prev) return prev;
+        const fresh = items.find((item) => item.id === prev.id);
+        return fresh ?? prev;
+      });
+    },
+    onError: (error) => toast.error(toApiError(error).message),
+  });
 
   return (
     <AdminLayout
-      title="Struktur Kurikulum"
-      description={`${listQuery.data?.length ?? 0} kurikulum • ${summary.semesters} semester • ${summary.courses} mata kuliah • ${summary.credits} SKS`}
+      title="Kurikulum"
+      description={`${filtered.length} penawaran mata kuliah • ${totalCredits} SKS`}
       actions={
-        has('curriculum.create') ? (
-          <button
-            type="button"
-            onClick={() => {
-              setCurriculumDraft({ name: '', year: new Date().getFullYear(), description: '', isActive: true });
-              setCurriculumFormOpen(true);
-            }}
-            className="btn-primary"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Kurikulum Baru
-          </button>
-        ) : null
+        <div className="flex gap-2">
+          {has('curriculum.create') ? (
+            <button type="button" onClick={openCreate} className="btn-primary">
+              <PlusIcon className="h-4 w-4" />
+              Tambah Mata Kuliah
+            </button>
+          ) : null}
+        </div>
       }
     >
-      {listQuery.isLoading ? (
-        <LoadingState label="Memuat kurikulum" />
-      ) : listQuery.isError ? (
-        <ErrorState message={toApiError(listQuery.error).message} onRetry={() => void listQuery.refetch()} />
-      ) : (listQuery.data ?? []).length === 0 ? (
-        <EmptyState
-          title="Belum ada kurikulum"
-          description="Buat kurikulum terlebih dahulu, lalu tambahkan semester dan mata kuliah di dalamnya."
-          action={
-            has('curriculum.create') ? (
-              <button type="button" onClick={() => setCurriculumFormOpen(true)} className="btn-primary">
-                <PlusIcon className="h-4 w-4" />
-                Kurikulum Baru
-              </button>
-            ) : null
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="relative">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              className="field-input pl-9"
+              placeholder="Cari kode atau nama mata kuliah..."
+              aria-label="Cari kode atau nama mata kuliah"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <select
+            className="field-input"
+            aria-label="Filter kurikulum"
+            value={curriculumFilter}
+            onChange={(event) => setCurriculumFilter(event.target.value)}
+          >
+            <option value={ALL}>Semua Kurikulum</option>
+            {curriculums.map((curriculum) => (
+              <option key={curriculum.id} value={String(curriculum.id)}>
+                {curriculum.name} ({curriculum.year})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/*
+         * Keadaan memuat/galat/kosong ditangani DataTable. Judul dan keterangan
+         * keadaan kosong dibedakan menurut penyebabnya: kurikulum belum dibuat,
+         * penawaran belum ada, atau pencarian/filter tidak menemukan apa pun.
+         */}
+        <DataTable<CurriculumItem>
+          rows={filtered}
+          rowKey={(item) => String(item.id)}
+          loading={itemsQuery.isLoading}
+          loadingLabel="Memuat kurikulum"
+          error={itemsQuery.isError ? toApiError(itemsQuery.error).message : null}
+          onRetry={() => void itemsQuery.refetch()}
+          emptyTitle={
+            curriculumsQuery.isLoading || curriculums.length === 0
+              ? 'Belum ada kurikulum'
+              : items.length === 0
+                ? 'Belum ada mata kuliah pada kurikulum'
+                : 'Tidak ada mata kuliah yang cocok'
           }
-        />
-      ) : (
-        <div className="space-y-4">
-          {(listQuery.data ?? []).map((curriculum) => {
-            const isOpen = expanded[curriculum.id] ?? true;
-            const courseCount = curriculum.semesters.reduce((total, semester) => total + semester.courses.length, 0);
-            const creditCount = curriculum.semesters.reduce(
-              (total, semester) => total + semester.courses.reduce((sum, course) => sum + course.credits, 0),
-              0,
-            );
-
-            return (
-              <section key={curriculum.id} className="rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#CBD5E1]/70 px-5 py-4">
-                  <button
-                    type="button"
-                    onClick={() => setExpanded((current) => ({ ...current, [curriculum.id]: !isOpen }))}
-                    className="flex min-w-0 items-center gap-2 text-left"
-                    aria-expanded={isOpen}
-                  >
-                    {isOpen ? (
-                      <ChevronDownIcon className="h-4 w-4 shrink-0 text-slate-400" />
-                    ) : (
-                      <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-400" />
-                    )}
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-bold text-slate-900">{curriculum.name}</span>
-                      <span className="block text-[11px] text-slate-500">
-                        Tahun {curriculum.year} • {curriculum.semesters.length} semester • {courseCount} mata kuliah •{' '}
-                        {creditCount} SKS
-                        {curriculum.isActive ? '' : ' • tidak aktif'}
-                      </span>
-                    </span>
-                  </button>
-
-                  <div className="flex shrink-0 items-center gap-2">
-                    {has('curriculum.create') ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSemesterTarget(curriculum);
-                          const nextNumber = curriculum.semesters.length + 1;
-                          setSemesterDraft({ semesterNumber: nextNumber, title: `Semester ${nextNumber}` });
-                          setSemesterFormOpen(true);
-                        }}
-                        className="btn-secondary"
-                      >
-                        <PlusIcon className="h-3.5 w-3.5" />
-                        Semester
-                      </button>
+          emptyDescription={
+            curriculumsQuery.isLoading || curriculums.length === 0
+              ? 'Buat kurikulum terlebih dahulu sebelum menawarkan mata kuliah.'
+              : items.length === 0
+                ? 'Tambahkan mata kuliah ke kurikulum. Kode dan namanya diambil dari menu Mata Kuliah.'
+                : 'Ubah kata kunci atau kosongkan filter kurikulum.'
+          }
+          emptyAction={
+            curriculumsQuery.isLoading || curriculums.length === 0 ? null : items.length === 0 ? (
+              has('curriculum.create') ? (
+                <button type="button" onClick={openCreate} className="btn-primary">
+                  <PlusIcon className="h-4 w-4" />
+                  Tambah Mata Kuliah
+                </button>
+              ) : null
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setCurriculumFilter(ALL);
+                }}
+                className="btn-secondary"
+              >
+                Kosongkan filter
+              </button>
+            )
+          }
+          minWidth={1180}
+          footer={
+            <p className="text-[11px] text-slate-500">
+              Menampilkan {filtered.length} dari {items.length} penawaran • {totalCredits} SKS
+            </p>
+          }
+          columns={
+            [
+              {
+                key: 'kode',
+                header: 'Kode',
+                width: 96,
+                cellClassName: 'font-mono font-bold text-slate-700',
+                render: (item) => item.course.code,
+              },
+              {
+                key: 'nama',
+                header: 'Nama Mata Kuliah',
+                cellClassName: 'font-semibold text-slate-800',
+                render: (item) => item.course.name,
+              },
+              {
+                key: 'kurikulum',
+                header: 'Kurikulum',
+                width: 160,
+                cellClassName: 'text-slate-600',
+                render: (item) => (item.curriculum ? `${item.curriculum.name}` : '-'),
+              },
+              {
+                key: 'sks',
+                header: 'SKS',
+                width: 64,
+                align: 'center',
+                cellClassName: 'font-bold',
+                render: (item) => item.credits,
+              },
+              {
+                key: 'semester',
+                header: 'Semester',
+                width: 112,
+                cellClassName: 'text-slate-600',
+                render: (item) => item.academicSemester?.name ?? '-',
+              },
+              {
+                key: 'keterangan',
+                header: 'Keterangan',
+                width: 112,
+                cellClassName: 'text-slate-600',
+                render: (item) => item.description || '-',
+              },
+              {
+                key: 'dosen',
+                header: 'Dosen Pengampu',
+                render: (item) => {
+                  const lecturers = item.lecturersData ?? [];
+                  return lecturers.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {lecturers.map((lecturer) => (
+                        <span
+                          key={String(lecturer.id)}
+                          className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-800"
+                          title={lecturer.nidn ? `NIDN: ${lecturer.nidn}` : undefined}
+                        >
+                          <UserGroupIcon className="h-3 w-3 text-slate-500" />
+                          {lecturer.name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-[11px] italic text-slate-400">Belum ditentukan</span>
+                  );
+                },
+              },
+              {
+                key: 'rps',
+                header: 'RPS',
+                width: 80,
+                align: 'center',
+                render: (item) => {
+                  const rps = item.rpsDocuments ?? [];
+                  return rps.length > 0 ? (
+                    <a
+                      href={rps[0].fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 hover:bg-blue-100"
+                      title={rps[0].title}
+                    >
+                      <DocumentTextIcon className="h-3 w-3" />
+                      Lihat
+                    </a>
+                  ) : (
+                    <span className="text-[11px] italic text-slate-400">-</span>
+                  );
+                },
+              },
+              {
+                key: 'aksi',
+                header: 'Aksi',
+                width: 110,
+                align: 'right',
+                render: (item) => (
+                  <RowActions>
+                    {has('curriculum.update') ? (
+                      <EditRowButton
+                        label="Ubah mata kuliah kurikulum"
+                        konteks={item.course.name}
+                        onClick={() => openEdit(item)}
+                      />
                     ) : null}
                     {has('curriculum.delete') ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDeleteTarget({ kind: 'curriculum', id: curriculum.id, label: curriculum.name })
-                        }
-                        className="rounded-lg border border-rose-200 p-1.5 text-rose-600 transition-colors hover:bg-rose-50"
-                        aria-label={`Hapus kurikulum ${curriculum.name}`}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
+                      <DeleteRowButton
+                        label="Hapus mata kuliah dari kurikulum"
+                        konteks={item.course.name}
+                        onClick={() => setDeleteTarget(item)}
+                      />
                     ) : null}
-                  </div>
-                </div>
-
-                {isOpen ? (
-                  <div className="space-y-4 p-5">
-                    {curriculum.semesters.length === 0 ? (
-                      <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">
-                        Kurikulum ini belum memiliki semester. Tambahkan semester untuk mulai mengisi mata kuliah.
-                      </p>
-                    ) : (
-                      curriculum.semesters.map((semester) => (
-                        <div key={semester.id} className="rounded-xl border border-slate-200">
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-2.5">
-                            <span className="text-xs font-bold text-slate-800">
-                              {semester.title}
-                              <span className="ml-2 font-normal text-slate-500">
-                                {semester.courses.length} mata kuliah •{' '}
-                                {semester.courses.reduce((sum, course) => sum + course.credits, 0)} SKS
-                              </span>
-                            </span>
-                            {has('curriculum.create') ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCourseTarget(semester.id);
-                                  setCourseEditing(null);
-                                  setCourseDraft({ code: '', name: '', credits: 3, courseType: 'Wajib', description: '' });
-                                  setCourseFormOpen(true);
-                                }}
-                                className="text-[11px] font-bold text-[#1e3a8a] transition-colors hover:underline"
-                              >
-                                + Mata Kuliah
-                              </button>
-                            ) : null}
-                          </div>
-
-                          {semester.courses.length === 0 ? (
-                            <p className="px-4 py-4 text-[11px] text-slate-500">Belum ada mata kuliah pada semester ini.</p>
-                          ) : (
-                            <div className="overflow-x-auto">
-                              <table className="table-base">
-                                <thead>
-                                  <tr>
-                                    <th className="w-24">Kode</th>
-                                    <th>Nama Mata Kuliah</th>
-                                    <th className="w-16 text-center">SKS</th>
-                                    <th className="w-28">Jenis</th>
-                                    <th className="w-32 text-right">Aksi</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {semester.courses.map((course) => (
-                                    <tr key={course.id}>
-                                      <td className="font-mono text-[11px]">{course.code}</td>
-                                      <td className="font-medium text-slate-800">{course.name}</td>
-                                      <td className="text-center">{course.credits}</td>
-                                      <td>
-                                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
-                                          {course.courseType}
-                                        </span>
-                                      </td>
-                                      <td>
-                                        <div className="flex justify-end gap-1.5">
-                                          {has('curriculum.update') ? (
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setCourseTarget(semester.id);
-                                                setCourseEditing(course);
-                                                setCourseDraft({
-                                                  code: course.code,
-                                                  name: course.name,
-                                                  credits: course.credits,
-                                                  courseType: course.courseType,
-                                                  description: course.description ?? '',
-                                                });
-                                                setCourseFormOpen(true);
-                                              }}
-                                              className="rounded border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50"
-                                            >
-                                              Ubah
-                                            </button>
-                                          ) : null}
-                                          {has('curriculum.delete') ? (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setDeleteTarget({
-                                                  kind: 'course',
-                                                  id: course.id,
-                                                  label: `${course.code} ${course.name}`,
-                                                })
-                                              }
-                                              className="rounded border border-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-600 hover:bg-rose-50"
-                                            >
-                                              Hapus
-                                            </button>
-                                          ) : null}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                ) : null}
-              </section>
-            );
-          })}
-        </div>
-      )}
+                  </RowActions>
+                ),
+              },
+            ] satisfies Array<DataTableColumn<CurriculumItem>>
+          }
+        />
+      </div>
 
       <FormModal
-        open={curriculumFormOpen}
-        title="Kurikulum Baru"
-        busy={createCurriculum.isPending}
-        onClose={() => setCurriculumFormOpen(false)}
-        onSubmit={(event) => {
-          event.preventDefault();
-          createCurriculum.mutate();
+        open={modalOpen}
+        title={editing ? 'Ubah Mata Kuliah Kurikulum' : 'Tambah Mata Kuliah ke Kurikulum'}
+        description="Pilih mata kuliah dari menu Mata Kuliah, lalu lengkapi detail penawarannya."
+        busy={saveMutation.isPending}
+        error={formError}
+        wide
+        onClose={() => {
+          setModalOpen(false);
+          resetForm();
         }}
-      >
-        <Field label="Nama kurikulum" htmlFor="curriculum-name" required>
-          <input
-            id="curriculum-name"
-            className="field-input"
-            required
-            placeholder="Kurikulum OBE 2024"
-            value={curriculumDraft.name}
-            onChange={(event) => setCurriculumDraft({ ...curriculumDraft, name: event.target.value })}
-          />
-        </Field>
-        <Field label="Tahun" htmlFor="curriculum-year" required>
-          <input
-            id="curriculum-year"
-            type="number"
-            min={1990}
-            max={2100}
-            className="field-input"
-            required
-            value={curriculumDraft.year}
-            onChange={(event) => setCurriculumDraft({ ...curriculumDraft, year: Number(event.target.value) })}
-          />
-        </Field>
-        <Field label="Deskripsi" htmlFor="curriculum-description">
-          <textarea
-            id="curriculum-description"
-            className="field-textarea"
-            value={curriculumDraft.description}
-            onChange={(event) => setCurriculumDraft({ ...curriculumDraft, description: event.target.value })}
-          />
-        </Field>
-      </FormModal>
-
-      <FormModal
-        open={semesterFormOpen}
-        title="Tambah Semester"
-        description={semesterTarget?.name}
-        busy={createSemester.isPending}
-        onClose={() => setSemesterFormOpen(false)}
         onSubmit={(event) => {
           event.preventDefault();
-          createSemester.mutate();
+          setFormError(null);
+          if (!draft.courseId) {
+            setFormError('Pilih mata kuliah terlebih dahulu.');
+            return;
+          }
+          if (!draft.curriculumId) {
+            setFormError('Pilih kurikulum terlebih dahulu.');
+            return;
+          }
+          if (rpsFile && rpsFile.size > RPS_MAX_BYTES) {
+            setFormError('Ukuran berkas RPS melebihi 10 MB.');
+            return;
+          }
+          saveMutation.mutate();
         }}
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Nomor semester" htmlFor="semester-number" required>
-            <input
-              id="semester-number"
-              type="number"
-              min={1}
-              max={14}
+          <Field label="Kurikulum" htmlFor="item-curriculum" required>
+            <select
+              id="item-curriculum"
               className="field-input"
-              required
-              value={semesterDraft.semesterNumber}
-              onChange={(event) => {
-                const number = Number(event.target.value);
-                setSemesterDraft({ semesterNumber: number, title: `Semester ${number}` });
-              }}
-            />
+              value={draft.curriculumId}
+              onChange={(event) => setDraft({ ...draft, curriculumId: event.target.value, courseId: '' })}
+              disabled={editing !== null}
+            >
+              <option value="">Pilih kurikulum...</option>
+              {curriculums.map((curriculum) => (
+                <option key={curriculum.id} value={String(curriculum.id)}>
+                  {curriculum.name} ({curriculum.year})
+                </option>
+              ))}
+            </select>
           </Field>
-          <Field label="Label tampilan" htmlFor="semester-title" required>
-            <input
-              id="semester-title"
-              className="field-input"
-              required
-              value={semesterDraft.title}
-              onChange={(event) => setSemesterDraft({ ...semesterDraft, title: event.target.value })}
-            />
-          </Field>
-        </div>
-      </FormModal>
 
-      <FormModal
-        open={courseFormOpen}
-        title={courseEditing ? 'Ubah Mata Kuliah' : 'Tambah Mata Kuliah'}
-        busy={saveCourse.isPending}
-        onClose={() => setCourseFormOpen(false)}
-        onSubmit={(event) => {
-          event.preventDefault();
-          saveCourse.mutate();
-        }}
-      >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label="Kode MK" htmlFor="course-code" required>
-            <input
-              id="course-code"
+          <Field
+            label="Mata Kuliah"
+            htmlFor="item-course"
+            required
+            hint="Daftar berasal dari menu Mata Kuliah."
+          >
+            <select
+              id="item-course"
               className="field-input"
-              required
-              placeholder="ILK 110"
-              value={courseDraft.code}
-              onChange={(event) => setCourseDraft({ ...courseDraft, code: event.target.value })}
-            />
+              value={draft.courseId}
+              onChange={(event) => setDraft({ ...draft, courseId: event.target.value })}
+            >
+              <option value="">Pilih mata kuliah...</option>
+              {availableMasters.map((master) => (
+                <option key={master.id} value={String(master.id)}>
+                  {master.code} — {master.name}
+                </option>
+              ))}
+            </select>
           </Field>
-          <Field label="SKS" htmlFor="course-credits" required>
+
+          {draft.courseId ? (
+            <Field label="Kode Mata Kuliah" htmlFor="item-code" hint="Mengikuti master, tidak dapat diubah di sini.">
+              <input
+                id="item-code"
+                className="field-input bg-slate-100 text-slate-600"
+                value={masters.find((master) => String(master.id) === draft.courseId)?.code ?? ''}
+                readOnly
+              />
+            </Field>
+          ) : null}
+
+          <Field
+            label="Semester"
+            htmlFor="item-semester"
+            hint="Dipilih dari master semester (kalender akademik)."
+          >
+            <select
+              id="item-semester"
+              className="field-input"
+              value={draft.academicSemesterId}
+              onChange={(event) => setDraft({ ...draft, academicSemesterId: event.target.value })}
+            >
+              <option value="">Tanpa semester</option>
+              {semesters.map((semester) => (
+                <option key={semester.id} value={String(semester.id)}>
+                  {semester.name} ({semester.code}){semester.isActive ? ' - Aktif' : ''}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Bobot SKS" htmlFor="item-credits" required>
             <input
-              id="course-credits"
+              id="item-credits"
               type="number"
               min={0}
               max={12}
               className="field-input"
-              required
-              value={courseDraft.credits}
-              onChange={(event) => {
-                const raw = event.target.value;
-                // Biarkan kosong saat pengguna menghapus isi; jangan paksa jadi 0,
-                // karena `Number('')` adalah 0 dan angka 0 langsung menempel lagi
-                // sehingga kursor terasa melompat. Normalisasi dilakukan saat simpan.
-                if (raw === '') {
-                  setCourseDraft({ ...courseDraft, credits: ('' as unknown) as number });
-                  return;
-                }
-                setCourseDraft({ ...courseDraft, credits: Number(raw) });
-              }}
+              value={draft.credits}
+              onChange={(event) => setDraft({ ...draft, credits: event.target.value })}
             />
           </Field>
-          <Field label="Jenis" htmlFor="course-type" required>
-            <select
-              id="course-type"
+
+          <Field label="Keterangan" htmlFor="item-description" hint="Teks bebas: Wajib, Pilihan, atau catatan kompetensi.">
+            <input
+              id="item-description"
               className="field-input"
-              value={courseDraft.courseType}
-              onChange={(event) => setCourseDraft({ ...courseDraft, courseType: event.target.value })}
-            >
-              <option value="Wajib">Wajib</option>
-              <option value="Pilihan">Pilihan</option>
-              <option value="Praktikum">Praktikum</option>
-              <option value="MBKM">MBKM</option>
-            </select>
+              placeholder="Wajib"
+              value={draft.description}
+              onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+            />
           </Field>
         </div>
-        <Field label="Nama mata kuliah" htmlFor="course-name" required>
+
+        {/* Dosen pengampu */}
+        <div>
+          <label htmlFor="dosen-search" className="mb-1 block text-xs font-bold text-slate-700">
+            Dosen Pengampu
+          </label>
+          <p className="mb-2 text-[11px] text-slate-500">
+            Dosen terpilih akan tercatat sebagai pengampu mata kuliah ini.
+          </p>
+
+          {draft.lecturersData.length > 0 ? (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {draft.lecturersData.map((lecturer) => (
+                <span
+                  key={String(lecturer.id)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-800"
+                >
+                  {lecturer.name}
+                  <button
+                    type="button"
+                    aria-label={`Batalkan ${lecturer.name} sebagai pengampu`}
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        lecturersData: draft.lecturersData.filter((l) => String(l.id) !== String(lecturer.id)),
+                      })
+                    }
+                    className="text-emerald-700 hover:text-rose-600"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
+
           <input
-            id="course-name"
+            id="dosen-search"
+            type="search"
             className="field-input"
-            required
-            value={courseDraft.name}
-            onChange={(event) => setCourseDraft({ ...courseDraft, name: event.target.value })}
+            placeholder="Cari nama dosen..."
+            value={dosenSearch}
+            onChange={(event) => setDosenSearch(event.target.value)}
           />
-        </Field>
-        <Field label="Deskripsi" htmlFor="course-description">
-          <textarea
-            id="course-description"
-            className="field-textarea"
-            value={courseDraft.description}
-            onChange={(event) => setCourseDraft({ ...courseDraft, description: event.target.value })}
+
+          {lecturersQuery.isLoading ? (
+            <p className="mt-2 text-[11px] text-slate-500">Memuat daftar dosen...</p>
+          ) : (
+            <div className="mt-2 max-h-40 overflow-y-auto rounded-[10px] border border-slate-200">
+              {filteredDosen.length === 0 ? (
+                <p className="px-3 py-2 text-[11px] italic text-slate-400">Tidak ada dosen yang cocok.</p>
+              ) : (
+                filteredDosen.map((dosen) => {
+                  const selected = draft.lecturersData.some((l) => String(l.id) === String(dosen.id));
+                  return (
+                    <button
+                      key={String(dosen.id)}
+                      type="button"
+                      disabled={selected}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          lecturersData: [
+                            ...draft.lecturersData,
+                            { id: dosen.id, name: dosen.name, nidn: dosen.nidn ?? null },
+                          ],
+                        })
+                      }
+                      className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-3 py-2 text-left text-[11px] last:border-b-0 ${
+                        selected ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold text-slate-800">{dosen.name}</span>
+                        {dosen.nidn ? (
+                          <span className="block text-[10px] text-slate-500">NIDN {dosen.nidn}</span>
+                        ) : null}
+                      </span>
+                      <span className="shrink-0 text-[10px] font-bold">
+                        {selected ? 'Dipilih' : '+ Pilih'}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* RPS */}
+        <div>
+          <label htmlFor="rps-file" className="mb-1 block text-xs font-bold text-slate-700">
+            Upload RPS
+          </label>
+          <p className="mb-2 text-[11px] text-slate-500">
+            Opsional. Format PDF, maksimal 10 MB. Berkas dapat dilihat pengunjung pada halaman kurikulum publik.
+          </p>
+
+          {editing && editing.rpsDocuments.length > 0 ? (
+            <ul className="mb-2 space-y-1">
+              {editing.rpsDocuments.map((rps) => (
+                <li
+                  key={rps.id}
+                  className="flex items-center justify-between gap-2 rounded border border-slate-200 px-2.5 py-1.5 text-[11px]"
+                >
+                  <a href={rps.fileUrl} target="_blank" rel="noreferrer" className="truncate text-blue-700 hover:underline">
+                    {rps.title}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => removeRpsMutation.mutate(rps.id)}
+                    disabled={removeRpsMutation.isPending}
+                    className="shrink-0 rounded border border-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                  >
+                    Hapus
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          <input
+            id="rps-file"
+            type="file"
+            accept="application/pdf"
+            className="field-input"
+            onChange={(event) => setRpsFile(event.target.files?.[0] ?? null)}
           />
-        </Field>
+          {rpsFile ? (
+            <p className="mt-1 text-[11px] text-slate-600">Dipilih: {rpsFile.name}</p>
+          ) : (
+            <p className="mt-1 text-[11px] italic text-slate-400">Belum ada berkas dipilih</p>
+          )}
+        </div>
       </FormModal>
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        title={deleteTarget?.kind === 'curriculum' ? 'Hapus kurikulum' : 'Hapus mata kuliah'}
-        description={`"${deleteTarget?.label ?? ''}" akan dihapus permanen beserta data turunannya.`}
+        title="Hapus mata kuliah dari kurikulum"
+        description={`"${deleteTarget?.course.code ?? ''} ${deleteTarget?.course.name ?? ''}" akan dihapus dari kurikulum ini beserta RPS-nya. Master mata kuliah di menu Mata Kuliah tidak terpengaruh.`}
         busy={removeMutation.isPending}
         onConfirm={() => {
-          if (deleteTarget) removeMutation.mutate({ kind: deleteTarget.kind, id: deleteTarget.id });
+          if (deleteTarget) removeMutation.mutate(deleteTarget.id);
         }}
         onCancel={() => setDeleteTarget(null)}
       />

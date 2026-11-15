@@ -4,11 +4,10 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   PlusIcon,
-  PencilSquareIcon,
-  TrashIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
-import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
+import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/RowActions';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
 import { useToast } from '../../components/ui/Toast';
@@ -149,6 +148,131 @@ export const AdminNavigation: React.FC = () => {
     setFormOpen(true);
   };
 
+  /**
+   * Definisi kolom tabel navigasi. Hanya kolom "Judul Menu" yang dibiarkan
+   * tanpa `width` agar menyerap sisa ruang; kolom lain lebarnya tetap supaya
+   * tombol urutan, badge status, dan tombol aksi tidak saling menimpa.
+   */
+  const menuColumns: Array<DataTableColumn<MenuItem>> = [
+    {
+      key: 'urutan',
+      header: 'Urutan',
+      width: 112,
+      align: 'center',
+      render: (menu, index) => (
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            title="Geser ke Atas"
+            disabled={index === 0 || isReordering || !has('navigation.update')}
+            onClick={() => void handleMove(menu, 'up')}
+            className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ArrowUpIcon className="h-3.5 w-3.5" />
+          </button>
+          <span className="w-5 text-center font-mono text-xs font-bold text-slate-600">
+            {index + 1}
+          </span>
+          <button
+            type="button"
+            title="Geser ke Bawah"
+            disabled={index === sortedMenus.length - 1 || isReordering || !has('navigation.update')}
+            onClick={() => void handleMove(menu, 'down')}
+            className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ArrowDownIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ),
+    },
+    {
+      key: 'judul',
+      header: 'Judul Menu',
+      render: (menu) => (
+        <div className="flex items-center gap-1.5">
+          {menu.parentId ? <span className="text-slate-400 font-mono text-xs pl-2">↳</span> : null}
+          <span
+            className={`text-slate-900 ${
+              menu.parentId ? 'text-xs font-medium text-slate-700' : 'font-bold'
+            }`}
+          >
+            {menu.title}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'url',
+      header: 'URL Tujuan',
+      width: 240,
+      render: (menu) => (
+        <span className="font-mono text-[11px] text-[#1e3a8a] break-all">{menu.url}</span>
+      ),
+    },
+    {
+      key: 'wajib',
+      header: 'Wajib',
+      width: 96,
+      align: 'center',
+      render: (menu) =>
+        menu.isRequired ? (
+          <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+            Wajib
+          </span>
+        ) : (
+          <span className="text-[11px] text-slate-400">Pilihan</span>
+        ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      width: 112,
+      align: 'center',
+      render: (menu) => (
+        <button
+          type="button"
+          disabled={menu.isRequired || !has('navigation.update')}
+          onClick={() => void handleToggleActive(menu)}
+          title={menu.isRequired ? 'Menu wajib universitas selalu aktif' : 'Klik untuk mengubah status'}
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-opacity ${
+            menu.isActive
+              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          } ${menu.isRequired ? 'cursor-default' : 'cursor-pointer'}`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${menu.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`}
+          />
+          {menu.isActive ? 'Aktif' : 'Nonaktif'}
+        </button>
+      ),
+    },
+    {
+      key: 'aksi',
+      header: 'Aksi',
+      width: 110,
+      align: 'right',
+      render: (menu) => (
+        <RowActions>
+          {has('navigation.update') ? (
+            <EditRowButton
+              label="Ubah menu"
+              konteks={menu.title}
+              onClick={() => openEditModal(menu)}
+            />
+          ) : null}
+          {!menu.isRequired && has('navigation.delete') ? (
+            <DeleteRowButton
+              label="Hapus menu"
+              konteks={menu.title}
+              onClick={() => setDeleteTarget(menu)}
+            />
+          ) : null}
+        </RowActions>
+      ),
+    },
+  ];
+
   return (
     <AdminLayout
       title="Navigasi Website"
@@ -162,124 +286,22 @@ export const AdminNavigation: React.FC = () => {
         ) : null
       }
     >
-      {menusQuery.isLoading ? (
-        <LoadingState label="Memuat navigasi" />
-      ) : menusQuery.isError ? (
-        <ErrorState message={toApiError(menusQuery.error).message} onRetry={() => void menusQuery.refetch()} />
-      ) : sortedMenus.length === 0 ? (
-        <EmptyState
-          title="Belum ada menu navigasi"
-          description="Menu standar dibuat otomatis saat program studi dibuat. Hubungi Super Admin bila menu belum ada."
-        />
-      ) : (
-        <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs">
-          <table className="table-base">
-            <thead>
-              <tr>
-                <th className="w-28 text-center">Urutan</th>
-                <th>Judul Menu</th>
-                <th>URL Tujuan</th>
-                <th className="w-24 text-center">Wajib</th>
-                <th className="w-28 text-center">Status</th>
-                <th className="w-24 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedMenus.map((menu, index) => (
-                <tr key={menu.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td>
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        title="Geser ke Atas"
-                        disabled={index === 0 || isReordering || !has('navigation.update')}
-                        onClick={() => void handleMove(menu, 'up')}
-                        className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent"
-                      >
-                        <ArrowUpIcon className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="w-5 text-center font-mono text-xs font-bold text-slate-600">
-                        {index + 1}
-                      </span>
-                      <button
-                        type="button"
-                        title="Geser ke Bawah"
-                        disabled={index === sortedMenus.length - 1 || isReordering || !has('navigation.update')}
-                        onClick={() => void handleMove(menu, 'down')}
-                        className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900 disabled:opacity-30 disabled:hover:bg-transparent"
-                      >
-                        <ArrowDownIcon className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-1.5">
-                      {menu.parentId ? (
-                        <span className="text-slate-400 font-mono text-xs pl-2">↳</span>
-                      ) : null}
-                      <span className={`text-slate-900 ${menu.parentId ? 'text-xs font-medium text-slate-700' : 'font-bold'}`}>
-                        {menu.title}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="font-mono text-[11px] text-[#1e3a8a]">{menu.url}</span>
-                  </td>
-                  <td className="text-center">
-                    {menu.isRequired ? (
-                      <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                        Wajib
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-slate-400">Pilihan</span>
-                    )}
-                  </td>
-                  <td className="text-center">
-                    <button
-                      type="button"
-                      disabled={menu.isRequired || !has('navigation.update')}
-                      onClick={() => void handleToggleActive(menu)}
-                      title={menu.isRequired ? 'Menu wajib universitas selalu aktif' : 'Klik untuk mengubah status'}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-opacity ${
-                        menu.isActive
-                          ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      } ${menu.isRequired ? 'cursor-default' : 'cursor-pointer'}`}
-                    >
-                      <span className={`h-1.5 w-1.5 rounded-full ${menu.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                      {menu.isActive ? 'Aktif' : 'Nonaktif'}
-                    </button>
-                  </td>
-                  <td className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {has('navigation.update') ? (
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(menu)}
-                          title="Ubah Menu"
-                          className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-[#1e3a8a]"
-                        >
-                          <PencilSquareIcon className="h-4 w-4" />
-                        </button>
-                      ) : null}
-                      {!menu.isRequired && has('navigation.delete') ? (
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(menu)}
-                          title="Hapus Menu"
-                          className="rounded p-1 text-rose-500 hover:bg-rose-50 hover:text-rose-700"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/*
+       * Keadaan loading/galat/kosong ditangani DataTable sehingga halaman tidak
+       * lagi menulis percabangan sendiri.
+       */}
+      <DataTable<MenuItem>
+        rows={sortedMenus}
+        rowKey={(menu) => String(menu.id)}
+        loading={menusQuery.isLoading}
+        loadingLabel="Memuat navigasi"
+        error={menusQuery.isError ? toApiError(menusQuery.error).message : null}
+        onRetry={() => void menusQuery.refetch()}
+        emptyTitle="Belum ada menu navigasi"
+        emptyDescription="Menu standar dibuat otomatis saat program studi dibuat. Hubungi Super Admin bila menu belum ada."
+        minWidth={860}
+        columns={menuColumns}
+      />
 
       {/* Modal Tambah / Ubah Menu */}
       <FormModal

@@ -469,7 +469,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
           </div>
 
           <div className="pt-6 border-t border-slate-200 text-center text-slate-500 text-[11px]">
-            Â© {new Date().getFullYear()} Program Studi {tenant?.name || 'Sistem Informasi'} â€¢ Universitas Nahdlatul Ulama Sumatera Utara
+            © {new Date().getFullYear()} Program Studi {tenant?.name || 'Sistem Informasi'} • Universitas Nahdlatul Ulama Sumatera Utara
           </div>
         </div>
       </footer>

@@ -13,10 +13,12 @@ import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 
 import authRoutes from './modules/auth/auth.routes.js';
 import publicRoutes from './modules/public/public.routes.js';
+import arsipDokumenRoutes from './modules/admin/arsipDokumen.routes.js';
 import websiteRoutes from './modules/admin/website.routes.js';
 import portalRoutes from './modules/admin/portal.routes.js';
 import builderRoutes from './modules/admin/builder.routes.js';
 import contentRoutes from './modules/admin/content.routes.js';
+import rpsRoutes, { publicRpsFileRouter } from './modules/admin/rps.routes.js';
 import publicationRoutes from './modules/admin/publication.routes.js';
 import mediaRoutes from './modules/admin/media.routes.js';
 import usersRoutes from './modules/admin/users.routes.js';
@@ -137,6 +139,29 @@ export function createApp() {
   // Publik: dibaca tanpa login, selalu terikat tenant dari hostname.
   app.use('/api/v1/public', publicRoutes);
 
+  /*
+   * Arsip dokumen mutu LPM/LPPM — endpoint PUBLIK.
+   *
+   * Wajib dipasang SEBELUM `adminRouter`. Router admin memakai `router.use()`
+   * tanpa prefiks sehingga menangkap seluruh path `/api/v1/admin/*` yang
+   * memakai sesi & CSRF. Endpoint publik di sini hanya `/public/...`, sedangkan
+   * endpoint adminnya dipasang pada `adminRouter` di bawah.
+   */
+  app.use('/api/v1', arsipDokumenRoutes);
+
+  /*
+   * Berkas RPS — endpoint PUBLIK.
+   *
+   * Dipasang SEBELUM `adminRouter` karena halaman kurikulum publik menautkan
+   * berkas RPS langsung. Bila dilewatkan `adminRouter`, pengunjung tanpa sesi
+   * akan menerima 401 sehingga tautan RPS publik selalu gagal. Perlindungannya
+   * adalah nama berkas acak yang tidak dapat ditebak, dan handler hanya
+   * menyajikan berkas berakhiran `.pdf` yang cocok dengan pola nama itu.
+   *
+   * Rute tulis RPS tetap berada di `rpsRoutes` pada `adminRouter` di bawah.
+   */
+  app.use('/api/v1/admin', publicRpsFileRouter);
+
   // Admin: seluruh endpoint mewajibkan sesi, CSRF, dan permission.
   const adminRouter = express.Router();
   adminRouter.use(authenticate);
@@ -152,10 +177,12 @@ export function createApp() {
 
   adminRouter.use(attachScopedTenant);
 
+  adminRouter.use('/', arsipDokumenRoutes);
   adminRouter.use('/', websiteRoutes);
   adminRouter.use('/', portalRoutes);
   adminRouter.use('/', builderRoutes);
   adminRouter.use('/', contentRoutes);
+  adminRouter.use('/', rpsRoutes);
   adminRouter.use('/', publicationRoutes);
   adminRouter.use('/media', mediaRoutes);
   adminRouter.use('/users', usersRoutes);

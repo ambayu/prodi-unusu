@@ -288,7 +288,7 @@ router.post(
       });
       throw AppError.forbidden(
         'Akun Anda tidak memiliki izin masuk ke Portal Program Studi. ' +
-          'Portal ini hanya untuk administrator dan dosen yang akan mengelola konten program studi.',
+          'Portal ini hanya untuk administrator, admin fakultas, dan dosen yang mengelola konten akademik.',
         'SSO_NO_ENTRY_PERMISSION',
         {
           appAccess: {

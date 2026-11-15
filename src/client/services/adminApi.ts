@@ -220,7 +220,6 @@ export interface DashboardStats {
   courses: number;
   totalCredits: number;
   lecturers: number;
-  documents: number;
   facilities: number;
   postsPublished: number;
   postsDraft: number;
@@ -257,7 +256,6 @@ export const dashboardApi = {
         inactiveDomains: number;
         users: number;
         totalPosts: number;
-        totalDocuments: number;
       };
       domains: Array<{
         id: number;
@@ -307,7 +305,7 @@ export const userApi = {
   update: (id: number, data: Record<string, unknown>) => api.put(`/admin/users/${id}`, data),
   assignRole: (
     id: number,
-    data: { roleCode: string; scopeType: string; studyProgramId?: number | null; permissionGroupCodes?: string[] },
+    data: { roleCode: string; scopeType: string; studyProgramId?: number | null; facultyId?: number | null; permissionGroupCodes?: string[] },
   ) => api.post(`/admin/users/${id}/roles`, data),
   revokeRole: (userId: number, assignmentId: number) => api.delete(`/admin/users/${userId}/roles/${assignmentId}`),
   /**
@@ -411,10 +409,139 @@ export const mediaApi = {
  *   landing page portal tidak memuat konten tersebut.
  * - `prodi` — Satu program studi. Semua menu konten tersedia.
  */
-export type AdminMenuScope = 'portal' | 'prodi';
+export type AdminMenuScope = 'portal' | 'faculty' | 'prodi';
 
 /** Satu baris katalog menu sebelum disusun menjadi hierarki. */
 type MenuEntry = Omit<AdminMenuItem, 'children'> & { requiredPermission: string; scopeType: string };
+
+/**
+ * Katalog menu scope FAKULTAS (Dekanat).
+ *
+ * Ditujukan untuk mengelola website tingkat fakultas (Profil Dekanat, Visi Misi,
+ * Berita Fakultas, Galeri, Kontak Dekanat, dan Website Settings Fakultas).
+ */
+const CATALOG_FACULTY: MenuEntry[] = [
+  {
+    menuKey: 'faculty.dashboard',
+    label: 'Dashboard Fakultas',
+    desc: 'Ikhtisar website dekanat',
+    route: '/admin',
+    icon: 'Squares2X2Icon',
+    parentKey: null,
+    sortOrder: 1,
+    section: 'UTAMA',
+    requiredPermission: 'dashboard.view',
+    scopeType: 'faculty',
+  },
+  {
+    menuKey: 'faculty.profile',
+    label: 'Profil Dekanat',
+    desc: 'Struktur pimpinan & sambutan dekan',
+    route: '/admin/konten/profil',
+    icon: 'UserIcon',
+    parentKey: null,
+    sortOrder: 10,
+    section: 'KONTEN',
+    requiredPermission: 'profile.view',
+    scopeType: 'faculty',
+  },
+  {
+    menuKey: 'faculty.vision',
+    label: 'Visi & Misi Fakultas',
+    desc: 'Visi, misi & tujuan fakultas',
+    route: '/admin/konten/visi-misi',
+    icon: 'EyeIcon',
+    parentKey: null,
+    sortOrder: 11,
+    section: 'KONTEN',
+    requiredPermission: 'vision_mission.view',
+    scopeType: 'faculty',
+  },
+  {
+    menuKey: 'faculty.posts',
+    label: 'Berita & Pengumuman',
+    desc: 'Warta kegiatan fakultas & dekanat',
+    route: '/admin/berita',
+    icon: 'NewspaperIcon',
+    parentKey: null,
+    sortOrder: 12,
+    section: 'KONTEN',
+    requiredPermission: 'posts.view',
+    scopeType: 'faculty',
+  },
+  {
+    menuKey: 'faculty.galleries',
+    label: 'Galeri Fakultas',
+    desc: 'Dokumentasi foto kegiatan dekanat',
+    route: '/admin/galeri',
+    icon: 'PhotoIcon',
+    parentKey: null,
+    sortOrder: 13,
+    section: 'KONTEN',
+    requiredPermission: 'galleries.view',
+    scopeType: 'faculty',
+  },
+  {
+    menuKey: 'faculty.contact',
+    label: 'Kontak Fakultas',
+    desc: 'Sekretariat dekanat & layanan',
+    route: '/admin/kontak',
+    icon: 'PhoneIcon',
+    parentKey: null,
+    sortOrder: 14,
+    section: 'KONTEN',
+    requiredPermission: 'contacts.view',
+    scopeType: 'faculty',
+  },
+  {
+    menuKey: 'faculty.messages',
+    label: 'Pesan Masuk',
+    desc: 'Kotak masuk aspirasi fakultas',
+    route: '/admin/pesan',
+    icon: 'InboxIcon',
+    parentKey: null,
+    sortOrder: 15,
+    section: 'KONTEN',
+    requiredPermission: 'contact_messages.view',
+    scopeType: 'faculty',
+  },
+  {
+    menuKey: 'faculty.hero',
+    label: 'Hero Slider Fakultas',
+    desc: 'Banner beranda fakultas',
+    route: '/admin/portal',
+    icon: 'PhotoIcon',
+    parentKey: null,
+    sortOrder: 20,
+    section: 'WEBSITE',
+    requiredPermission: 'website.view',
+    scopeType: 'faculty',
+  },
+  {
+    menuKey: 'faculty.settings',
+    label: 'Pengaturan Website Fakultas',
+    desc: 'Warna identitas, logo & SEO',
+    route: '/admin/pengaturan',
+    icon: 'Cog6ToothIcon',
+    parentKey: null,
+    sortOrder: 21,
+    section: 'WEBSITE',
+    requiredPermission: 'website.view',
+    scopeType: 'faculty',
+  },
+  {
+    menuKey: 'management.media',
+    label: 'Media Library',
+    desc: 'Manajemen berkas & gambar',
+    route: '/admin/media',
+    icon: 'PhotoIcon',
+    parentKey: null,
+    sortOrder: 30,
+    section: 'TATA KELOLA',
+    requiredPermission: 'media.view',
+    scopeType: 'faculty',
+  },
+];
 
 /**
  * Katalog menu scope PORTAL UTAMA.
@@ -485,6 +612,18 @@ const CATALOG_PORTAL: MenuEntry[] = [
     scopeType: 'global',
   },
   {
+    menuKey: 'super.semester',
+    label: 'Master Semester',
+    desc: 'Kalender & rentang tanggal semester',
+    route: '/admin/semester',
+    icon: 'BookOpenIcon',
+    parentKey: null,
+    sortOrder: 13,
+    section: 'UNIVERSITAS',
+    requiredPermission: 'organization.view',
+    scopeType: 'global',
+  },
+  {
     menuKey: 'management.access',
     label: 'Akses & Pengguna',
     desc: 'Akun, peran & katalog izin',
@@ -510,8 +649,8 @@ const CATALOG_PORTAL: MenuEntry[] = [
   },
 ];
 
-let cachedMenu: Record<AdminMenuScope, AdminMenuItem[] | null> = { portal: null, prodi: null };
-let menuPromise: Record<AdminMenuScope, Promise<AdminMenuItem[]> | null> = { portal: null, prodi: null };
+let cachedMenu: Record<AdminMenuScope, AdminMenuItem[] | null> = { portal: null, faculty: null, prodi: null };
+let menuPromise: Record<AdminMenuScope, Promise<AdminMenuItem[]> | null> = { portal: null, faculty: null, prodi: null };
 
 /**
  * Identitas pengguna yang menurunkan menu dalam cache.
@@ -538,14 +677,14 @@ export const adminMenuApi = {
   syncCacheOwner(userId: number | null): void {
     if (cachedMenuOwnerId !== userId) {
       cachedMenuOwnerId = userId;
-      cachedMenu = { portal: null, prodi: null };
-      menuPromise = { portal: null, prodi: null };
+      cachedMenu = { portal: null, faculty: null, prodi: null };
+      menuPromise = { portal: null, faculty: null, prodi: null };
     }
   },
 
   clearCache(): void {
-    cachedMenu = { portal: null, prodi: null };
-    menuPromise = { portal: null, prodi: null };
+    cachedMenu = { portal: null, faculty: null, prodi: null };
+    menuPromise = { portal: null, faculty: null, prodi: null };
   },
 
   /**
@@ -578,8 +717,13 @@ export const adminMenuApi = {
         // agar isi menu tidak ditulis ulang di dua tempat.
         //
         // Scope portal memakai katalog sendiri (CATALOG_PORTAL) yang tidak memuat
-        // menu konten prodi sama sekali.
-        const catalog: MenuEntry[] = scope === 'portal' ? CATALOG_PORTAL : [
+        // menu konten prodi sama sekali. Scope faculty memakai CATALOG_FACULTY.
+        const catalog: MenuEntry[] =
+          scope === 'portal'
+            ? CATALOG_PORTAL
+            : scope === 'faculty'
+            ? CATALOG_FACULTY
+            : [
           // 1. UTAMA
           {
             menuKey: 'dashboard',
@@ -620,11 +764,23 @@ export const adminMenuApi = {
             scopeType: 'prodi',
           },
           {
+            menuKey: 'content.courses',
+            label: 'Mata Kuliah',
+            desc: 'Mata kuliah, dosen pengampu & RPS',
+            route: '/admin/mata-kuliah',
+            icon: 'BookOpenIcon',
+            parentKey: null,
+            sortOrder: 9.7,
+            section: 'KONTEN',
+            requiredPermission: 'curriculum.view',
+            scopeType: 'prodi',
+          },
+          {
             menuKey: 'content.curriculum',
             label: 'Kurikulum',
-            desc: 'Mata kuliah & bobot SKS',
+            desc: 'Struktur kurikulum & semester',
             route: '/admin/kurikulum',
-            icon: 'BookOpenIcon',
+            icon: 'ClipboardDocumentListIcon',
             parentKey: null,
             sortOrder: 10,
             section: 'KONTEN',
@@ -645,8 +801,8 @@ export const adminMenuApi = {
           },
           {
             menuKey: 'content.documents',
-            label: 'Dokumen',
-            desc: 'Arsip kurikulum & formulir',
+            label: 'Arsip Dokumen',
+            desc: 'Arsip mutu dari LPM & LPPM',
             route: '/admin/dokumen',
             icon: 'FolderOpenIcon',
             parentKey: null,

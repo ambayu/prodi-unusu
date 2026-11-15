@@ -1,6 +1,9 @@
 import { create } from 'zustand';
-import { api, toApiError } from '../services/api';
+import { api, toApiError, checkOneUnusuSession } from '../services/api';
 import type { AuthUser, SiteResolution, SiteSurface, TenantContext } from '../../shared/types/index';
+
+const ONE_UNUSU_URL = import.meta.env.VITE_ONE_UNUSU_URL || 'http://localhost:5178';
+const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || '70c76ea9b5d5d3a8';
 
 /**
  * Store sesi dan konteks situs.
@@ -21,20 +24,19 @@ interface SiteState {
   activeTenantId: number | null;
 
   /**
-   * `true` bila panel admin sedang berada pada **scope Portal Utama**
-   * (website universitas), bukan pada scope satu program studi.
-   *
-   * Portal Utama bukan program studi, sehingga tidak punya tenant. Status ini
-   * disimpan terpisah — dan dipersistensi ke `sessionStorage` — supaya pilihan
-   * scope bertahan saat halaman dimuat ulang, misalnya ketika menyimpan
-   * pengaturan tema atau mengganti prodi lewat `setActiveTenant`.
+   * Scope unit yang sedang aktif di panel admin:
+   * - 'portal': Portal Utama (website universitas)
+   * - 'faculty': Website Fakultas (Dekanat)
+   * - 'prodi': Website Program Studi
    */
   portalScope: boolean;
+  activeFacultyId: number | null;
 
   bootstrap: () => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
   setActiveTenant: (tenantId: number) => Promise<void>;
+  setActiveFaculty: (facultyId: number) => Promise<void>;
   /** Berpindah ke scope Portal Utama tanpa reload halaman. */
   enterPortalScope: () => void;
   /** Berpindah dari Portal Utama ke scope program studi tertentu. */
@@ -43,12 +45,19 @@ interface SiteState {
   canAny: (permissions: string[]) => boolean;
 }
 
-/** Kunci `sessionStorage` penanda scope portal. Lihat `portalScope`. */
+/** Kunci `sessionStorage` penanda scope portal dan fakultas. */
 const PORTAL_SCOPE_KEY = 'portal_scope_active';
+const ACTIVE_FACULTY_KEY = 'active_faculty_id';
 
 function readPortalScope(): boolean {
   if (typeof window === 'undefined') return false;
   return sessionStorage.getItem(PORTAL_SCOPE_KEY) === '1';
+}
+
+function readActiveFacultyId(): number | null {
+  if (typeof window === 'undefined') return null;
+  const raw = sessionStorage.getItem(ACTIVE_FACULTY_KEY);
+  return raw ? Number(raw) : null;
 }
 
 export const useSiteStore = create<SiteState>((set, get) => ({
@@ -61,6 +70,7 @@ export const useSiteStore = create<SiteState>((set, get) => ({
   user: null,
   userLoading: true,
   activeTenantId: null,
+  activeFacultyId: readActiveFacultyId(),
   portalScope: readPortalScope(),
 
   /** Memuat konteks situs dan sesi sekali saat aplikasi dibuka. */
@@ -96,6 +106,44 @@ export const useSiteStore = create<SiteState>((set, get) => ({
      */
     try {
       const meRes = await api.get<{ user: AuthUser }>('/auth/me');
+      const currentUser = meRes.data.user;
+
+      // Sinkronisasi status sesi dengan Identity Provider ONE UNUSU
+      try {
+        const ssoStatus = await checkOneUnusuSession();
+        if (ssoStatus?.authenticated === false) {
+          try {
+            await api.post('/auth/logout');
+          } catch {
+            // Abaikan kegagalan panggilan logout
+          }
+          sessionStorage.removeItem(PORTAL_SCOPE_KEY);
+          set({ user: null, activeTenantId: null, portalScope: false, userLoading: false });
+          return;
+        }
+
+        if (
+          ssoStatus?.authenticated === true &&
+          ssoStatus.user?.username &&
+          currentUser?.username &&
+          ssoStatus.user.username.toLowerCase() !== currentUser.username.toLowerCase()
+        ) {
+          try {
+            await api.post('/auth/logout');
+          } catch {
+            // Abaikan kegagalan panggilan logout
+          }
+          sessionStorage.removeItem(PORTAL_SCOPE_KEY);
+          set({ user: null, activeTenantId: null, portalScope: false, userLoading: false });
+          window.location.replace(
+            `${ONE_UNUSU_URL}/authorize?client_id=${encodeURIComponent(SSO_CLIENT_ID)}`
+          );
+          return;
+        }
+      } catch {
+        // Abaikan kegagalan jaringan saat offline
+      }
+
       let activeTenantId: number | null = null;
       try {
         const contextRes = await api.get<{ activeTenantId: number }>('/admin/access-context');
@@ -104,7 +152,7 @@ export const useSiteStore = create<SiteState>((set, get) => ({
         // Akun tanpa penugasan prodi memang tidak punya konteks tenant.
         activeTenantId = null;
       }
-      set({ user: meRes.data.user, activeTenantId, userLoading: false });
+      set({ user: currentUser, activeTenantId, userLoading: false });
     } catch {
       set({ user: null, userLoading: false, activeTenantId: null });
     }
@@ -141,37 +189,45 @@ export const useSiteStore = create<SiteState>((set, get) => ({
       await api.post('/auth/logout');
     } finally {
       sessionStorage.removeItem(PORTAL_SCOPE_KEY);
-      set({ user: null, activeTenantId: null, portalScope: false });
+      sessionStorage.removeItem(ACTIVE_FACULTY_KEY);
+      sessionStorage.removeItem('active_tenant_id');
+      set({ user: null, activeTenantId: null, activeFacultyId: null, portalScope: false });
     }
   },
 
   /**
-   * Mengganti tenant aktif untuk Super Admin yang mengelola banyak prodi.
-   *
-   * Memilih prodi otomatis keluar dari scope portal, karena sidebar harus
-   * berganti ke menu konten program studi.
+   * Mengganti tenant aktif untuk program studi.
    */
   setActiveTenant: async (tenantId: number) => {
     sessionStorage.setItem('active_tenant_id', String(tenantId));
     sessionStorage.removeItem(PORTAL_SCOPE_KEY);
+    sessionStorage.removeItem(ACTIVE_FACULTY_KEY);
     const res = await api.get<{ activeTenantId: number }>('/admin/access-context', {
       params: { tenantId },
     });
-    set({ activeTenantId: res.data.activeTenantId, portalScope: false });
-    // Reload halaman atau trigger invalidasi data global agar seluruh modul membaca tenant baru
+    set({ activeTenantId: res.data.activeTenantId, activeFacultyId: null, portalScope: false });
+    window.location.reload();
+  },
+
+  /**
+   * Mengganti unit aktif ke tingkat Fakultas (Dekanat).
+   */
+  setActiveFaculty: async (facultyId: number) => {
+    sessionStorage.setItem(ACTIVE_FACULTY_KEY, String(facultyId));
+    sessionStorage.removeItem(PORTAL_SCOPE_KEY);
+    sessionStorage.removeItem('active_tenant_id');
+    set({ activeFacultyId: facultyId, activeTenantId: null, portalScope: false });
     window.location.reload();
   },
 
   /**
    * Berpindah ke scope Portal Utama.
-   *
-   * Tidak menyentuh `activeTenantId` di server: portal bukan program studi.
-   * Yang berubah hanya tampilan panel admin (katalog menu portal). Pindah ke
-   * scope ini juga membuang cache menu agar sidebar tidak memakai menu prodi.
    */
   enterPortalScope: () => {
     sessionStorage.setItem(PORTAL_SCOPE_KEY, '1');
-    set({ portalScope: true });
+    sessionStorage.removeItem(ACTIVE_FACULTY_KEY);
+    sessionStorage.removeItem('active_tenant_id');
+    set({ portalScope: true, activeFacultyId: null });
   },
 
   /**

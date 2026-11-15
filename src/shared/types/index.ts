@@ -48,6 +48,8 @@ export interface TenantContact {
 
 export interface TenantContext {
   id: number;
+  /** Tipe tenant: 'prodi' atau 'faculty' (ADR-001) */
+  tenantType?: 'prodi' | 'faculty';
   facultyId: number;
   facultyName: string;
   facultyCode: string;
@@ -89,8 +91,10 @@ export interface AuthUser {
   avatarUrl: string | null;
   roles: AuthUserRole[];
   permissions: string[];
-  /** Tenant yang boleh dikelola user ini. Kosong berarti tidak terikat tenant. */
+  /** Tenant prodi yang boleh dikelola user ini. */
   tenantIds: number[];
+  /** Tenant fakultas yang boleh dikelola user ini. */
+  facultyTenantIds?: number[];
   isSuperAdmin: boolean;
 }
 

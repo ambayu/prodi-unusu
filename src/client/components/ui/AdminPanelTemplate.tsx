@@ -22,7 +22,12 @@ export const AdminPanelTemplate: React.FC<AdminPanelTemplateProps> = ({
   actions,
   children,
   className = '',
-  bodyClassName = 'p-6 sm:p-8',
+  /*
+   * Padding body sengaja lebih rapat daripada padding header (`p-5 sm:p-6`).
+   * Sebelumnya `p-6 sm:p-8` membuat isi panel terlihat renggang dan terpisah
+   * dari judulnya. Nilai ini menjaga isi tetap menempel pada header.
+   */
+  bodyClassName = 'p-4 sm:p-5',
 }) => {
   return (
     <div
@@ -38,7 +43,7 @@ export const AdminPanelTemplate: React.FC<AdminPanelTemplateProps> = ({
             {badge && <div>{badge}</div>}
           </div>
           {description && (
-            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 leading-relaxed">
+            <p className="text-[13px] sm:text-sm text-slate-600 font-medium mt-1.5 leading-relaxed">
               {description}
             </p>
           )}

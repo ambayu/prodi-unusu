@@ -11,7 +11,10 @@ import { toApiError } from '../../services/api';
 /** Halaman publik visi dan misi. */
 export const VisionMissionPage: React.FC = () => {
   const { tenant } = useTenant();
-  useSeo({ tenant, title: 'Visi dan Misi', description: 'Visi, misi, dan sasaran strategis program studi.' });
+  const isFaculty = tenant?.tenantType === 'faculty';
+  const unitLabel = isFaculty ? 'Fakultas' : 'Program Studi';
+
+  useSeo({ tenant, title: 'Visi dan Misi', description: `Visi, misi, dan sasaran strategis ${unitLabel.toLowerCase()}.` });
 
   const profileQuery = useQuery({
     queryKey: ['public', 'profile'],
@@ -26,7 +29,7 @@ export const VisionMissionPage: React.FC = () => {
 
   const missionList = missions
     .split('\n')
-    .map((line) => line.replace(/^[-â€¢*\d.)\s]+/, '').trim())
+    .map((line) => line.replace(/^[-•*\d.)\s]+/, '').trim())
     .filter(Boolean);
 
   const hasContent = vision || missionList.length > 0 || objectives || goals;
@@ -36,7 +39,7 @@ export const VisionMissionPage: React.FC = () => {
       <PageHeader
         eyebrow="Informasi"
         title="Visi & Misi"
-        description="Arah pengembangan dan komitmen program studi dalam penyelenggaraan pendidikan."
+        description={`Arah pengembangan dan komitmen ${unitLabel.toLowerCase()} dalam penyelenggaraan Tridharma Perguruan Tinggi.`}
       />
 
       <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
@@ -50,7 +53,7 @@ export const VisionMissionPage: React.FC = () => {
         ) : !hasContent ? (
           <EmptyState
             title="Visi dan misi belum tersedia"
-            description="Program studi belum mengisi konten visi dan misi."
+            description={`${unitLabel} belum mengisi konten visi dan misi.`}
           />
         ) : (
           <div className="space-y-6">

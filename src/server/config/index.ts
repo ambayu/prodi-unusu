@@ -84,13 +84,36 @@ export const config = {
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ] as string[],
+    /**
+     * Berkas RPS dibatasi PDF saja dan ukurannya dibatasi terpisah dari media
+     * umum. Batas 10 MB dipilih agar dosen dapat mengunggah RPS hasil pindai
+     * tanpa membebani penyimpanan; nilai ini juga ditampilkan di formulir.
+     */
+    rpsMaxBytes: Number(optional('UPLOAD_RPS_MAX_BYTES', String(10 * 1024 * 1024))),
+    rpsAllowedMime: ['application/pdf'] as string[],
   },
 
   sso: {
-    baseUrl: optional('SSO_BASE_URL', 'http://localhost:5000'),
+    baseUrl: optional('SSO_BASE_URL', 'http://localhost:5178'),
     clientId: optional('SSO_CLIENT_ID', '70c76ea9b5d5d3a8'),
     clientKey: process.env.SSO_CLIENT_KEY || '',
-    portalUrl: optional('SSO_PORTAL_URL', 'http://localhost:5173'),
+    portalUrl: optional('SSO_PORTAL_URL', 'http://localhost:5178'),
+  },
+
+  /**
+   * Arsip dokumen mutu (LPM/LPPM) yang dibaca melalui ONE UNUSU API Hub.
+   *
+   * `fileHosts` adalah allowlist host berkas PDF yang boleh di-stream server,
+   * sehingga URL `filePdfUrl` dari aplikasi lain tidak dapat dipakai untuk
+   * memancing server mengambil alamat sembarang (SSRF).
+   */
+  arsip: {
+    cacheTtlMs: Number(optional('ARSIP_CACHE_TTL_MS', String(90_000))),
+    timeoutMs: Number(optional('ARSIP_TIMEOUT_MS', String(6_000))),
+    fileHosts: optional('ARSIP_FILE_HOSTS', 'localhost,127.0.0.1,lpm.unusu.ac.id,lppm.unusu.ac.id')
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean),
   },
 
   /**

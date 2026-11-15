@@ -7,12 +7,11 @@ import {
   ArrowRightIcon,
   UserGroupIcon,
   BookOpenIcon,
-  DocumentCheckIcon,
   PhoneIcon,
   EnvelopeIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
-import { postApi, galleryApi, lecturerApi, curriculumApi, facilityApi, documentApi, profileApi } from '../../services/contentApi';
+import { postApi, galleryApi, lecturerApi, curriculumApi, facilityApi, arsipDokumenApi, profileApi } from '../../services/contentApi';
 import { useTenant } from '../../hooks/useSite';
 
 interface WidgetInstanceProps {
@@ -730,17 +729,23 @@ const FacilityGridWidget: React.FC<{ title?: string; limit: number; primaryColor
 };
 
 // Sub-komponen Widget Dokumen Publik
+//
+// Arsip berasal dari LPM/LPPM dan dilindungi kata sandi prodi. Widget ini
+// tidak dapat membuka kunci sendiri (kata sandi hanya dimasukkan pada halaman
+// /dokumen), sehingga ia hanya menampilkan ajakan menuju halaman arsip.
 const DocumentListWidget: React.FC<{ title?: string; limit: number; primaryColor: string }> = ({
   title,
   limit,
   primaryColor,
 }) => {
-  const documentsQuery = useQuery({
-    queryKey: ['public', 'documents', 'widget', limit],
-    queryFn: () => documentApi.public().then((res) => (res.data.documents ?? []).slice(0, limit)),
+  const infoQuery = useQuery({
+    queryKey: ['public', 'arsip-dokumen', 'widget'],
+    queryFn: () => arsipDokumenApi.publicInfo().then((res) => res.data.meta),
+    retry: 1,
   });
 
-  const documents = documentsQuery.data ?? [];
+  const meta = infoQuery.data;
+  const arsipTersedia = meta?.passwordActive === true;
 
   return (
     <section className="py-16 sm:py-20 bg-slate-50 border-t border-slate-200">
@@ -767,41 +772,25 @@ const DocumentListWidget: React.FC<{ title?: string; limit: number; primaryColor
           </Link>
         </div>
 
-        {documents.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-xs text-slate-500">
-            Belum ada berkas dokumen yang diunggah.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md transition-shadow gap-3"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-                    <DocumentCheckIcon className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-bold text-xs sm:text-sm text-slate-900 truncate">{doc.title}</p>
-                    <p className="text-[11px] text-slate-500">{doc.category} • Tahun {doc.year}</p>
-                  </div>
-                </div>
-                {doc.fileUrl ? (
-                  <a
-                    href={doc.fileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-opacity hover:opacity-90 shadow-2xs"
-                    style={{ backgroundColor: primaryColor }}
-                  >
-                    Unduh
-                  </a>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+          <p className="text-xs text-slate-600">
+            {arsipTersedia
+              ? `Arsip dokumen mutu program studi tersedia dan dilindungi kata sandi. ${
+                  typeof meta?.total === 'number' ? `Terdapat ${meta.total} dokumen. ` : ''
+                }Buka halaman Dokumen dan masukkan kata sandi untuk melihat serta mengunduh berkas.`
+              : 'Arsip dokumen program studi belum dibuka oleh pengelola prodi.'}
+          </p>
+          {arsipTersedia ? (
+            <Link
+              to="/dokumen"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: primaryColor }}
+            >
+              Buka Arsip Dokumen
+              <ArrowRightIcon className="w-4 h-4" />
+            </Link>
+          ) : null}
+        </div>
       </div>
     </section>
   );

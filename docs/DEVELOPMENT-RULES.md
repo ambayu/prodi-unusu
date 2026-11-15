@@ -5,8 +5,8 @@ alat bantu AI.
 
 ## 1. Sebelum menulis kode
 
-1. Baca `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`,
-   `docs/DESIGN-RULES.md`, dan `docs/CHANGELOG.md`.
+1. Baca `docs/PROJECT_RULES.md` (indeks pengikat), `docs/ARCHITECTURE.md`,
+   `docs/DATABASE.md`, `docs/DESIGN-RULES.md`, dan `docs/CHANGELOG.md`.
 2. Periksa `package.json`, `prisma/schema.prisma`, migrasi terakhir, dan tes yang
    ada.
 3. Jangan mengasumsikan nama tabel, nama field, atau struktur folder sebelum
@@ -20,7 +20,7 @@ alat bantu AI.
 | Autentikasi | JWT di cookie httpOnly, sesi tercatat di tabel `sessions` |
 | Login | SSO ONE UNUSU jalur utama via izin masuk `prodi-unusu:masuk_*` (tidak ada peran ADMIN_PRODI kaku di portal pusat; SUPERADMIN dapat masuk ke semua prodi), kata sandi lokal jalur darurat |
 | Database | MySQL lokal `prodi_unusu_db` pada tahap pengembangan |
-| Fakultas | Data induk, bukan tenant, tidak memiliki domain |
+| Tenancy Unit | Mendukung multi-tenant Dwi-Unit: Program Studi dan Fakultas (ADR-001). Fakultas memiliki domain mandiri, landing page, dan panel admin sendiri |
 | Ikon | Heroicons saja |
 | Validasi | Zod, satu sumber skema di `src/shared/schemas` |
 

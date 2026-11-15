@@ -169,9 +169,13 @@ input, modal, dan toast boleh dipakai bersama.
 - Nama file dibuat acak dan ekstensi diturunkan dari MIME yang lolos, bukan dari
   nama kiriman client, sehingga path traversal tidak mungkin.
 - Metadata disimpan di `media_assets` dengan pemilik tenant.
-- File disajikan dari `/uploads/media`. Dokumen dan RPS berada di
-  `uploads/documents` dan `uploads/rps` dan tidak disajikan sebagai berkas
-  statis bebas, sehingga aksesnya dapat dikendalikan.
+- File disajikan dari `/uploads/media`. RPS berada di `uploads/rps` dan tidak
+  disajikan sebagai berkas statis bebas, sehingga aksesnya dapat dikendalikan.
+- **Arsip dokumen mutu tidak disimpan di prodi-unusu.** Dokumen dibaca dari arsip
+  LPM/LPPM melalui ONE UNUSU API Hub (lihat ADR-002). PDF-nya disimpan sebagai
+  berkas di `uploads/dokumen` milik LPM/LPPM dan disajikan lewat URL bertanda
+  tangan `/api/arsip-berkas/<nama>?t=<hmac>`; prodi-unusu hanya mem-proxy-nya
+  setelah kata sandi prodi diverifikasi.
 
 ## 9. Kesalahan dan validasi
 

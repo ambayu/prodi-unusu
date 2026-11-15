@@ -87,6 +87,14 @@ keluarga ikon bercampur.
 - Setiap input memiliki `label` yang terhubung.
 - Struktur heading berurutan, tidak melompat tingkat.
 - Gunakan elemen semantik: `nav`, `main`, `article`, `figure`, `button`.
+- **Target sentuh minimal 44x44 px** untuk tombol aksi utama pada layar sentuh.
+  Tombol ikon tunggal (mis. aksi baris tabel) wajib diberi padding secukupnya
+  dan `aria-label` yang jelas; jangan membuat target sentuh di bawah 44 px
+  untuk aksi yang sering dipakai.
+- Dialog wajib dapat ditutup dengan `Escape`, memiliki `role="dialog"` dan
+  `aria-modal="true"`, serta mengembalikan fokus ke pemicunya saat ditutup.
+- Pesan galat yang muncul setelah interaksi memakai `role="alert"` agar
+  dibacakan pembaca layar.
 
 ## 10. Responsif
 

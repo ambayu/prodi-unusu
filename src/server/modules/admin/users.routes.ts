@@ -265,6 +265,16 @@ router.post(
       }
     }
 
+    // Admin Fakultas wajib terikat pada satu fakultas.
+    if (body.roleCode === ROLES.ADMIN_FAKULTAS) {
+      if (body.scopeType !== 'faculty' || !body.facultyId) {
+        throw AppError.badRequest(
+          'Admin Fakultas harus ditugaskan pada satu fakultas.',
+          'FACULTY_SCOPE_REQUIRED',
+        );
+      }
+    }
+
     // Admin Utama berlaku lintas prodi, sehingga cakupannya harus global.
     if (body.roleCode === ROLES.SUPER_ADMIN && body.scopeType !== 'global') {
       throw AppError.badRequest('Admin Utama harus memakai cakupan global.', 'GLOBAL_SCOPE_REQUIRED');

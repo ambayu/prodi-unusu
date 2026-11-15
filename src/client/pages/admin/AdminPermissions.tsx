@@ -3,11 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import {
   KeyIcon,
   MagnifyingGlassIcon,
-  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
-import { LoadingState, ErrorState, EmptyState } from '../../components/ui/States';
-import { rbacApi } from '../../services/rbacApi';
+import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+import { rbacApi, type RolePermission } from '../../services/rbacApi';
 import { toApiError } from '../../services/api';
 
 export const AdminPermissions: React.FC = () => {
@@ -36,6 +35,47 @@ export const AdminPermissions: React.FC = () => {
     }
     return list;
   }, [allPermissions, selectedModule, search]);
+
+  /**
+   * Definisi kolom katalog izin. Kolom "Nama Deskriptif" dibiarkan tanpa `width`
+   * agar menyerap sisa ruang, kolom lain lebarnya tetap.
+   */
+  const permissionColumns: Array<DataTableColumn<RolePermission>> = [
+    {
+      key: 'nomor',
+      header: '#',
+      width: 64,
+      align: 'center',
+      cellClassName: 'font-mono text-slate-400',
+      render: (_item, index) => index + 1,
+    },
+    {
+      key: 'kode',
+      header: 'Kode Izin (Permission Code)',
+      width: 300,
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <KeyIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+          <span className="font-mono text-xs font-bold text-[#1e3a8a] break-all">{item.code}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'nama',
+      header: 'Nama Deskriptif',
+      render: (item) => <span className="text-xs font-semibold text-slate-800">{item.name}</span>,
+    },
+    {
+      key: 'modul',
+      header: 'Kategori Modul',
+      width: 180,
+      render: (item) => (
+        <span className="inline-block rounded-[6px] bg-slate-100 border border-[#CBD5E1]/60 px-2 py-0.5 text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+          {item.module}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <AdminLayout
@@ -81,59 +121,23 @@ export const AdminPermissions: React.FC = () => {
           </div>
         </div>
 
-        {permissionsQuery.isLoading ? (
-          <LoadingState label="Memuat katalog izin" rows={6} />
-        ) : permissionsQuery.isError ? (
-          <ErrorState
-            message={toApiError(permissionsQuery.error).message}
-            onRetry={() => void permissionsQuery.refetch()}
-          />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="Tidak ada izin yang sesuai"
-            description="Tidak ditemukan izin dengan kriteria pencarian yang Anda masukkan."
-          />
-        ) : (
-          <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white shadow-xs">
-            <table className="table-base">
-              <thead>
-                <tr>
-                  <th className="w-16 text-center">#</th>
-                  <th>Kode Izin (Permission Code)</th>
-                  <th>Nama Deskriptif</th>
-                  <th>Kategori Modul</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((item, idx) => (
-                  <tr key={item.id}>
-                    <td className="text-center font-mono text-xs text-slate-400">
-                      {idx + 1}
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <KeyIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                        <span className="font-mono text-xs font-bold text-[#1e3a8a]">
-                          {item.code}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="text-xs font-semibold text-slate-800">
-                        {item.name}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="inline-block rounded-[6px] bg-slate-100 border border-[#CBD5E1]/60 px-2 py-0.5 text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        {item.module}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {/*
+         * Keadaan loading/galat/kosong ditangani DataTable. Keadaan kosong di
+         * sini bisa berarti filter tidak cocok atau katalog memang belum berisi.
+         */}
+        <DataTable<RolePermission>
+          rows={filtered}
+          rowKey={(item) => String(item.id)}
+          loading={permissionsQuery.isLoading}
+          loadingLabel="Memuat katalog izin"
+          loadingRows={6}
+          error={permissionsQuery.isError ? toApiError(permissionsQuery.error).message : null}
+          onRetry={() => void permissionsQuery.refetch()}
+          emptyTitle="Tidak ada izin yang sesuai"
+          emptyDescription="Tidak ditemukan izin dengan kriteria pencarian yang Anda masukkan."
+          minWidth={780}
+          columns={permissionColumns}
+        />
       </div>
     </AdminLayout>
   );

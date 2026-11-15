@@ -120,12 +120,40 @@ darurat)" pada halaman login. Akun dibuat oleh seeder dari
 ## Struktur dokumentasi
 
 - `docs/README.md` — dokumen ini
-- `docs/PRD.md` — kebutuhan produk
+- `docs/PROJECT_RULES.md` — indeks aturan pengikat dan hierarki prioritas
+- `docs/PRD.md` — kebutuhan produk (di `prd/docs/PRD.md`)
 - `docs/ARCHITECTURE.md` — arsitektur dan alur request
 - `docs/DATABASE.md` — model data dan aturan isolasi tenant
 - `docs/DESIGN-RULES.md` — pedoman UI
 - `docs/DEVELOPMENT-RULES.md` — aturan implementasi
 - `docs/CHANGELOG.md` — riwayat perubahan
+- `docs/decisions/` — ADR keputusan arsitektural (terbaru: `ADR-004-form-page-template-dan-upload-rps.md`)
+- `docs/routes/<modul>/RULES.md` — aturan per modul halaman (`kurikulum`, `semester`, `dosen`, `dokumen`)
+- `docs/design-system/` — registry visual dari kode aktual:
+  - `DESIGN_RULES.md` — ringkasan aturan pengikat
+  - `COLORS.md` — token warna (`tailwind.config.js` + `index.css`)
+  - `TYPOGRAPHY.md` — keluarga font dan skala efektif
+  - `COMPONENTS.md` — registry komponen bersama
+  - `PAGE_TEMPLATES.md` — template halaman (`FormPageTemplate` tersedia; list/detail/dashboard belum)
+
+### Catatan tata kelola dokumentasi
+
+Registry `docs/design-system/` dibuat 2026-11-16 dari pembacaan langsung kode
+(`tailwind.config.js`, `index.css`, `components/ui/*`). Isinya hanya komponen dan
+token yang terverifikasi ada; komponen yang belum dibuat dicantumkan eksplisit
+pada bagian "Belum ada".
+
+Gap yang masih terbuka:
+
+1. `ListPageTemplate`, `DetailPageTemplate`, dan `DashboardPageTemplate` belum ada.
+2. `FormPageTemplate` sudah ada dan dipakai form mata kuliah di modul Kurikulum.
+   CRUD kurikulum/semester pada halaman daftar masih `FormModal`, dan 22 halaman
+   admin lain juga belum dimigrasikan.
+3. ~~`docs/PROJECT_RULES.md` belum ada~~ **Sudah dibuat 2026-11-16.** Dokumen itu
+   kini menjadi indeks pengikat yang menautkan ke sumber aturan, tanpa menduplikasi
+   isinya. `docs/DEVELOPMENT-RULES.md` tetap menjadi rincian aturan implementasi.
+4. Sebagian besar modul halaman belum punya `docs/routes/<modul>/RULES.md`. Modul
+   yang belum ada wajib membuatnya saat modul itu pertama kali diubah.
 
 ## Lisensi
 

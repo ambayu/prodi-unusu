@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
-import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
+import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
+import { DeleteRowButton, RowActions } from '../../components/ui/RowActions';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { organizationApi } from '../../services/adminApi';
@@ -80,6 +81,116 @@ export const AdminDomains: React.FC = () => {
     onError: (error) => toast.error(toApiError(error).message),
   });
 
+  /*
+   * Kolom tabel domain dan tabel jejak audit didefinisikan sebagai data agar
+   * lebarnya tetap dan tombol aksi tidak lagi menimpa kolom lain.
+   */
+  const domainColumns: Array<DataTableColumn<Awaited<ReturnType<typeof organizationApi.domains>>['data']['domains'][number]>> = [
+    {
+      key: 'hostname',
+      header: 'Hostname',
+      cellClassName: 'font-mono font-bold text-[#1e3a8a]',
+      render: (domain) => domain.hostname,
+    },
+    {
+      key: 'prodi',
+      header: 'Program Studi',
+      width: 260,
+      render: (domain) => (
+        <>
+          <span className="block font-semibold text-slate-800">{domain.studyProgram.name}</span>
+          <span className="font-mono text-[10px] text-slate-500">{domain.studyProgram.code}</span>
+        </>
+      ),
+    },
+    {
+      key: 'utama',
+      header: 'Utama',
+      width: 100,
+      render: (domain) =>
+        domain.isPrimary ? (
+          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-[#1e3a8a]">
+            Utama
+          </span>
+        ) : (
+          <span className="text-[11px] text-slate-400">-</span>
+        ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      width: 110,
+      render: (domain) => (
+        <button
+          type="button"
+          onClick={() => toggleMutation.mutate({ id: domain.id, isActive: !domain.isActive })}
+          disabled={!has('domain.update') || toggleMutation.isPending}
+          className={`rounded px-1.5 py-0.5 text-[10px] font-bold disabled:cursor-not-allowed ${
+            domain.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+          }`}
+        >
+          {domain.isActive ? 'Aktif' : 'Nonaktif'}
+        </button>
+      ),
+    },
+    {
+      key: 'aksi',
+      header: 'Aksi',
+      width: 90,
+      align: 'right',
+      render: (domain) => (
+        <RowActions>
+          {has('domain.delete') ? (
+            <DeleteRowButton
+              label="Hapus domain"
+              konteks={domain.hostname}
+              onClick={() => setDeleteTarget({ id: domain.id, hostname: domain.hostname })}
+            />
+          ) : null}
+        </RowActions>
+      ),
+    },
+  ];
+
+  const auditColumns: Array<DataTableColumn<Awaited<ReturnType<typeof organizationApi.auditLogs>>['data']['logs'][number]>> = [
+    {
+      key: 'waktu',
+      header: 'Waktu',
+      width: 140,
+      cellClassName: 'whitespace-nowrap',
+      render: (log) =>
+        new Date(log.createdAt).toLocaleString('id-ID', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        }),
+    },
+    {
+      key: 'pengguna',
+      header: 'Pengguna',
+      width: 160,
+      render: (log) => log.user?.name ?? 'Sistem',
+    },
+    {
+      key: 'modul',
+      header: 'Modul',
+      width: 130,
+      cellClassName: 'font-mono',
+      render: (log) => log.module,
+    },
+    {
+      key: 'aksi',
+      header: 'Aksi',
+      width: 130,
+      render: (log) => log.action,
+    },
+    {
+      key: 'prodi',
+      header: 'Prodi',
+      cellClassName: 'text-slate-500',
+      render: (log) => log.studyProgram?.name ?? '-',
+    },
+  ];
+
   return (
     <AdminLayout
       title="Manajemen Domain"
@@ -105,118 +216,42 @@ export const AdminDomains: React.FC = () => {
         ) : null
       }
     >
-      {domainsQuery.isLoading ? (
-        <LoadingState label="Memuat domain" />
-      ) : domainsQuery.isError ? (
-        <ErrorState message={toApiError(domainsQuery.error).message} onRetry={() => void domainsQuery.refetch()} />
-      ) : (
-        <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs">
-          <table className="table-base">
-            <thead>
-              <tr>
-                <th>Hostname</th>
-                <th>Program Studi</th>
-                <th>Utama</th>
-                <th>Status</th>
-                <th className="text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(domainsQuery.data ?? []).map((domain) => (
-                <tr key={domain.id}>
-                  <td className="font-mono font-bold text-[#1e3a8a]">{domain.hostname}</td>
-                  <td>
-                    <span className="block font-semibold text-slate-800">{domain.studyProgram.name}</span>
-                    <span className="font-mono text-[10px] text-slate-500">{domain.studyProgram.code}</span>
-                  </td>
-                  <td>
-                    {domain.isPrimary ? (
-                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-[#1e3a8a]">
-                        Utama
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-slate-400">-</span>
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => toggleMutation.mutate({ id: domain.id, isActive: !domain.isActive })}
-                      disabled={!has('domain.update') || toggleMutation.isPending}
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold disabled:cursor-not-allowed ${
-                        domain.isActive
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {domain.isActive ? 'Aktif' : 'Nonaktif'}
-                    </button>
-                  </td>
-                  <td>
-                    <div className="flex justify-end">
-                      {has('domain.delete') ? (
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget({ id: domain.id, hostname: domain.hostname })}
-                          className="rounded border border-rose-200 p-1 text-rose-600 hover:bg-rose-50"
-                          aria-label={`Hapus domain ${domain.hostname}`}
-                        >
-                          <TrashIcon className="h-3.5 w-3.5" />
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Keadaan memuat/galat ditangani DataTable. */}
+      <DataTable
+        rows={domainsQuery.data ?? []}
+        rowKey={(domain) => String(domain.id)}
+        loading={domainsQuery.isLoading}
+        loadingLabel="Memuat domain"
+        error={domainsQuery.isError ? toApiError(domainsQuery.error).message : null}
+        onRetry={() => void domainsQuery.refetch()}
+        emptyTitle="Belum ada domain"
+        emptyDescription="Daftarkan domain agar website program studi dapat diakses melalui alamatnya sendiri."
+        minWidth={800}
+        columns={domainColumns}
+      />
 
-      {has('audit_logs.view') ? (
-        <section className="card">
-          <h2 className="text-sm font-bold text-slate-900">Jejak Audit Terbaru</h2>
-          {auditQuery.isLoading ? (
+      <div className="mt-5">
+        {has('audit_logs.view') ? (
+          <section className="card">
+            <h2 className="text-sm font-bold text-slate-900">Jejak Audit Terbaru</h2>
             <div className="mt-4">
-              <LoadingState label="Memuat audit" rows={3} />
+              <DataTable
+                rows={(auditQuery.data ?? []).slice(0, 30)}
+                rowKey={(log) => String(log.id)}
+                loading={auditQuery.isLoading}
+                loadingLabel="Memuat audit"
+                loadingRows={3}
+                error={auditQuery.isError ? toApiError(auditQuery.error).message : null}
+                onRetry={() => void auditQuery.refetch()}
+                emptyTitle="Belum ada aktivitas"
+                emptyDescription="Perubahan data akan tercatat di sini."
+                minWidth={720}
+                columns={auditColumns}
+              />
             </div>
-          ) : (auditQuery.data ?? []).length === 0 ? (
-            <div className="mt-4">
-              <EmptyState title="Belum ada aktivitas" description="Perubahan data akan tercatat di sini." />
-            </div>
-          ) : (
-            <div className="mt-4 overflow-x-auto">
-              <table className="table-base">
-                <thead>
-                  <tr>
-                    <th>Waktu</th>
-                    <th>Pengguna</th>
-                    <th>Modul</th>
-                    <th>Aksi</th>
-                    <th>Prodi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(auditQuery.data ?? []).slice(0, 30).map((log) => (
-                    <tr key={log.id}>
-                      <td className="whitespace-nowrap text-[11px]">
-                        {new Date(log.createdAt).toLocaleString('id-ID', {
-                          dateStyle: 'short',
-                          timeStyle: 'short',
-                        })}
-                      </td>
-                      <td>{log.user?.name ?? 'Sistem'}</td>
-                      <td className="font-mono text-[10px]">{log.module}</td>
-                      <td>{log.action}</td>
-                      <td className="text-[11px] text-slate-500">{log.studyProgram?.name ?? '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      ) : null}
+          </section>
+        ) : null}
+      </div>
 
       <FormModal
         open={formOpen}
