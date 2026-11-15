@@ -166,9 +166,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   }, [isSuperAdmin]);
   const [collapsed, setCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  /** Dropdown pemilih unit/prodi di topbar kanan. */
+  const [prodiOpen, setProdiOpen] = useState(false);
   const [menu, setMenu] = useState<AdminMenuItem[]>(() => adminMenuApi.getCachedMenu(menuScope) ?? []);
   const [menuLoading, setMenuLoading] = useState(() => !adminMenuApi.getCachedMenu(menuScope));
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const prodiDropdownRef = useRef<HTMLDivElement>(null);
   const desktopNavRef = useRef<HTMLDivElement>(null);
 
   // State collapse untuk tiap grup kategori menu
@@ -235,6 +238,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setProfileOpen(false);
+      }
+      if (prodiDropdownRef.current && !prodiDropdownRef.current.contains(event.target as Node)) {
+        setProdiOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -634,38 +640,100 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
             {/* Quick Switcher Program Studi untuk Admin di Topbar */}
             {isSuperAdmin && availablePrograms.length > 0 && (
-              <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/90 px-2.5 py-1 text-xs">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900 shrink-0">
-                  Prodi:
-                </span>
-                <select
-                  value={menuScope === 'portal' ? PORTAL_SCOPE_VALUE : activeTenantId ?? ''}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === PORTAL_SCOPE_VALUE) {
-                      enterPortalScope();
-                      adminMenuApi.clearCache();
-                      navigate('/admin/portal-utama');
-                      return;
-                    }
-                    const id = Number(raw);
-                    if (id) {
-                      void setActiveTenant(id);
-                    }
-                  }}
-                  className="rounded-lg border-0 bg-transparent py-0.5 text-xs font-bold text-blue-950 focus:outline-none cursor-pointer"
+              <div className="relative hidden sm:block" ref={prodiDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setProdiOpen((prev) => !prev)}
+                  className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-left transition-colors hover:bg-slate-100 focus:outline-none min-h-[44px]"
+                  aria-expanded={prodiOpen}
+                  aria-haspopup="true"
+                  title="Ganti unit / program studi aktif"
                 >
-                  <optgroup label="Portal Utama">
-                    <option value={PORTAL_SCOPE_VALUE}>◈ Portal Utama</option>
-                  </optgroup>
-                  <optgroup label="Website Prodi">
-                    {availablePrograms.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.code} - {p.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
+                  {menuScope === 'portal' ? (
+                    <BuildingLibraryIcon className="h-4 w-4 shrink-0 text-slate-500" />
+                  ) : (
+                    <AcademicCapIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" />
+                  )}
+                  <span className="min-w-0 hidden lg:block">
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 leading-none">
+                      {menuScope === 'portal' ? 'Unit' : menuScope === 'faculty' ? 'Fakultas' : 'Prodi'}
+                    </span>
+                    <span className="mt-1 block max-w-[190px] truncate text-[12px] font-bold text-slate-900 leading-none">
+                      {activeScopeLabel}
+                    </span>
+                  </span>
+                  <ChevronDownIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                </button>
+
+                {prodiOpen && (
+                  <div className="absolute right-0 mt-2 w-[320px] rounded-[14px] border border-[#CBD5E1] bg-white py-2 shadow-xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <p className="px-4 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                      Pilih Unit
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        enterPortalScope();
+                        adminMenuApi.clearCache();
+                        setProdiOpen(false);
+                        navigate('/admin/portal-utama');
+                      }}
+                      className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px] transition-colors hover:bg-slate-100 ${
+                        menuScope === 'portal' ? 'bg-slate-50 font-bold text-[#1e3a8a]' : 'text-slate-700'
+                      }`}
+                    >
+                      <BuildingLibraryIcon className="h-4 w-4 shrink-0 text-slate-500" />
+                      <span className="min-w-0 flex-1 truncate">Portal Utama</span>
+                      {menuScope === 'portal' ? <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" /> : null}
+                    </button>
+
+                    <div className="my-1 border-t border-[#CBD5E1]/70" />
+
+                    <div className="max-h-[340px] overflow-y-auto">
+                      {Object.entries(
+                        availablePrograms.reduce<Record<string, typeof availablePrograms>>((acc, program) => {
+                          const faculty = program.faculty?.name || 'Lainnya';
+                          if (!acc[faculty]) acc[faculty] = [];
+                          acc[faculty].push(program);
+                          return acc;
+                        }, {}),
+                      ).map(([facultyName, programs]) => (
+                        <div key={facultyName}>
+                          <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            {facultyName}
+                          </p>
+                          {programs.map((program) => {
+                            const active = activeTenantId === program.id && menuScope === 'prodi';
+                            return (
+                              <button
+                                key={program.id}
+                                type="button"
+                                onClick={() => {
+                                  adminMenuApi.clearCache();
+                                  setProdiOpen(false);
+                                  void setActiveTenant(program.id);
+                                }}
+                                className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px] transition-colors hover:bg-slate-100 ${
+                                  active ? 'bg-slate-50 font-bold text-[#1e3a8a]' : 'text-slate-700'
+                                }`}
+                              >
+                                <AcademicCapIcon
+                                  className={`h-4 w-4 shrink-0 ${active ? 'text-[#1e3a8a]' : 'text-slate-400'}`}
+                                />
+                                <span className="w-12 shrink-0 font-mono text-[11px] font-bold text-slate-500">
+                                  {program.code}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate">{program.name}</span>
+                                {active ? <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" /> : null}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
