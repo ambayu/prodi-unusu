@@ -326,8 +326,8 @@ export const AdminUsers: React.FC = () => {
                   <>
                     {/* Kolom identitas akun saja. */}
                     <span className="block font-bold text-slate-900">{user.name}</span>
-                    <span className="mt-0.5 block text-[11px] text-slate-500">{user.username}</span>
-                    <span className="block text-[11px] text-slate-400">{user.email}</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">{user.username}</span>
+                    <span className="block text-xs text-slate-400">{user.email}</span>
                   </>
                 ),
               },
@@ -350,14 +350,14 @@ export const AdminUsers: React.FC = () => {
                       {peranSso.map((kode) => (
                         <span
                           key={kode}
-                          className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700"
+                          className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold text-slate-700"
                         >
                           {labelPeranSso(kode)}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <span className="text-[11px] italic text-slate-400">Belum ada data SSO</span>
+                    <span className="text-xs italic text-slate-400">Belum ada data SSO</span>
                   );
                 },
               },
@@ -368,7 +368,7 @@ export const AdminUsers: React.FC = () => {
                 // Peran yang diberikan admin prodi.
                 render: (user) =>
                   user.userRoles.length === 0 ? (
-                    <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                    <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs font-bold text-amber-800">
                       Menunggu validasi
                     </span>
                   ) : (
@@ -376,7 +376,7 @@ export const AdminUsers: React.FC = () => {
                       {user.userRoles.map((assignment) => (
                         <span
                           key={assignment.id}
-                          className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-[#1e3a8a]"
+                          className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-[#1e3a8a]"
                         >
                           {assignment.role.name}
                           {has('users.assign_role') ? (
@@ -403,13 +403,13 @@ export const AdminUsers: React.FC = () => {
                 // Batas wilayah kerja tiap peran.
                 render: (user) =>
                   user.userRoles.length === 0 ? (
-                    <span className="text-[11px] italic text-slate-400">—</span>
+                    <span className="text-xs italic text-slate-400">—</span>
                   ) : (
                     <div className="flex flex-wrap gap-1">
                       {user.userRoles.map((assignment) => (
                         <span
                           key={assignment.id}
-                          className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"
+                          className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600"
                         >
                           {assignment.studyProgram
                             ? assignment.studyProgram.name
@@ -427,7 +427,7 @@ export const AdminUsers: React.FC = () => {
                 width: 100,
                 render: (user) => (
                   <span
-                    className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                    className={`rounded px-1.5 py-0.5 text-xs font-bold ${
                       user.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
                     }`}
                   >

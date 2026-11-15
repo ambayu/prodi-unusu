@@ -139,7 +139,7 @@ export const AdminPosts: React.FC = () => {
       render: (post) => (
         <>
           <span className="block font-bold text-slate-900">{post.title}</span>
-          <span className="block font-mono text-[11px] text-slate-500">/{post.slug}</span>
+          <span className="block font-mono text-xs text-slate-500">/{post.slug}</span>
         </>
       ),
     },
@@ -150,7 +150,7 @@ export const AdminPosts: React.FC = () => {
       cellClassName: 'whitespace-nowrap',
       render: (post) => (
         <span
-          className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${
+          className={`inline-block rounded px-1.5 py-0.5 text-xs font-bold ${
             post.status === 'published'
               ? 'bg-emerald-50 text-emerald-700'
               : post.status === 'draft'
@@ -207,7 +207,7 @@ export const AdminPosts: React.FC = () => {
               onClick={() =>
                 publishMutation.mutate({ id: post.id, publish: post.status !== 'published' })
               }
-              className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-bold ${
+              className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-bold ${
                 post.status === 'published'
                   ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
                   : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'

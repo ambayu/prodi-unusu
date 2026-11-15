@@ -176,7 +176,7 @@ export const AdminAuditLogs: React.FC = () => {
               width: 160,
               render: (entri) => (
                 <span
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold ${
                     NADA_AKSI[entri.action] ?? 'border-slate-200 bg-slate-50 text-slate-700'
                   }`}
                 >

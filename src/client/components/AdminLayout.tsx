@@ -34,6 +34,8 @@ import {
   KeyIcon,
   Squares2X2Icon,
   ArrowTopRightOnSquareIcon,
+  AcademicCapIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 import type { AdminMenuItem } from '../../shared/types/index';
 import { useSiteStore } from '../app/siteStore';
@@ -86,16 +88,6 @@ interface AdminLayoutProps {
 // ---------------------------------------------------------
 let savedSidebarScrollTop = 0;
 
-/**
- * Nilai sentinel pada pemilih "Program Studi Aktif" untuk Portal Utama.
- *
- * Portal utama bukan program studi, sehingga tidak dikirim ke
- * `setActiveTenant` (yang akan memanggil reload dengan tenant prodi). Memilih
- * opsi ini hanya mengubah scope panel admin ke mode portal dan membuka
- * dashboard portal.
- */
-const PORTAL_SCOPE_VALUE = '__portal_utama__';
-
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   children,
   title,
@@ -114,6 +106,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const enterPortalScope = useSiteStore((state) => state.enterPortalScope);
   const [availablePrograms, setAvailablePrograms] = useState<
     Array<{ id: number; name: string; code: string; faculty?: { id?: number; name: string; code?: string } }>
+  >([]);
+  /** Fakultas aktif yang dapat dipilih sebagai scope website fakultas. */
+  const [availableFaculties, setAvailableFaculties] = useState<
+    Array<{ id: number; name: string; code: string }>
   >([]);
 
   /**
@@ -162,6 +158,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       organizationApi.studyPrograms().then((res) => {
         setAvailablePrograms(res.data.studyPrograms);
       }).catch(() => {});
+      /*
+       * Daftar fakultas dimuat terpisah karena `studyPrograms()` hanya membawa
+       * `faculty: { name }` tanpa id — id itulah yang dibutuhkan `setActiveFaculty`
+       * untuk masuk ke scope website fakultas.
+       */
+      organizationApi
+        .faculties()
+        .then((res) => setAvailableFaculties(res.data.faculties.filter((f) => f.isActive)))
+        .catch(() => {});
     }
   }, [isSuperAdmin]);
   const [collapsed, setCollapsed] = useState(false);
@@ -266,6 +271,24 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join('');
+
+  /**
+   * Label unit yang sedang aktif untuk chip di topbar kanan.
+   *
+   * Ditampilkan sebagai "kode — nama" agar super admin tahu persis prodi mana
+   * yang sedang dikelola tanpa harus membuka dropdown. Bila datanya belum
+   * termuat, chip jatuh ke label generik alih-alih kosong.
+   */
+  const activeScopeLabel = (() => {
+    if (menuScope === 'portal') return 'Portal Utama';
+    if (menuScope === 'faculty') {
+      return activeFacultyId ? `Fakultas #${activeFacultyId}` : 'Fakultas';
+    }
+    const program = availablePrograms.find((p) => p.id === activeTenantId);
+    if (program) return `${program.code} — ${program.name}`;
+    if (tenant?.name) return tenant.name;
+    return 'Belum dipilih';
+  })();
 
   // Pisahkan menu berdasarkan section kategori dengan fallback aman.
   //
@@ -775,27 +798,31 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               </button>
 
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-72 rounded-[16px] border border-[#CBD5E1] bg-white py-2 shadow-xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <div className="px-4 py-3 border-b border-[#CBD5E1]/70 bg-slate-50/60">
-                    <p className="font-bold text-sm text-slate-900 truncate">
-                      {user?.name ?? 'Pengguna'}
-                    </p>
-                    <p className="text-xs text-slate-600 truncate font-mono mt-0.5">
-                      {user?.email ?? ''}
-                    </p>
-                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                      <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                        {isSuperAdmin
-                          ? 'Super Administrator'
-                          : user?.roles?.map((r) => r.roleName).join(', ') || 'Admin Prodi'}
-                      </span>
+                <div className="absolute right-0 mt-2 w-[300px] rounded-[14px] border border-[#CBD5E1] bg-white py-2 shadow-xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {/* Identitas akun: tanpa banner abu, mengikuti gaya ONE UNUSU */}
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e3a8a] text-xs font-bold text-white">
+                      {initials}
                     </div>
-                    {tenant && (
-                      <p className="text-[11px] text-slate-600 mt-2 leading-snug">
-                        Cakupan: <span className="font-bold text-slate-800">{tenant.name}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-bold text-slate-900">
+                        {user?.name ?? 'Pengguna'}
                       </p>
-                    )}
+                      <p className="truncate text-[11px] text-slate-500">
+                        {user?.email ?? ''}
+                      </p>
+                    </div>
                   </div>
+
+                  <div className="px-4 pb-2">
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                      {isSuperAdmin
+                        ? 'Super Administrator'
+                        : user?.roles?.map((r) => r.roleName).join(', ') || 'Admin Prodi'}
+                    </span>
+                  </div>
+
+                  <div className="my-1 border-t border-[#CBD5E1]/70" />
 
                   <div className="py-1 text-[13px] font-semibold text-slate-700">
                     <Link
@@ -804,7 +831,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                       onClick={() => setProfileOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2 hover:bg-slate-100 hover:text-[#1e3a8a] transition-colors"
                     >
-                      <GlobeAltIcon className="w-4 h-4 text-slate-600" />
+                      <GlobeAltIcon className="w-4 h-4 text-slate-500" />
                       <span>Halaman Depan Website</span>
                     </Link>
                     <Link

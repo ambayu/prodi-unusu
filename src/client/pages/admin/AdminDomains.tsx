@@ -99,7 +99,7 @@ export const AdminDomains: React.FC = () => {
       render: (domain) => (
         <>
           <span className="block font-semibold text-slate-800">{domain.studyProgram.name}</span>
-          <span className="font-mono text-[10px] text-slate-500">{domain.studyProgram.code}</span>
+          <span className="font-mono text-xs text-slate-500">{domain.studyProgram.code}</span>
         </>
       ),
     },
@@ -109,11 +109,11 @@ export const AdminDomains: React.FC = () => {
       width: 100,
       render: (domain) =>
         domain.isPrimary ? (
-          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-[#1e3a8a]">
+          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-[#1e3a8a]">
             Utama
           </span>
         ) : (
-          <span className="text-[11px] text-slate-400">-</span>
+          <span className="text-xs text-slate-400">-</span>
         ),
     },
     {
@@ -125,7 +125,7 @@ export const AdminDomains: React.FC = () => {
           type="button"
           onClick={() => toggleMutation.mutate({ id: domain.id, isActive: !domain.isActive })}
           disabled={!has('domain.update') || toggleMutation.isPending}
-          className={`rounded px-1.5 py-0.5 text-[10px] font-bold disabled:cursor-not-allowed ${
+          className={`rounded px-1.5 py-0.5 text-xs font-bold disabled:cursor-not-allowed ${
             domain.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
           }`}
         >

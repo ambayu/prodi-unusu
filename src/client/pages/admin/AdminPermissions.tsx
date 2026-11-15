@@ -42,14 +42,6 @@ export const AdminPermissions: React.FC = () => {
    */
   const permissionColumns: Array<DataTableColumn<RolePermission>> = [
     {
-      key: 'nomor',
-      header: '#',
-      width: 64,
-      align: 'center',
-      cellClassName: 'font-mono text-slate-400',
-      render: (_item, index) => index + 1,
-    },
-    {
       key: 'kode',
       header: 'Kode Izin (Permission Code)',
       width: 300,
@@ -70,7 +62,7 @@ export const AdminPermissions: React.FC = () => {
       header: 'Kategori Modul',
       width: 180,
       render: (item) => (
-        <span className="inline-block rounded-[6px] bg-slate-100 border border-[#CBD5E1]/60 px-2 py-0.5 text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+        <span className="inline-block rounded-[6px] bg-slate-100 border border-[#CBD5E1]/60 px-2 py-0.5 text-xs font-bold text-slate-700 uppercase tracking-wider">
           {item.module}
         </span>
       ),

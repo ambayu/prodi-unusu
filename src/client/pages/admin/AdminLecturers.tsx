@@ -81,7 +81,7 @@ export const AdminLecturers: React.FC = () => {
             render: (lecturer) => (
               <>
                 <span className="block font-bold text-slate-900">{lecturer.name}</span>
-                <span className="block text-[11px] text-slate-500">{lecturer.email ?? 'Email belum diisi'}</span>
+                <span className="block text-xs text-slate-500">{lecturer.email ?? 'Email belum diisi'}</span>
               </>
             ),
           },
@@ -121,7 +121,7 @@ export const AdminLecturers: React.FC = () => {
             align: 'center',
             render: (lecturer) => (
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${
                   lecturer.isActive
                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                     : 'bg-slate-100 text-slate-600'

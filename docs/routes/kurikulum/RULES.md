@@ -57,15 +57,17 @@ Konsekuensi yang disengaja:
 
 | Rute | Berkas | Izin | Keterangan |
 |---|---|---|---|
-| `/admin/kurikulum` | `src/client/pages/admin/AdminCurriculum.tsx` | `curriculum.view` | Tabel penawaran + `FormModal` penuh (termasuk unggah RPS) |
+| `/admin/kurikulum` | `src/client/pages/admin/AdminCurriculum.tsx` | `curriculum.view` | Panel daftar kurikulum ringkas + tabel penawaran |
+| `/admin/kurikulum/baru` | `src/client/pages/admin/AdminCurriculumCreate.tsx` | `curriculum.create` | Form page: Nama, Tahun, Deskripsi (textarea), Status (radio) |
+| `/admin/kurikulum/:id/ubah` | `src/client/pages/admin/AdminCurriculumCreate.tsx` | `curriculum.update` | Form page edit kurikulum |
+| `/admin/kurikulum/mata-kuliah/:id/ubah` | `src/client/pages/admin/AdminCurriculumItemForm.tsx` | `curriculum.update` | Form page edit penawaran MK (dari tombol aksi per baris tabel) |
 
 ### Pengalihan rute lama
 
 | Rute lama | Dialihkan ke |
 |---|---|
-| `/admin/mata-kuliah/baru` | `/admin/mata-kuliah` |
+| `/admin/mata-kuliah/baru` | `/admin/mata-kuliah` (tetap FormModal 2 field) |
 | `/admin/mata-kuliah/:id/ubah` | `/admin/mata-kuliah` |
-| `/admin/kurikulum/baru` | `/admin/kurikulum` |
 | `/admin/kurikulum/semester/baru` | `/admin/kurikulum` |
 
 `AdminCurriculumForm.tsx` **sudah dihapus**. Master mata kuliah hanya punya dua field,

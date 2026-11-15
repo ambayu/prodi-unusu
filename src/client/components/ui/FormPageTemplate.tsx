@@ -120,9 +120,9 @@ export const FormPageTemplate: React.FC<FormPageTemplateProps> = ({
         <section
           key={section.id}
           id={section.id}
-          className="rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs overflow-hidden"
+          className="rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs"
         >
-          <div className="border-b border-[#CBD5E1]/70 px-5 py-3.5">
+          <div className="border-b border-[#CBD5E1]/70 px-5 py-3.5 rounded-t-[14px]">
             <h2 className="text-sm font-bold text-slate-800">{section.title}</h2>
             {section.description ? (
               <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{section.description}</p>

@@ -24,12 +24,29 @@ Satu keluarga font saja. Tidak ada font kedua.
 | Deskripsi menu sidebar | `text-[12px] text-slate-600` | `AdminLayout` |
 | Judul grup menu sidebar | `text-[11px] font-bold uppercase tracking-widest text-slate-600` | `AdminLayout` |
 | Breadcrumb topbar | `text-[13px] font-semibold text-slate-700` | `AdminLayout` |
-| Isi tabel | `text-xs` | `.table-base` |
-| Header tabel | `text-[10px] font-bold uppercase tracking-wider text-slate-500` | `.table-base thead th` |
+| Isi tabel | `text-[13px]` | `.table-base` (`tbody td`) |
+| Header tabel | `text-[12px] font-bold uppercase tracking-wide text-slate-600` | `.table-base thead th` |
+| Badge & teks sekunder dalam sel | `text-xs` (12px) | `render:` kolom `DataTable` |
+| Judul utama dalam sel | `text-[14px] font-extrabold` | `render:` kolom `DataTable` |
 | Label formulir | `text-xs font-bold text-slate-700` | `.field-label` |
 | Pesan bantuan | `text-[11px] leading-relaxed text-slate-500` | `Field` hint |
 | Judul halaman publik | `text-2xl font-extrabold tracking-tight sm:text-4xl` | `PageHeader` |
 | Eyebrow publik | `text-xs font-bold uppercase tracking-wider` | `PageHeader` |
+
+## Ukuran huruf di dalam sel tabel
+
+Isi sel **wajib seragam 13px**, diatur `.table-base tbody td`. Karena itu:
+
+- **`cellClassName` tidak boleh memuat kelas ukuran huruf** (`text-xs`,
+  `text-sm`, `text-[10px]`, dan sejenisnya). Menimpanya membuat kolom dalam satu
+  baris berbeda ukuran — inilah keluhan "tiap kolom beda besar tulisannya".
+  Untuk membedakan kolom, gunakan **bobot, warna, atau `font-mono`**, bukan
+  ukuran.
+- **Badge dan teks sekunder pendamping** (status, kode prodi, slug, email, NIDN)
+  memakai `text-xs` (12px) — satu tingkat di bawah isi karena fungsinya penanda,
+  bukan isi utama. Jangan turunkan ke 10px atau 11px.
+- **Judul utama baris** boleh `text-[14px] font-extrabold` agar menonjol lewat
+  ketebalan, bukan ukuran yang mencolok sendiri.
 
 ## Ambang keterbacaan sidebar
 

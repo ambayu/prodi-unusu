@@ -42,7 +42,7 @@ daftar sampai halaman tersebut dimigrasikan. Lihat `PAGE_TEMPLATES.md`.
 
 | Komponen | Berkas | Tanggung jawab | Props penting |
 |---|---|---|---|
-| `DataTable` | `components/ui/DataTable.tsx` | Tabel data standar: kolom didefinisikan sebagai data, lebar tetap lewat `colgroup`, pembungkus scroll, dan tiga keadaan (memuat, kosong, galat) sekaligus | `columns`, `rows`, `rowKey`, `loading`, `error`, `onRetry`, `emptyTitle`, `emptyDescription`, `emptyAction`, `minWidth`, `footer` |
+| `DataTable` | `components/ui/DataTable.tsx` | Tabel data standar: kolom didefinisikan sebagai data, lebar tetap lewat `colgroup`, nomor urut otomatis, pembungkus scroll, dan tiga keadaan (memuat, kosong, galat) sekaligus | `columns`, `rows`, `rowKey`, `loading`, `error`, `onRetry`, `emptyTitle`, `emptyDescription`, `emptyAction`, `minWidth`, `showRowNumber`, `footer` |
 | `DataTableColumn<T>` | `components/ui/DataTable.tsx` (named export) | Bentuk satu definisi kolom | `key`, `header`, `render`, `width`, `align`, `cellClassName`, `headerClassName` |
 | `RetryButton` | `components/ui/DataTable.tsx` (named export) | Tombol "Coba lagi" mandiri untuk galat di luar tabel | `onClick`, `label` |
 | `RowActions` | `components/ui/RowActions.tsx` | Pembungkus deret tombol aksi di kolom "Aksi" | `children` |
@@ -54,6 +54,13 @@ daftar sampai halaman tersebut dimigrasikan. Lihat `PAGE_TEMPLATES.md`.
 Gunakan `EditRowButton`/`DeleteRowButton` dengan `label` berbahasa Indonesia dan
 `konteks` berisi nama baris. Ukurannya 34px persegi dengan ikon 17px — sepadan
 dengan huruf isi tabel 13px. Ikon di atas 20px akan mendominasi baris.
+
+**Kolom nomor urut otomatis.** `DataTable` menambahkan kolom "No" di paling kiri
+dengan lebar tetap 56px. Nomornya mengikuti urutan baris setelah penyaringan,
+bukan ID data, sehingga selalu berurutan 1, 2, 3. Karena sudah otomatis, **jangan**
+menambahkan kolom `#`/`nomor` sendiri — akan tampil dobel. Matikan lewat
+`showRowNumber={false}` hanya untuk tabel pasangan kunci-nilai yang tidak
+berurutan.
 
 **Mengapa lebar kolom wajib eksplisit.** `DataTable` memakai `table-fixed`
 bersama `<colgroup>`. Tanpa keduanya peramban menghitung lebar kolom dari isi,

@@ -62,6 +62,12 @@ export interface DataTableProps<T> {
    * alih-alih meremas kolom. Bawaan 720px.
    */
   minWidth?: number;
+  /**
+   * Tampilkan kolom nomor urut paling kiri. Bawaan `true` agar seluruh tabel
+   * di aplikasi konsisten. Matikan hanya bila tabel memang tidak berurutan
+   * (mis. tabel dua kolom yang isinya pasangan kunci-nilai).
+   */
+  showRowNumber?: boolean;
   /** Isi tambahan di bawah tabel, mis. keterangan jumlah data. */
   footer?: React.ReactNode;
   className?: string;
@@ -86,6 +92,7 @@ export function DataTable<T>({
   loadingLabel = 'Memuat data',
   loadingRows = 4,
   minWidth = 720,
+  showRowNumber = true,
   footer,
   className = '',
 }: DataTableProps<T>) {
@@ -105,6 +112,8 @@ export function DataTable<T>({
       <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs">
         <table className="table-base table-fixed" style={{ minWidth }}>
           <colgroup>
+            {/* Lebar tetap 56px agar nomor tidak melebar saat mencapai puluhan. */}
+            {showRowNumber ? <col style={{ width: '56px' }} /> : null}
             {columns.map((kolom) => (
               <col
                 key={kolom.key}
@@ -118,6 +127,11 @@ export function DataTable<T>({
           </colgroup>
           <thead>
             <tr>
+              {showRowNumber ? (
+                <th scope="col" className="text-center">
+                  No
+                </th>
+              ) : null}
               {columns.map((kolom) => (
                 <th
                   key={kolom.key}
@@ -143,6 +157,11 @@ export function DataTable<T>({
                * tabel berperilaku sama.
                */
               <tr key={rowKey(row, index)} className="transition-colors hover:bg-slate-50/70">
+                {showRowNumber ? (
+                  <td className="text-center font-semibold tabular-nums text-slate-500">
+                    {index + 1}
+                  </td>
+                ) : null}
                 {columns.map((kolom) => (
                   /*
                    * `break-words` mencegah isi panjang meluber ke kolom

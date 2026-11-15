@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowTopRightOnSquareIcon,
@@ -29,6 +29,15 @@ const SUMBER_WARNA: Record<ArsipSumber, string> = {
   lppm: 'bg-violet-50 text-violet-700 border-violet-200',
 };
 
+/**
+ * Kunci untuk dokumen yang belum diklasifikasikan ke kategori mana pun.
+ *
+ * Memakai nilai sentinel, bukan string kosong, karena `<option value="">`
+ * sudah dipakai filter "Semua kategori".
+ */
+const TANPA_KATEGORI = '__tanpa_kategori__';
+const LABEL_TANPA_KATEGORI = 'Tanpa kategori';
+
 /** Memformat tanggal ISO menjadi tanggal Indonesia yang ringkas. */
 function formatTanggal(iso: string | null): string {
   if (!iso) return '—';
@@ -51,6 +60,7 @@ export const AdminDocuments: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [kategoriFilter, setKategoriFilter] = useState('');
   const [previewTarget, setPreviewTarget] = useState<ArsipDokumenItem | null>(null);
 
   const [passwordBaru, setPasswordBaru] = useState('');
@@ -102,6 +112,50 @@ export const AdminDocuments: React.FC = () => {
   const passwordAktif = passwordQuery.data?.passwordActive ?? meta?.passwordActive ?? false;
   const errorText = listQuery.isError ? toApiError(listQuery.error).message : null;
   const kodeBelumDipetakan = errorText?.toLowerCase().includes('kode prodi') ?? false;
+
+  /**
+   * Daftar kategori yang benar-benar ada pada arsip prodi ini, beserta jumlah
+   * dokumennya.
+   *
+   * Sengaja dihitung di klien, bukan lewat endpoint baru: jumlah kategori
+   * LPM/LPPM sedikit dan seluruh dokumen prodi sudah terambil dalam satu
+   * permintaan. Endpoint tambahan hanya akan menambah satu perjalanan jaringan
+   * tanpa manfaat. Bila kelak arsip memakai paginasi, daftar ini harus
+   * dipindahkan ke server.
+   */
+  const daftarKategori = useMemo(() => {
+    const hitung = new Map<string, { label: string; jumlah: number }>();
+    for (const dokumen of items) {
+      const kunci = dokumen.kategori?.trim() ? dokumen.kategori.trim() : TANPA_KATEGORI;
+      const label = kunci === TANPA_KATEGORI ? LABEL_TANPA_KATEGORI : kunci;
+      const sekarang = hitung.get(kunci) ?? { label, jumlah: 0 };
+      sekarang.jumlah += 1;
+      hitung.set(kunci, sekarang);
+    }
+    // Urut abjad; "Tanpa kategori" ditaruh paling akhir agar tidak mendominasi.
+    return Array.from(hitung.entries())
+      .map(([kunci, nilai]) => ({ kunci, ...nilai }))
+      .sort((a, b) => {
+        if (a.kunci === TANPA_KATEGORI) return 1;
+        if (b.kunci === TANPA_KATEGORI) return -1;
+        return a.label.localeCompare(b.label, 'id-ID');
+      });
+  }, [items]);
+
+  /**
+   * Dokumen yang lolos filter kategori.
+   *
+   * Penyaringan judul dan status tetap ditangani server (`search`,
+   * `statusFilter`) agar perilakunya sama dengan sumber arsip. Kategori
+   * disaring di sini karena API belum menerima parameter itu.
+   */
+  const itemsTersaring = useMemo(() => {
+    if (!kategoriFilter) return items;
+    return items.filter((dokumen) => {
+      const kunci = dokumen.kategori?.trim() ? dokumen.kategori.trim() : TANPA_KATEGORI;
+      return kunci === kategoriFilter;
+    });
+  }, [items, kategoriFilter]);
 
   /**
    * Membuka pratinjau dokumen.
@@ -282,7 +336,20 @@ export const AdminDocuments: React.FC = () => {
           />
         </div>
         <select
-          className="field-input sm:w-48"
+          className="field-select sm:w-56"
+          value={kategoriFilter}
+          onChange={(event) => setKategoriFilter(event.target.value)}
+          aria-label="Saring kategori dokumen"
+        >
+          <option value="">Semua kategori</option>
+          {daftarKategori.map((kategori) => (
+            <option key={kategori.kunci} value={kategori.kunci}>
+              {kategori.label} ({kategori.jumlah})
+            </option>
+          ))}
+        </select>
+        <select
+          className="field-select sm:w-48"
           value={statusFilter}
           onChange={(event) => setStatusFilter(event.target.value)}
           aria-label="Saring status dokumen"
@@ -307,7 +374,7 @@ export const AdminDocuments: React.FC = () => {
        * keterangan footer hanya saat ada data.
        */}
       <DataTable<ArsipDokumenItem>
-        rows={items}
+        rows={itemsTersaring}
         rowKey={(dokumen) => `${dokumen.sumber}-${dokumen.id}`}
         loading={listQuery.isLoading}
         loadingLabel="Memuat arsip dokumen LPM/LPPM"
@@ -319,13 +386,34 @@ export const AdminDocuments: React.FC = () => {
             : null
         }
         onRetry={() => void listQuery.refetch()}
-        emptyTitle="Belum ada arsip dokumen"
-        emptyDescription="Dokumen mutu yang ditujukan kepada program studi ini akan muncul di sini setelah diterbitkan oleh LPM atau LPPM."
+        /*
+         * Keadaan kosong dibedakan menurut sebabnya: arsip memang kosong, atau
+         * filter kategori yang sedang aktif tidak menyisakan dokumen. Tanpa
+         * pembedaan ini pengguna akan mengira arsipnya kosong padahal hanya
+         * tersaring.
+         */
+        emptyTitle={
+          items.length > 0 && kategoriFilter ? 'Tidak ada dokumen pada kategori ini' : 'Belum ada arsip dokumen'
+        }
+        emptyDescription={
+          items.length > 0 && kategoriFilter
+            ? 'Pilih kategori lain, atau tampilkan semua kategori untuk melihat seluruh dokumen.'
+            : 'Dokumen mutu yang ditujukan kepada program studi ini akan muncul di sini setelah diterbitkan oleh LPM atau LPPM.'
+        }
+        emptyAction={
+          items.length > 0 && kategoriFilter ? (
+            <button type="button" onClick={() => setKategoriFilter('')} className="btn-secondary">
+              Tampilkan semua kategori
+            </button>
+          ) : undefined
+        }
         minWidth={900}
         footer={
           <p className="flex items-center gap-1.5 text-slate-600">
             <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Menampilkan {items.length} dokumen
+            {kategoriFilter
+              ? `Menampilkan ${itemsTersaring.length} dari ${items.length} dokumen`
+              : `Menampilkan ${items.length} dokumen`}
             {meta?.prodiCode ? ` untuk kode prodi ${meta.prodiCode}` : ''}. Sumber: arsip LPM &amp; LPPM
             melalui ONE UNUSU.
           </p>

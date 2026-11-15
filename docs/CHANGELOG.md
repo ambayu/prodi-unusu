@@ -2,6 +2,19 @@
 
 Semua perubahan penting dicatat di sini. Format tanggal: YYYY-MM-DD.
 
+## 2026-11-16 - Halaman Penuh Form Kurikulum & Penawaran MK (Governance Compliance)
+
+### Added
+- **`AdminCurriculumCreate.tsx`**: halaman form penuh (`FormPageTemplate`) untuk Tambah & Ubah Kurikulum (`/admin/kurikulum/baru` & `/admin/kurikulum/:id/ubah`). Field: Nama, Tahun, Keterangan (textarea), Status (radio Aktif/Nonaktif).
+- **`AdminCurriculumItemForm.tsx`**: halaman form penuh untuk Tambah & Ubah Penawaran MK (`/admin/kurikulum/mata-kuliah/baru` & `/admin/kurikulum/mata-kuliah/:id/ubah`). Menggunakan `SearchableSelect` (select2) untuk Kurikulum, MK master, Semester, dan textarea untuk Keterangan.
+- Panel ringkasan kartu kurikulum di atas tabel penawaran pada `/admin/kurikulum` lengkap dengan aksi **Ubah** dan **Hapus** kurikulum.
+
+### Changed
+- Tombol utama header `/admin/kurikulum` diubah menjadi **"Tambah Kurikulum"** (menuju `/admin/kurikulum/baru`).
+- Tombol **"Tambah Mata Kuliah ke Kurikulum"** dipindahkan ke baris filter di atas tabel sebagai tombol sekunder (menuju `/admin/kurikulum/mata-kuliah/baru`).
+- Seluruh `FormModal` di `/admin/kurikulum` dihapus; form >2 field kini 100% mematuhi aturan tata kelola (ADR-004 / `FormPageTemplate`).
+- Field Keterangan pada tabel dibatasi 1 baris (`truncate`) agar tidak merusak tinggi baris tabel.
+
 ## 2026-11-16 - Master Mata Kuliah dan Penawaran Kurikulum Dipisah (ADR-006)
 
 ### Added

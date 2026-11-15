@@ -31,6 +31,7 @@ import { PortalNewsPage } from './pages/PortalNewsPage';
 import { SsoCallback } from './pages/SsoCallback';
 import { AccountPendingPage } from './pages/AccountPendingPage';import { Dashboard } from './pages/admin/Dashboard';
 import { AdminCurriculum } from './pages/admin/AdminCurriculum';
+import { AdminCurriculumItemForm } from './pages/admin/AdminCurriculumItemForm';
 import { AdminCourses } from './pages/admin/AdminCourses';
 import { AdminDocuments } from './pages/admin/AdminDocuments';
 import { AdminLecturers } from './pages/admin/AdminLecturers';
@@ -160,15 +161,31 @@ export const App: React.FC = () => {
           </RequireAuth>
         }
       />
-      {/*
-        Rute form mata kuliah lama dipertahankan sebagai pengalihan ke daftar.
-        Sejak ADR-006 master mata kuliah hanya berisi kode + nama sehingga cukup
-        dikelola lewat `FormModal` di `/admin/mata-kuliah`; halaman form penuh
-        (`AdminCurriculumForm`) tidak lagi dipakai dan berkasnya dihapus.
-      */}
+      {/* Master mata kuliah: form modal di /admin/mata-kuliah */}
       <Route path="/admin/mata-kuliah/baru" element={<Navigate to="/admin/mata-kuliah" replace />} />
       <Route path="/admin/mata-kuliah/:id/ubah" element={<Navigate to="/admin/mata-kuliah" replace />} />
-      <Route path="/admin/kurikulum/baru" element={<Navigate to="/admin/kurikulum" replace />} />
+
+      {/* Kurikulum: form page create & edit penawaran kurikulum */}
+      <Route
+        path="/admin/kurikulum/baru"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['curriculum.create']}>
+              <AdminCurriculumItemForm />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/kurikulum/:id/ubah"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['curriculum.update']}>
+              <AdminCurriculumItemForm />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
       <Route path="/admin/kurikulum/semester/baru" element={<Navigate to="/admin/kurikulum" replace />} />
       <Route
         path="/admin/kurikulum"

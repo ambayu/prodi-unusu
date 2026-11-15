@@ -167,9 +167,9 @@ export const AdminPortalOverview: React.FC = () => {
       cellClassName: '',
       render: (row) => (
         <>
-          <span className="font-mono text-[11px] text-slate-700">{row.hostname}</span>
+          <span className="font-mono text-xs text-slate-700">{row.hostname}</span>
           {row.isPrimary ? (
-            <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">
+            <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-blue-700">
               utama
             </span>
           ) : null}
@@ -182,11 +182,11 @@ export const AdminPortalOverview: React.FC = () => {
       width: 120,
       render: (row) =>
         row.isActive ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
             <CheckCircleIcon className="h-3 w-3" aria-hidden="true" /> Aktif
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-600">
             <XCircleIcon className="h-3 w-3" aria-hidden="true" /> Nonaktif
           </span>
         ),
