@@ -120,49 +120,54 @@ export const CurriculumPage: React.FC = () => {
     {
       key: 'kode',
       header: 'Kode MK',
-      width: 130,
-      cellClassName: 'whitespace-nowrap font-mono text-slate-600',
+      width: 140,
+      cellClassName: 'font-mono text-slate-600',
       render: (course) => course.code,
     },
     {
+      /*
+       * Lebar nama dibatasi, bukan dibiarkan menyerap seluruh sisa tabel.
+       * Judul mata kuliah memang paling panjang, tetapi bila dibiarkan melebar
+       * sampai tepi kanan barisnya jadi terlalu jauh untuk dipindai mata dan
+       * kolom lain terdorong jauh ke kanan.
+       */
       key: 'nama',
-      header: 'Nama MK',
+      header: 'Nama Mata Kuliah',
+      width: 340,
       cellClassName: 'font-medium text-slate-800',
       render: (course) => course.name,
     },
     {
       key: 'sks',
       header: 'SKS',
-      width: 70,
+      width: 64,
       align: 'center',
-      cellClassName: 'text-slate-700',
+      cellClassName: 'whitespace-nowrap text-slate-700',
       render: (course) => course.credits,
     },
     {
       key: 'semester',
       header: 'Smt',
-      width: 80,
+      width: 64,
       align: 'center',
-      cellClassName: 'text-slate-500',
+      cellClassName: 'whitespace-nowrap text-slate-500',
       render: (course) => course.semesterNumber,
     },
     {
       key: 'keterangan',
       header: 'Keterangan',
-      width: 200,
+      width: 180,
       render: (course) =>
         course.description ? (
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700">
-            {course.description}
-          </span>
+          <span className="text-slate-700">{course.description}</span>
         ) : (
-          <span className="text-[10px] italic text-slate-400">-</span>
+          <span className="text-slate-400">—</span>
         ),
     },
     {
       key: 'rps',
       header: 'RPS',
-      width: 130,
+      width: 140,
       align: 'right',
       render: (course) =>
         course.rpsDocuments && course.rpsDocuments.length > 0 ? (
@@ -170,13 +175,13 @@ export const CurriculumPage: React.FC = () => {
             href={course.rpsDocuments[0].fileUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-lg border border-[#1e3a8a]/20 px-2 py-1 text-[11px] font-bold text-[#1e3a8a] transition-colors hover:bg-[#e8eefb]"
+            className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-[#1e3a8a]/20 px-2 py-1 text-xs font-bold text-[#1e3a8a] transition-colors hover:bg-[#e8eefb]"
           >
-            <DocumentArrowDownIcon className="h-3.5 w-3.5" />
+            <DocumentArrowDownIcon className="h-3.5 w-3.5 shrink-0" />
             Lihat RPS
           </a>
         ) : (
-          <span className="text-[11px] text-slate-400">Belum tersedia</span>
+          <span className="text-xs text-slate-400">Belum tersedia</span>
         ),
     },
   ];
@@ -271,7 +276,7 @@ export const CurriculumPage: React.FC = () => {
                     ? 'Tidak ada mata kuliah yang cocok dengan pencarian Anda.'
                     : 'Program studi belum mempublikasikan data kurikulum. Silakan hubungi admin prodi atau periksa kembali nanti.'
                 }
-                minWidth={760}
+                minWidth={920}
                 columns={columns}
               />
             </div>

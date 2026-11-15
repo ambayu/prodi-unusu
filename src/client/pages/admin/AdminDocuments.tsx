@@ -1,7 +1,6 @@
 ﻿import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowTopRightOnSquareIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   EyeIcon,
@@ -37,6 +36,24 @@ const SUMBER_WARNA: Record<ArsipSumber, string> = {
  */
 const TANPA_KATEGORI = '__tanpa_kategori__';
 const LABEL_TANPA_KATEGORI = 'Tanpa kategori';
+
+/**
+ * Menerjemahkan `mimeType` arsip menjadi label jenis berkas singkat.
+ *
+ * Item arsip tidak menyertakan nama berkas, jadi ekstensi disimpulkan dari
+ * jenis MIME-nya. Nilai yang tidak dikenali dibiarkan `null` agar kolom Berkas
+ * menampilkan tanda hubung, bukan tebakan yang menyesatkan.
+ */
+function ekstensiBerkas(mimeType: string | null): string | null {
+  if (!mimeType) return null;
+  const jenis = mimeType.toLowerCase();
+  if (jenis.includes('pdf')) return 'PDF';
+  if (jenis.includes('wordprocessingml') || jenis.includes('msword')) return 'DOCX';
+  if (jenis.includes('spreadsheetml') || jenis.includes('ms-excel')) return 'XLSX';
+  if (jenis.includes('presentationml') || jenis.includes('ms-powerpoint')) return 'PPTX';
+  if (jenis.startsWith('image/')) return jenis.replace('image/', '').toUpperCase();
+  return null;
+}
 
 /** Memformat tanggal ISO menjadi tanggal Indonesia yang ringkas. */
 function formatTanggal(iso: string | null): string {
@@ -407,33 +424,54 @@ export const AdminDocuments: React.FC = () => {
             </button>
           ) : undefined
         }
-        minWidth={900}
-        footer={
-          <p className="flex items-center gap-1.5 text-slate-600">
-            <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-            {kategoriFilter
-              ? `Menampilkan ${itemsTersaring.length} dari ${items.length} dokumen`
-              : `Menampilkan ${items.length} dokumen`}
-            {meta?.prodiCode ? ` untuk kode prodi ${meta.prodiCode}` : ''}. Sumber: arsip LPM &amp; LPPM
-            melalui ONE UNUSU.
-          </p>
-        }
+        minWidth={1080}
         columns={[
           {
             key: 'judul',
-            header: 'Judul',
+            header: 'Judul Dokumen',
             render: (dokumen) => (
-              <>
-                {/* Judul dokumen adalah isi terpenting baris ini: dibuat lebih
-                    besar dan hitam pekat agar menjadi titik pandang. */}
-                <span className="block text-[14px] font-extrabold leading-snug text-slate-900">
-                  {dokumen.judul}
-                </span>
-                <span className="mt-1 block break-all font-mono text-slate-600">
-                  {dokumen.nomor ?? 'tanpa nomor'}
-                </span>
-              </>
+              /*
+               * Judul dokumen adalah isi terpenting baris ini: dibuat lebih
+               * besar dan pekat agar menjadi titik pandang. Nomor dokumen dan
+               * jenis berkas TIDAK lagi menumpang di sini — keduanya punya
+               * kolom masing-masing supaya bisa dipindai per kolom.
+               */
+              <span className="block text-[14px] font-extrabold leading-snug text-slate-900">
+                {dokumen.judul}
+              </span>
             ),
+          },
+          {
+            key: 'nomor',
+            header: 'Nomor Dokumen',
+            width: 190,
+            render: (dokumen) =>
+              dokumen.nomor ? (
+                <span className="block break-all font-mono text-slate-700">{dokumen.nomor}</span>
+              ) : (
+                <span className="text-slate-400">—</span>
+              ),
+          },
+          {
+            key: 'berkas',
+            header: 'Berkas',
+            width: 110,
+            align: 'center',
+            render: (dokumen) => {
+              /*
+               * Ekstensi diambil dari `mimeType` karena item arsip tidak
+               * membawa nama berkas. Bila jenis belum diketahui, tampilkan
+               * tanda hubung alih-alih menebak.
+               */
+              const jenis = ekstensiBerkas(dokumen.mimeType);
+              return jenis ? (
+                <span className="inline-block rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs font-bold uppercase text-slate-600">
+                  {jenis}
+                </span>
+              ) : (
+                <span className="text-slate-400">—</span>
+              );
+            },
           },
           {
             key: 'sumber',
@@ -451,20 +489,21 @@ export const AdminDocuments: React.FC = () => {
           {
             key: 'kategori',
             header: 'Kategori',
-            width: 150,
-            render: (dokumen) => dokumen.kategori ?? '—',
+            width: 160,
+            render: (dokumen) => dokumen.kategori ?? <span className="text-slate-400">—</span>,
           },
           {
             key: 'tahun',
             header: 'Tahun',
             width: 80,
+            align: 'center',
             cellClassName: 'whitespace-nowrap',
-            render: (dokumen) => dokumen.tahun ?? '—',
+            render: (dokumen) => dokumen.tahun ?? <span className="text-slate-400">—</span>,
           },
           {
             key: 'status',
             header: 'Status',
-            width: 100,
+            width: 110,
             render: (dokumen) => (
               <span
                 className={`inline-block max-w-full truncate rounded px-2 py-1 align-middle font-bold ${

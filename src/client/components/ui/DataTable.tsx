@@ -178,6 +178,11 @@ export function DataTable<T>({
                       {globalIndex + 1}
                     </td>
                   ) : null}
+                  {/*
+                   * Pemutusan paksa teks panjang ditangani aturan
+                   * `.table-base tbody td` di index.css, sehingga berlaku untuk
+                   * semua tabel tanpa bergantung pada kelas Tailwind.
+                   */}
                   {columns.map((kolom) => (
                     <td
                       key={kolom.key}

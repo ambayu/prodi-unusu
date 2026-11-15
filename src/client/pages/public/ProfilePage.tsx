@@ -43,7 +43,7 @@ export const ProfilePage: React.FC = () => {
         description={`Sejarah, deskripsi, tujuan, sasaran, dan struktur organisasi ${unitLabel.toLowerCase()}.`}
       />
 
-      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         {profileQuery.isLoading ? (
           <LoadingState label="Memuat profil" rows={3} />
         ) : profileQuery.isError ? (
@@ -68,7 +68,7 @@ export const ProfilePage: React.FC = () => {
                 <h2 className="border-l-2 border-[#fbbf24] pl-3 text-lg font-extrabold tracking-tight text-slate-900">
                   {section.label}
                 </h2>
-                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-slate-700">
                   {profile?.[section.key] as string}
                 </p>
               </article>

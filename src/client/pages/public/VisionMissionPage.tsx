@@ -42,7 +42,7 @@ export const VisionMissionPage: React.FC = () => {
         description={`Arah pengembangan dan komitmen ${unitLabel.toLowerCase()} dalam penyelenggaraan Tridharma Perguruan Tinggi.`}
       />
 
-      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         {profileQuery.isLoading ? (
           <LoadingState label="Memuat visi dan misi" rows={2} />
         ) : profileQuery.isError ? (
@@ -56,7 +56,7 @@ export const VisionMissionPage: React.FC = () => {
             description={`${unitLabel} belum mengisi konten visi dan misi.`}
           />
         ) : (
-          <div className="space-y-6">
+          <div className="max-w-3xl space-y-6">
             {vision ? (
               <div className="rounded-2xl bg-[#1e3a8a] p-8">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#fbbf24]">Visi</p>

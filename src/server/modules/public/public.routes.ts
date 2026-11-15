@@ -562,4 +562,205 @@ router.get(
   }),
 );
 
+/**
+ * GET /api/v1/public/all-curriculums
+ *
+ * Endpoint API publik/inter-service lintas prodi untuk mengambil seluruh data kurikulum
+ * dan mata kuliah dari semua program studi aktif di UNUSU.
+ * Digunakan oleh ONE UNUSU API Hub (`/api/v1/inter-service/kurikulum-prodi`).
+ *
+ * Filter query yang didukung:
+ * - prodi: kode (mis. "TIF") atau nama prodi
+ * - year: tahun kurikulum (angka)
+ * - semester: kode semester (mis. "2025-2026-GANJIL") atau nama semester
+ * - search: kata kunci pencarian kode atau nama mata kuliah
+ * - isActive: boolean (hanya kurikulum aktif atau semua)
+ */
+router.get(
+  '/all-curriculums',
+  asyncHandler(async (req, res) => {
+    const prodiQuery = typeof req.query.prodi === 'string' ? req.query.prodi.trim().toLowerCase() : undefined;
+    const yearQuery = req.query.year ? Number(req.query.year) : undefined;
+    const semesterQuery = typeof req.query.semester === 'string' ? req.query.semester.trim().toLowerCase() : undefined;
+    const searchQuery = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : undefined;
+    const isActiveQuery = req.query.isActive !== undefined ? req.query.isActive === 'true' || req.query.isActive === '1' : true;
+
+    // Filter kurikulum dasar
+    const curriculumWhere: any = {};
+    if (isActiveQuery !== undefined) {
+      curriculumWhere.isActive = isActiveQuery;
+    }
+    if (yearQuery && !isNaN(yearQuery)) {
+      curriculumWhere.year = yearQuery;
+    }
+
+    if (prodiQuery) {
+      curriculumWhere.studyProgram = {
+        OR: [
+          { code: { contains: prodiQuery } },
+          { name: { contains: prodiQuery } },
+        ],
+      };
+    }
+
+    const curriculums = await prisma.curriculum.findMany({
+      where: curriculumWhere,
+      orderBy: [{ year: 'desc' }, { id: 'desc' }],
+      include: {
+        studyProgram: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            degree: true,
+            faculty: { select: { id: true, code: true, name: true } },
+          },
+        },
+        items: {
+          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+          include: {
+            course: { select: { id: true, code: true, name: true } },
+            academicSemester: { select: { id: true, name: true, code: true, isActive: true } },
+            rpsDocuments: {
+              where: { isPublic: true },
+              orderBy: { createdAt: 'desc' },
+              select: { id: true, title: true, fileUrl: true, revision: true },
+            },
+          },
+        },
+        semesters: {
+          orderBy: { semesterNumber: 'asc' },
+          include: {
+            courses: {
+              orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+              include: {
+                academicSemester: { select: { id: true, name: true, code: true, isActive: true } },
+                rpsDocuments: {
+                  where: { isPublic: true },
+                  orderBy: { createdAt: 'desc' },
+                  select: { id: true, title: true, fileUrl: true, revision: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Format dan gabungkan items (ADR-006) dan legacy courses
+    const results = curriculums.map((c) => {
+      // Normalisasi mata kuliah
+      let coursesList: any[] = [];
+
+      // 1. Dari items baru
+      for (const it of c.items) {
+        coursesList.push({
+          id: it.id,
+          source: 'curriculum_items',
+          courseId: it.course.id,
+          code: it.course.code,
+          name: it.course.name,
+          credits: it.credits,
+          description: it.description,
+          academicSemester: it.academicSemester
+            ? {
+                id: it.academicSemester.id,
+                code: it.academicSemester.code,
+                name: it.academicSemester.name,
+                isActive: it.academicSemester.isActive,
+              }
+            : null,
+          lecturers: (it.lecturersData as any[]) ?? [],
+          rpsDocuments: it.rpsDocuments.map((rps) => ({
+            id: rps.id,
+            title: rps.title,
+            fileUrl: rps.fileUrl,
+            revision: rps.revision,
+          })),
+        });
+      }
+
+      // 2. Dari legacy courses
+      for (const sem of c.semesters) {
+        for (const legacy of sem.courses) {
+          coursesList.push({
+            id: legacy.id,
+            source: 'curriculum_courses',
+            courseId: null,
+            code: legacy.code,
+            name: legacy.name,
+            credits: legacy.credits,
+            description: legacy.description,
+            academicSemester: legacy.academicSemester
+              ? {
+                  id: legacy.academicSemester.id,
+                  code: legacy.academicSemester.code,
+                  name: legacy.academicSemester.name,
+                  isActive: legacy.academicSemester.isActive,
+                }
+              : null,
+            lecturers: (legacy.lecturersData as any[]) ?? [],
+            rpsDocuments: legacy.rpsDocuments.map((rps) => ({
+              id: rps.id,
+              title: rps.title,
+              fileUrl: rps.fileUrl,
+              revision: rps.revision,
+            })),
+          });
+        }
+      }
+
+      // Filter mata kuliah jika ada query semester atau search
+      if (semesterQuery) {
+        coursesList = coursesList.filter((crs) => {
+          if (!crs.academicSemester) return semesterQuery === 'none' || semesterQuery === 'tanpa';
+          return (
+            crs.academicSemester.code.toLowerCase().includes(semesterQuery) ||
+            crs.academicSemester.name.toLowerCase().includes(semesterQuery)
+          );
+        });
+      }
+
+      if (searchQuery) {
+        coursesList = coursesList.filter(
+          (crs) =>
+            crs.code.toLowerCase().includes(searchQuery) ||
+            crs.name.toLowerCase().includes(searchQuery),
+        );
+      }
+
+      const totalCredits = coursesList.reduce((acc, crs) => acc + crs.credits, 0);
+
+      return {
+        id: c.id,
+        name: c.name,
+        year: c.year,
+        description: c.description,
+        isActive: c.isActive,
+        studyProgram: {
+          id: c.studyProgram.id,
+          code: c.studyProgram.code,
+          name: c.studyProgram.name,
+          degree: c.studyProgram.degree,
+          faculty: c.studyProgram.faculty ? c.studyProgram.faculty.name : null,
+        },
+        totalCourses: coursesList.length,
+        totalCredits,
+        courses: coursesList,
+      };
+    });
+
+    // Bila ada pencarian mata kuliah atau semester, jangan tampilkan kurikulum yang daftar matkulnya 0
+    const filteredResults = (semesterQuery || searchQuery)
+      ? results.filter((r) => r.totalCourses > 0)
+      : results;
+
+    res.json({
+      success: true,
+      totalCurriculums: filteredResults.length,
+      curriculums: filteredResults,
+    });
+  }),
+);
+
 export default router;
