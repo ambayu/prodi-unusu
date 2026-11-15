@@ -1,18 +1,13 @@
-import React from 'react';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import React, { useMemo, useState } from 'react';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { EmptyState, ErrorState, LoadingState } from './States';
 
 /**
- * DataTable: tabel data standar ONE UNUSU.
- *
- * Sebelumnya setiap halaman menulis ulang struktur tabel, pembungkus scroll,
- * dan percabangan loading/kosong/error sendiri. Akibatnya lebar kolom dan
- * ukuran huruf berbeda-beda antathalaman, dan perbaikan tampilan harus
- * disalin ke belasan berkas. Komponen ini menyatukannya.
+ * DataTable: tabel data standar ONE UNUSU dengan dukungan pagination otomatis.
  *
  * Kolom didefinisikan sebagai data (`columns`) sehingga lebar kolom bersifat
- * tetap dan tidak lagi ditentukan oleh panjang isi — inilah yang mencegah
- * kolom saling menimpa saat judul dokumen sangat panjang.
+ * tetap dan tidak lagi ditentukan oleh panjang isi. Mendukung pagination
+ * klien bawaan yang otomatis menghitung nomor urut dan menyajikan navigasi.
  */
 
 export interface DataTableColumn<T> {
@@ -20,7 +15,7 @@ export interface DataTableColumn<T> {
   key: string;
   /** Judul kolom pada header tabel. */
   header: React.ReactNode;
-  /** Isi sel. Menerima baris dan indeksnya. */
+  /** Isi sel. Menerima baris dan indeksnya (indeks global dalam data). */
   render: (row: T, index: number) => React.ReactNode;
   /**
    * Lebar kolom. Angka dianggap piksel. Kolom tanpa `width` berbagi sisa ruang
@@ -64,11 +59,18 @@ export interface DataTableProps<T> {
   minWidth?: number;
   /**
    * Tampilkan kolom nomor urut paling kiri. Bawaan `true` agar seluruh tabel
-   * di aplikasi konsisten. Matikan hanya bila tabel memang tidak berurutan
-   * (mis. tabel dua kolom yang isinya pasangan kunci-nilai).
+   * di aplikasi konsisten. Matikan hanya bila tabel memang tidak berurutan.
    */
   showRowNumber?: boolean;
-  /** Isi tambahan di bawah tabel, mis. keterangan jumlah data. */
+  /**
+   * Jumlah baris per halaman untuk pagination otomatis.
+   * Setel `null` atau `0` untuk mematikan pagination (tampilkan semua baris).
+   * Bawaan: 10 baris per halaman.
+   */
+  pageSize?: number | null;
+  /** Opsi ukuran halaman yang bisa dipilih pengguna. Bawaan [10, 25, 50]. */
+  pageSizeOptions?: number[];
+  /** Isi tambahan di bawah tabel, mis. ringkasan data. */
   footer?: React.ReactNode;
   className?: string;
 }
@@ -93,26 +95,43 @@ export function DataTable<T>({
   loadingRows = 4,
   minWidth = 720,
   showRowNumber = true,
+  pageSize = 10,
+  pageSizeOptions = [10, 25, 50],
   footer,
   className = '',
 }: DataTableProps<T>) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState<number>(pageSize && pageSize > 0 ? pageSize : 10);
+
+  const enablePagination = pageSize !== null && pageSize > 0;
+  const totalRows = rows.length;
+  const totalPages = enablePagination ? Math.max(1, Math.ceil(totalRows / limit)) : 1;
+
+  // Jaga agar current page tidak melampaui totalPages saat filter/pencarian berubah
+  const safePage = Math.min(currentPage, totalPages);
+  if (safePage !== currentPage && totalPages > 0) {
+    setCurrentPage(safePage);
+  }
+
+  const paginatedRows = useMemo(() => {
+    if (!enablePagination) return rows;
+    const start = (safePage - 1) * limit;
+    return rows.slice(start, start + limit);
+  }, [rows, enablePagination, safePage, limit]);
+
+  const startIndex = (safePage - 1) * limit;
+
   if (loading) return <LoadingState label={loadingLabel} rows={loadingRows} />;
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   if (rows.length === 0) {
     return <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />;
   }
 
-  /**
-   * `table-fixed` wajib dipakai bersama `<colgroup>`: tanpa keduanya lebar
-   * kolom dihitung dari isi, sehingga sel panjang (judul, uraian) mendorong
-   * kolom lain sampai badge dan tombol aksi saling menimpa.
-   */
   return (
     <div className={className}>
       <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs">
         <table className="table-base table-fixed" style={{ minWidth }}>
           <colgroup>
-            {/* Lebar tetap 56px agar nomor tidak melebar saat mencapai puluhan. */}
             {showRowNumber ? <col style={{ width: '56px' }} /> : null}
             {columns.map((kolom) => (
               <col
@@ -150,59 +169,141 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, index) => (
-              /*
-               * Sorotan baris saat kursor melewati memberi umpan balik bahwa
-               * baris dapat diinteraksikan. Ditaruh di komponen agar semua
-               * tabel berperilaku sama.
-               */
-              <tr key={rowKey(row, index)} className="transition-colors hover:bg-slate-50/70">
-                {showRowNumber ? (
-                  <td className="text-center font-semibold tabular-nums text-slate-500">
-                    {index + 1}
-                  </td>
-                ) : null}
-                {columns.map((kolom) => (
-                  /*
-                   * `break-words` mencegah isi panjang meluber ke kolom
-                   * sebelah; tinggi baris menyesuaikan, bukan menimpa.
-                   */
-                  <td
-                    key={kolom.key}
-                    className={[
-                      'break-words',
-                      PERATAAN[kolom.align ?? 'left'],
-                      kolom.className ?? '',
-                      kolom.cellClassName ?? '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  >
-                    {kolom.render(row, index)}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {paginatedRows.map((row, localIndex) => {
+              const globalIndex = enablePagination ? startIndex + localIndex : localIndex;
+              return (
+                <tr key={rowKey(row, globalIndex)} className="transition-colors hover:bg-slate-50/70">
+                  {showRowNumber ? (
+                    <td className="text-center font-semibold tabular-nums text-slate-500">
+                      {globalIndex + 1}
+                    </td>
+                  ) : null}
+                  {columns.map((kolom) => (
+                    <td
+                      key={kolom.key}
+                      className={[
+                        'break-words',
+                        PERATAAN[kolom.align ?? 'left'],
+                        kolom.className ?? '',
+                        kolom.cellClassName ?? '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
+                      {kolom.render(row, globalIndex)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
+
+        {/* Footer Bar: Pagination Controls & Info */}
+        {enablePagination && totalRows > 0 && (
+          <div className="flex flex-col gap-3 border-t border-[#CBD5E1]/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between bg-white rounded-b-[14px]">
+            {/* Sisi Kiri: Info Jumlah Data & Pilihan Limit */}
+            <div className="flex items-center gap-3 text-xs text-slate-600">
+              <span>
+                Menampilkan{' '}
+                <span className="font-bold text-slate-900">{startIndex + 1}</span>–
+                <span className="font-bold text-slate-900">{Math.min(startIndex + limit, totalRows)}</span> dari{' '}
+                <span className="font-bold text-slate-900">{totalRows}</span> data
+              </span>
+
+              {pageSizeOptions.length > 1 && totalRows > pageSizeOptions[0] && (
+                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                  <span className="text-[11px] text-slate-500">Tampilkan:</span>
+                  <select
+                    value={limit}
+                    onChange={(e) => {
+                      setLimit(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-800 focus:border-[#1e3a8a] focus:outline-none"
+                    aria-label="Pilih jumlah data per halaman"
+                  >
+                    {pageSizeOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Sisi Kanan: Tombol Navigasi Halaman */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={safePage <= 1}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:pointer-events-none"
+                  aria-label="Halaman sebelumnya"
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                </button>
+
+                {/* Nomor Halaman */}
+                <div className="flex items-center gap-1 px-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => {
+                      // Selalu tampilkan halaman pertama, terakhir, dan yang berada di sekitar safePage
+                      return p === 1 || p === totalPages || Math.abs(p - safePage) <= 1;
+                    })
+                    .reduce<Array<number | string>>((acc, p, idx, arr) => {
+                      if (idx > 0 && p - (arr[idx - 1] as number) > 1) {
+                        acc.push('...');
+                      }
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((item, idx) => {
+                      if (typeof item === 'string') {
+                        return (
+                          <span key={`dots-${idx}`} className="px-1 text-xs text-slate-400">
+                            ...
+                          </span>
+                        );
+                      }
+                      const active = item === safePage;
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => setCurrentPage(item)}
+                          className={`inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-xs font-bold transition-colors ${
+                            active
+                              ? 'bg-[#1e3a8a] text-white shadow-2xs'
+                              : 'text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={safePage >= totalPages}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:pointer-events-none"
+                  aria-label="Halaman berikutnya"
+                >
+                  <ChevronRightIcon className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
       {footer ? <div className="mt-3">{footer}</div> : null}
     </div>
   );
 }
-
-/**
- * Tombol "Coba lagi" mandiri, untuk halaman yang menaruh galat di luar tabel.
- * Disediakan agar tidak ada halaman yang menulis ulang gayanya.
- */
-export const RetryButton: React.FC<{ onClick: () => void; label?: string }> = ({
-  onClick,
-  label = 'Coba lagi',
-}) => (
-  <button type="button" onClick={onClick} className="btn-secondary">
-    <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
-    {label}
-  </button>
-);
 
 export default DataTable;

@@ -16,6 +16,7 @@ import { usePermission } from '../../hooks/useSite';
 import {
   curriculumApi,
   curriculumItemApi,
+  academicSemesterApi,
   type Curriculum,
   type CurriculumItem,
 } from '../../services/contentApi';
@@ -37,6 +38,7 @@ export const AdminCurriculum: React.FC = () => {
   const { has } = usePermission();
 
   const [search, setSearch] = useState('');
+  const [semesterFilter, setSemesterFilter] = useState<string>('ALL');
   const [deleteTarget, setDeleteTarget] = useState<CurriculumItem | null>(null);
 
   const itemsQuery = useQuery({
@@ -49,18 +51,35 @@ export const AdminCurriculum: React.FC = () => {
     queryFn: () => curriculumApi.list().then((res) => res.data.curriculums),
   });
 
+  const semestersQuery = useQuery({
+    queryKey: ['admin', 'academic-semesters'],
+    queryFn: () => academicSemesterApi.list().then((res) => res.data.semesters),
+  });
+
   const items = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data]);
   const curriculums: Curriculum[] = useMemo(() => curriculumsQuery.data ?? [], [curriculumsQuery.data]);
+  const semesters = useMemo(() => semestersQuery.data ?? [], [semestersQuery.data]);
 
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    if (!keyword) return items;
-    return items.filter(
-      (item) =>
+    return items.filter((item) => {
+      // Filter semester
+      if (semesterFilter !== 'ALL') {
+        if (semesterFilter === 'NONE') {
+          if (item.academicSemesterId !== null) return false;
+        } else if (String(item.academicSemesterId) !== semesterFilter) {
+          return false;
+        }
+      }
+
+      // Filter keyword
+      if (!keyword) return true;
+      return (
         item.course.code.toLowerCase().includes(keyword) ||
-        item.course.name.toLowerCase().includes(keyword),
-    );
-  }, [items, search]);
+        item.course.name.toLowerCase().includes(keyword)
+      );
+    });
+  }, [items, search, semesterFilter]);
 
   const totalCredits = filtered.reduce((sum, item) => sum + item.credits, 0);
 
@@ -95,17 +114,36 @@ export const AdminCurriculum: React.FC = () => {
       }
     >
       <div className="space-y-4">
-        {/* Baris Pencarian */}
-        <div className="relative max-w-md">
-          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="search"
-            className="field-input pl-9"
-            placeholder="Cari kode atau nama mata kuliah..."
-            aria-label="Cari kode atau nama mata kuliah"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
+        {/* Baris Filter & Pencarian */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative max-w-md flex-1">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              className="field-input pl-9"
+              placeholder="Cari kode atau nama mata kuliah..."
+              aria-label="Cari kode atau nama mata kuliah"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+
+          <div className="w-full sm:w-64">
+            <select
+              value={semesterFilter}
+              onChange={(e) => setSemesterFilter(e.target.value)}
+              className="field-input cursor-pointer"
+              aria-label="Filter berdasarkan semester"
+            >
+              <option value="ALL">Semua Semester</option>
+              {semesters.map((s) => (
+                <option key={s.id} value={String(s.id)}>
+                  {s.name} ({s.code}){s.isActive ? ' - Aktif' : ''}
+                </option>
+              ))}
+              <option value="NONE">Tanpa Semester</option>
+            </select>
+          </div>
         </div>
 
         {/* Tabel Penawaran */}
@@ -141,17 +179,22 @@ export const AdminCurriculum: React.FC = () => {
             ) : (
               <button
                 type="button"
-                onClick={() => setSearch('')}
+                onClick={() => {
+                  setSearch('');
+                  setSemesterFilter('ALL');
+                }}
                 className="btn-secondary"
               >
-                Kosongkan pencarian
+                Reset filter & pencarian
               </button>
             )
           }
           minWidth={1180}
+          pageSize={10}
+          pageSizeOptions={[10, 25, 50]}
           footer={
             <p className="text-[11px] text-slate-500">
-              Menampilkan {filtered.length} dari {items.length} penawaran • {totalCredits} SKS
+              Total {totalCredits} SKS pada penawaran kurikulum aktif.
             </p>
           }
           columns={

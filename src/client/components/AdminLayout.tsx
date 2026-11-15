@@ -714,46 +714,123 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <div className="my-1 border-t border-[#CBD5E1]/70" />
 
                     <div className="max-h-[340px] overflow-y-auto">
-                      {Object.entries(
-                        availablePrograms.reduce<Record<string, typeof availablePrograms>>((acc, program) => {
-                          const faculty = program.faculty?.name || 'Lainnya';
-                          if (!acc[faculty]) acc[faculty] = [];
-                          acc[faculty].push(program);
-                          return acc;
-                        }, {}),
-                      ).map(([facultyName, programs]) => (
-                        <div key={facultyName}>
-                          <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            {facultyName}
-                          </p>
-                          {programs.map((program) => {
-                            const active = activeTenantId === program.id && menuScope === 'prodi';
-                            return (
-                              <button
-                                key={program.id}
-                                type="button"
-                                onClick={() => {
-                                  adminMenuApi.clearCache();
-                                  setProdiOpen(false);
-                                  void setActiveTenant(program.id);
-                                }}
-                                className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px] transition-colors hover:bg-slate-100 ${
-                                  active ? 'bg-slate-50 font-bold text-[#1e3a8a]' : 'text-slate-700'
+                      {/*
+                       * Program studi dikelompokkan per fakultas. Sejak scope
+                       * website fakultas tersedia, nama fakultas bukan lagi
+                       * sekadar label statis: ia menjadi tombol untuk masuk ke
+                       * panel fakultas tersebut, lalu program studinya
+                       * ditampilkan di bawahnya.
+                       */}
+                      {availableFaculties.map((fakultas) => {
+                        const programFakultas = availablePrograms.filter(
+                          (program) => program.faculty?.id === fakultas.id,
+                        );
+                        const fakultasAktif = activeFacultyId === fakultas.id;
+                        return (
+                          <div key={fakultas.id}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                adminMenuApi.clearCache();
+                                setProdiOpen(false);
+                                void setActiveFaculty(fakultas.id);
+                                navigate('/admin');
+                              }}
+                              title={`Kelola website ${fakultas.name}`}
+                              className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-[12px] font-bold uppercase tracking-wide transition-colors hover:bg-blue-50 ${
+                                fakultasAktif ? 'bg-slate-50 text-[#1e3a8a]' : 'text-slate-600'
+                              }`}
+                            >
+                              <BuildingOfficeIcon
+                                className={`h-4 w-4 shrink-0 ${
+                                  fakultasAktif ? 'text-[#1e3a8a]' : 'text-slate-400'
                                 }`}
-                              >
-                                <AcademicCapIcon
-                                  className={`h-4 w-4 shrink-0 ${active ? 'text-[#1e3a8a]' : 'text-slate-400'}`}
-                                />
-                                <span className="w-12 shrink-0 font-mono text-[11px] font-bold text-slate-500">
-                                  {program.code}
-                                </span>
-                                <span className="min-w-0 flex-1 truncate">{program.name}</span>
-                                {active ? <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" /> : null}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ))}
+                              />
+                              <span className="min-w-0 flex-1 truncate">{fakultas.name}</span>
+                              <span className="shrink-0 text-[11px] font-semibold normal-case tracking-normal text-slate-500">
+                                {programFakultas.length} prodi
+                              </span>
+                              {fakultasAktif ? (
+                                <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" />
+                              ) : null}
+                            </button>
+
+                            {programFakultas.map((program) => {
+                              const active = activeTenantId === program.id && menuScope === 'prodi';
+                              return (
+                                <button
+                                  key={program.id}
+                                  type="button"
+                                  onClick={() => {
+                                    adminMenuApi.clearCache();
+                                    setProdiOpen(false);
+                                    void setActiveTenant(program.id);
+                                  }}
+                                  className={`flex w-full items-center gap-2.5 py-2 pl-9 pr-4 text-left text-[13px] transition-colors hover:bg-slate-100 ${
+                                    active ? 'bg-slate-50 font-bold text-[#1e3a8a]' : 'text-slate-700'
+                                  }`}
+                                >
+                                  <AcademicCapIcon
+                                    className={`h-4 w-4 shrink-0 ${active ? 'text-[#1e3a8a]' : 'text-slate-400'}`}
+                                  />
+                                  <span className="w-12 shrink-0 font-mono text-xs font-bold text-slate-500">
+                                    {program.code}
+                                  </span>
+                                  <span className="min-w-0 flex-1 truncate">{program.name}</span>
+                                  {active ? <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" /> : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+
+                      {/*
+                       * Program studi yang fakultasnya tidak ikut termuat (mis.
+                       * fakultas nonaktif) tetap ditampilkan agar tidak ada
+                       * prodi yang hilang dari pemilih.
+                       */}
+                      {(() => {
+                        const tanpaFakultas = availablePrograms.filter(
+                          (program) =>
+                            !program.faculty?.id ||
+                            !availableFaculties.some((f) => f.id === program.faculty?.id),
+                        );
+                        if (tanpaFakultas.length === 0) return null;
+                        return (
+                          <div>
+                            <p className="px-4 py-1.5 text-[12px] font-bold uppercase tracking-wide text-slate-500">
+                              Fakultas lain
+                            </p>
+                            {tanpaFakultas.map((program) => {
+                              const active = activeTenantId === program.id && menuScope === 'prodi';
+                              return (
+                                <button
+                                  key={program.id}
+                                  type="button"
+                                  onClick={() => {
+                                    adminMenuApi.clearCache();
+                                    setProdiOpen(false);
+                                    void setActiveTenant(program.id);
+                                  }}
+                                  className={`flex w-full items-center gap-2.5 py-2 pl-9 pr-4 text-left text-[13px] transition-colors hover:bg-slate-100 ${
+                                    active ? 'bg-slate-50 font-bold text-[#1e3a8a]' : 'text-slate-700'
+                                  }`}
+                                >
+                                  <AcademicCapIcon
+                                    className={`h-4 w-4 shrink-0 ${active ? 'text-[#1e3a8a]' : 'text-slate-400'}`}
+                                  />
+                                  <span className="w-12 shrink-0 font-mono text-xs font-bold text-slate-500">
+                                    {program.code}
+                                  </span>
+                                  <span className="min-w-0 flex-1 truncate">{program.name}</span>
+                                  {active ? <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" /> : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
