@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -26,6 +26,24 @@ interface PublikasiItem {
 }
 
 /**
+ * Gambar hero bawaan per fakultas.
+ *
+ * Berkas sudah tersedia di `public/images/fakultas/`. Dipakai sebagai slide
+ * bawaan bila admin belum menyusun hero sendiri lewat Page Builder, sehingga
+ * setiap fakultas tetap punya wajah visual yang berbeda sejak awal.
+ */
+const HERO_IMAGES_BY_FACULTY: Record<string, string[]> = {
+  FIK: ['/images/fakultas/fik.png', '/images/prodi/prodi-coding.png', '/images/prodi/campus-building-header.png'],
+  FIP: ['/images/fakultas/fip.png', '/images/prodi/prodi-education.png', '/images/prodi/campus-building-header.png'],
+  FE: ['/images/fakultas/fe.png', '/images/prodi/prodi-finance.png', '/images/prodi/campus-building-header.png'],
+  FAPERTA: ['/images/fakultas/faperta.png', '/images/prodi/campus-building-header.png'],
+  FIKES: ['/images/fakultas/fikes.png', '/images/prodi/prodi-analytics.png', '/images/prodi/campus-building-header.png'],
+  FAI: ['/images/fakultas/fai.png', '/images/prodi/prodi-education.png', '/images/prodi/campus-building-header.png'],
+};
+
+const HERO_DEFAULT = ['/heroslider-full.png', '/hero-campus.png'];
+
+/**
  * Beranda website fakultas.
  *
  * Sebelumnya fakultas memakai beranda prodi yang sama persis: hero slider,
@@ -46,11 +64,51 @@ export const FacultyLandingPage: React.FC = () => {
   const primary = tenant?.theme?.primaryColor ?? '#1e3a8a';
   const accent = tenant?.theme?.accentColor ?? '#fbbf24';
 
+  // ---- Hero slider ----
+  const slides = HERO_IMAGES_BY_FACULTY[tenant?.code ?? ''] ?? HERO_DEFAULT;
+  const [slideIdx, setSlideIdx] = useState(0);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const timer = setInterval(() => {
+      setSlideIdx((prev) => (prev + 1) % slides.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
   const directoryQuery = useQuery({
     queryKey: ['public', 'directory'],
     queryFn: () => api.get<DirectoryResponse>('/public/directory').then((res) => res.data),
     staleTime: 5 * 60 * 1000,
   });
+
+  /**
+   * Profil fakultas dari seeder (`seed-faculty-content.ts`).
+   *
+   * `overview` dipakai sebagai isi blok "Tentang Fakultas", dan
+   * `heroImageUrl` sebagai gambar pendamping. Bila admin belum mengisinya,
+   * tampilan memakai teks bawaan dan gambar fakultas yang tersedia.
+   */
+  const tentangQuery = useQuery({
+    queryKey: ['public', 'profile', tenant?.id ?? null],
+    queryFn: () =>
+      api
+        .get<{ profile: { overview?: string | null; heroImageUrl?: string | null } | null }>(
+          '/public/profile',
+        )
+        .then((res) => res.data.profile),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const overview =
+    typeof tentangQuery.data?.overview === 'string' && tentangQuery.data.overview.trim()
+      ? tentangQuery.data.overview.trim()
+      : null;
+
+  const heroGambar =
+    (typeof tentangQuery.data?.heroImageUrl === 'string' && tentangQuery.data.heroImageUrl.trim()) ||
+    slides[0] ||
+    '/rektorat-unusu.jpg';
 
   const beritaQuery = useQuery({
     queryKey: ['public', 'posts', 3],
@@ -69,59 +127,157 @@ export const FacultyLandingPage: React.FC = () => {
 
   return (
     <div className="bg-white">
-      {/* ---------- HERO ---------- */}
-      <section className="relative overflow-hidden px-4 py-20 text-white" style={{ backgroundColor: primary }}>
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full opacity-20"
-          style={{ backgroundColor: accent }}
-        />
-        <div className="relative mx-auto max-w-7xl">
-          <p className="text-xs font-bold uppercase tracking-[0.25em]" style={{ color: accent }}>
-            Universitas Nahdlatul Ulama Sumatera Utara
-          </p>
-          <h1 className="mt-4 max-w-3xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-            {namaFakultas}
-          </h1>
-          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">
-            {tenant?.websiteSetting?.siteTagline ??
-              `Menyelenggarakan pendidikan, penelitian, dan pengabdian masyarakat di lingkungan ${namaFakultas}.`}
-          </p>
+      {/* ---------- HERO SLIDER ---------- */}
+      <section className="relative w-full overflow-hidden bg-slate-900 select-none">
+        <div className="relative w-full aspect-[21/9] min-h-[320px] sm:min-h-[420px] lg:min-h-[500px]">
+          {slides.map((src, idx) => (
+            <img
+              key={src}
+              src={src}
+              alt={`${namaFakultas} — gambar ${idx + 1}`}
+              className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-700 ease-in-out ${
+                idx === slideIdx ? 'opacity-100' : 'opacity-0'
+              }`}
+              loading={idx === 0 ? 'eager' : 'lazy'}
+            />
+          ))}
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              to="/prodi"
-              className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold text-slate-950 shadow-md transition-all hover:brightness-105 active:scale-95"
-              style={{ backgroundColor: accent }}
-            >
-              Lihat Program Studi
-              <ArrowRightIcon className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/profil"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/40 px-5 py-3 text-xs font-extrabold text-white transition-colors hover:bg-white/10"
-            >
-              Profil Fakultas
-            </Link>
+          {/* Lapisan gelap agar teks tetap terbaca di atas gambar apa pun */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/55 to-black/25" />
+
+          {/* Teks identitas fakultas */}
+          <div className="absolute inset-0 flex items-center">
+            <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+              <p className="text-xs font-bold uppercase tracking-[0.25em]" style={{ color: accent }}>
+                Universitas Nahdlatul Ulama Sumatera Utara
+              </p>
+              <h1 className="mt-3 max-w-3xl text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
+                {namaFakultas}
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">
+                {tenant?.websiteSetting?.siteTagline ??
+                  `Menyelenggarakan pendidikan, penelitian, dan pengabdian masyarakat di lingkungan ${namaFakultas}.`}
+              </p>
+
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Link
+                  to="/prodi"
+                  className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold text-slate-950 shadow-md transition-all hover:brightness-105 active:scale-95"
+                  style={{ backgroundColor: accent }}
+                >
+                  Lihat Program Studi
+                  <ArrowRightIcon className="h-4 w-4" />
+                </Link>
+                <Link
+                  to="/profil"
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/40 px-5 py-3 text-xs font-extrabold text-white transition-colors hover:bg-white/10"
+                >
+                  Profil Fakultas
+                </Link>
+              </div>
+            </div>
           </div>
 
-          {/* Ringkasan angka */}
-          <dl className="mt-12 grid max-w-lg grid-cols-2 gap-4">
-            <div className="rounded-2xl bg-white/10 px-5 py-4 ring-1 ring-white/15">
-              <dt className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Program Studi</dt>
-              <dd className="mt-1 text-2xl font-extrabold">
-                {directoryQuery.isLoading ? '—' : prodis.length}
-              </dd>
+          {/* Titik navigasi */}
+          {slides.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center space-x-2 sm:bottom-6">
+              {slides.map((src, idx) => (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => setSlideIdx(idx)}
+                  aria-label={`Slide ${idx + 1}`}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    idx === slideIdx ? 'w-8' : 'w-2 bg-white/50 hover:bg-white/80'
+                  }`}
+                  style={idx === slideIdx ? { backgroundColor: accent } : undefined}
+                />
+              ))}
             </div>
-            <div className="rounded-2xl bg-white/10 px-5 py-4 ring-1 ring-white/15">
-              <dt className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Jenjang</dt>
-              <dd className="mt-1 text-2xl font-extrabold">
-                {prodis.length > 0
-                  ? [...new Set(prodis.map((p) => p.degree))].join(', ')
-                  : 'S1'}
-              </dd>
+          )}
+        </div>
+      </section>
+
+      {/* ---------- TENTANG FAKULTAS ---------- */}
+      <section className="bg-gradient-to-b from-slate-50 via-white to-white px-4 py-16 lg:py-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
+            {/* Teks */}
+            <div className="space-y-5 lg:col-span-7">
+              <div className="space-y-2">
+                <span
+                  className="inline-block rounded-full px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-widest"
+                  style={{ backgroundColor: `${primary}15`, color: primary }}
+                >
+                  Tentang Fakultas
+                </span>
+                <h2 className="text-2xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+                  {namaFakultas}
+                </h2>
+              </div>
+
+              {tentangQuery.isLoading ? (
+                <div className="space-y-3">
+                  <div className="h-4 w-full animate-pulse rounded bg-slate-200" />
+                  <div className="h-4 w-11/12 animate-pulse rounded bg-slate-200" />
+                  <div className="h-4 w-9/12 animate-pulse rounded bg-slate-200" />
+                </div>
+              ) : (
+                <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
+                  {overview ??
+                    `${namaFakultas} merupakan bagian dari Universitas Nahdlatul Ulama Sumatera Utara yang ` +
+                      'menyelenggarakan pendidikan tinggi berbasis nilai Ahlussunnah wal Jama’ah An-Nahdliyah, ' +
+                      'dengan memadukan penguasaan ilmu pengetahuan dan teknologi serta pembentukan karakter mahasiswa.'}
+                </p>
+              )}
+
+              {/* Ringkasan angka */}
+              <dl className="flex flex-wrap gap-4 pt-2">
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+                  <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Program Studi</dt>
+                  <dd className="text-xl font-extrabold" style={{ color: primary }}>
+                    {directoryQuery.isLoading ? '—' : prodis.length}
+                  </dd>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+                  <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jenjang</dt>
+                  <dd className="text-xl font-extrabold" style={{ color: primary }}>
+                    {prodis.length > 0 ? [...new Set(prodis.map((p) => p.degree))].join(', ') : 'S1'}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="pt-1">
+                <Link
+                  to="/profil"
+                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-xs font-extrabold text-white shadow-md transition-all hover:shadow-lg"
+                  style={{ backgroundColor: primary }}
+                >
+                  Lihat Profil Lengkap
+                  <ArrowRightIcon className="h-4 w-4" />
+                </Link>
+              </div>
             </div>
-          </dl>
+
+            {/* Gambar */}
+            <div className="relative lg:col-span-5">
+              <div className="relative overflow-hidden rounded-3xl border-4 border-white bg-slate-100 shadow-2xl">
+                <img
+                  src={heroGambar}
+                  alt={`Gambar profil ${namaFakultas}`}
+                  className="h-72 w-full object-cover object-center sm:h-96"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                <div className="absolute bottom-5 left-5 right-5 text-white">
+                  <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: accent }}>
+                    Fakultas
+                  </p>
+                  <p className="text-sm font-bold leading-tight sm:text-base">{namaFakultas}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
