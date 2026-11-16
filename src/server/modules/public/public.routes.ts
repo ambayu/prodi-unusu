@@ -182,6 +182,25 @@ function prodiMilikFakultas(
   });
 }
 
+/**
+ * Mencocokkan nama prodi SIAKAD dengan daftar prodi fakultas.
+ *
+ * Dikembalikan `null` bila nama tidak menyerupai prodi mana pun di fakultas.
+ * Pencocokan memakai dua arah awalan agar perbedaan gelar jenjang dan teks
+ * dalam kurung tidak memutus hubungan.
+ */
+function cocokkanProdi(namaSiakad: string | null | undefined, daftarProdi: Array<{ id: number; name: string }>) {
+  const bersih = normalisasiNamaProdi(namaSiakad);
+  if (!bersih) return null;
+
+  for (const prodi of daftarProdi) {
+    const nama = normalisasiNamaProdi(prodi.name);
+    if (!nama) continue;
+    if (bersih === nama || bersih.startsWith(nama) || nama.startsWith(bersih)) return prodi;
+  }
+  return null;
+}
+
 /** GET /api/v1/public/lecturers: direktori dosen aktif dari API Hub ONE UNUSU. */
 router.get(
   '/lecturers',
@@ -189,76 +208,58 @@ router.get(
   asyncHandler(async (req, res) => {
     const tenant = req.tenant!;
 
+    /*
+     * Mengambil daftar prodi milik fakultas beserta hostname website-nya.
+     *
+     * Dipakai bersama oleh jalur API Hub maupun jalur cadangan, sehingga
+     * pengelompokan dosen selalu mengikuti data prodi yang benar.
+     */
+    const ambilProdiFakultas = async () => {
+      const prodi = await prisma.studyProgram.findMany({
+        where: { facultyId: tenant.facultyId ?? tenant.id, status: 'active' },
+        select: { id: true, name: true, code: true, degree: true, sortOrder: true, logoUrl: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      });
+
+      const domain = await prisma.domain.findMany({
+        where: { studyProgramId: { in: prodi.map((p) => p.id) }, isActive: true },
+        select: { studyProgramId: true, hostname: true, isPrimary: true },
+        orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
+      });
+
+      const hostname = new Map<number, string>();
+      for (const d of domain) {
+        if (d.studyProgramId == null) continue;
+        if (!hostname.has(d.studyProgramId)) hostname.set(d.studyProgramId, d.hostname);
+      }
+
+      return prodi.map((p) => ({ ...p, hostname: hostname.get(p.id) ?? null }));
+    };
+
     try {
       const allLecturers = await fetchLecturersFromApiHub();
 
       /*
        * Website FAKULTAS mengelompokkan dosen per program studi.
        *
-       * Dosen diambil dari homebase resmi tiap prodi (tabel lokal) agar
-       * pengelompokannya pasti benar, lalu dicocokkan dengan data API Hub untuk
-       * melengkapi NIDN, jabatan akademik, dan foto. Sebelumnya endpoint ini
-       * memfilter memakai NAMA saja dan mengembalikan seluruh dosen bila hasil
-       * filter kosong — sehingga fakultas bisa menampilkan dosen prodi lain.
+       * Sumber homebase adalah SIAKAD (`studyProgramName` pada API Hub), bukan
+       * tabel `lecturers` lokal — tabel itu hanya berisi data contoh seeder dan
+       * tidak mencerminkan dosen sungguhan. Dosen tanpa homebase tidak
+       * dimasukkan ke kelompok mana pun; jumlahnya dilaporkan terpisah agar
+       * admin tahu datanya masih perlu dilengkapi.
        */
       if (tenant.tenantType === 'faculty') {
-        const prodiFakultas = await prisma.studyProgram.findMany({
-          where: { facultyId: tenant.facultyId ?? tenant.id, status: 'active' },
-          select: { id: true, name: true, code: true, degree: true, sortOrder: true, logoUrl: true },
-          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-        });
+        const prodiFakultas = await ambilProdiFakultas();
 
-        const dosenLokal = await prisma.lecturer.findMany({
-          where: { studyProgramId: { in: prodiFakultas.map((p) => p.id) }, isActive: true },
-          select: { id: true, studyProgramId: true, name: true, nidn: true },
-          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-        });
-
-        // Indeks hasil pencocokan nama: "nama|nidn" dan "nama" saja.
-        const petaHub = new Map<string, InterServiceLecturer>();
-        for (const dosen of allLecturers) {
-          const kunciNama = (dosen.name ?? '').trim().toLowerCase();
-          if (!kunciNama) continue;
-          petaHub.set(`${kunciNama}|${(dosen.nidn ?? '').trim()}`, dosen);
-          if (!petaHub.has(kunciNama)) petaHub.set(kunciNama, dosen);
-        }
-
-        /** URL website prodi, dipakai tautan "Lihat website prodi". */
-        const domainProdi = await prisma.domain.findMany({
-          where: { studyProgramId: { in: prodiFakultas.map((p) => p.id) }, isActive: true },
-          select: { studyProgramId: true, hostname: true, isPrimary: true },
-          orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
-        });
-
-        const hostnameProdi = new Map<number, string>();
-        for (const domain of domainProdi) {
-          if (domain.studyProgramId == null) continue;
-          if (!hostnameProdi.has(domain.studyProgramId)) {
-            hostnameProdi.set(domain.studyProgramId, domain.hostname);
-          }
-        }
+        const tanpaHomebase = allLecturers.filter((l) => {
+          const nama = (l.studyProgramName ?? '').trim();
+          return nama === '' || nama === '-';
+        }).length;
 
         const kelompok = prodiFakultas.map((prodi) => {
-          const angggota = dosenLokal
-            .filter((d) => d.studyProgramId === prodi.id)
-            .map((d) => {
-              const kunciNama = (d.name ?? '').trim().toLowerCase();
-              const hub =
-                petaHub.get(`${kunciNama}|${(d.nidn ?? '').trim()}`) ?? petaHub.get(kunciNama) ?? null;
-
-              return {
-                id: d.id,
-                name: d.name,
-                // Lengkapi dari API Hub bila tersedia; tetap tampil walau kosong.
-                nidn: hub?.nidn ?? d.nidn,
-                email: hub?.email ?? null,
-                academicRank: hub?.academicRank ?? null,
-                education: hub?.education ?? null,
-                photoUrl: hub?.photoUrl ?? null,
-                studyProgramName: prodi.name,
-                facultyName: tenant.name,
-              };
-            });
+          const anggota = allLecturers.filter(
+            (dosen) => cocokkanProdi(dosen.studyProgramName, [prodi]) !== null,
+          );
 
           return {
             prodi: {
@@ -267,20 +268,21 @@ router.get(
               code: prodi.code,
               degree: prodi.degree,
               logoUrl: prodi.logoUrl,
-              hostname: hostnameProdi.get(prodi.id) ?? null,
+              hostname: prodi.hostname,
             },
-            lecturers: angggota,
+            lecturers: anggota.map((dosen) => ({
+              id: dosen.id,
+              name: dosen.name,
+              nidn: dosen.nidn,
+              email: dosen.email,
+              academicRank: dosen.academicRank,
+              education: dosen.education,
+              photoUrl: dosen.photoUrl,
+              studyProgramName: prodi.name,
+              facultyName: tenant.name,
+            })),
           };
         });
-
-        /*
-         * Dosen tanpa homebase tidak dimasukkan ke kelompok prodi mana pun agar
-         * tidak salah tempat. Jumlahnya dilaporkan terpisah supaya admin tahu
-         * masih ada data SIAKAD yang perlu dilengkapi.
-         */
-        const tanpaHomebase = allLecturers.filter(
-          (l) => !l.studyProgramName || l.studyProgramName.trim() === '-' || l.studyProgramName.trim() === '',
-        ).length;
 
         res.json({
           success: true,
@@ -306,12 +308,8 @@ router.get(
       });
     } catch {
       // Fallback ke tabel lokal jika API Hub belum tersambung.
-      if (req.tenant!.tenantType === 'faculty') {
-        const prodiFakultas = await prisma.studyProgram.findMany({
-          where: { facultyId: req.tenant!.facultyId ?? req.tenant!.id, status: 'active' },
-          select: { id: true, name: true, code: true, degree: true, sortOrder: true, logoUrl: true },
-          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-        });
+      if (tenant.tenantType === 'faculty') {
+        const prodiFakultas = await ambilProdiFakultas();
 
         const dosenLokal = await prisma.lecturer.findMany({
           where: { studyProgramId: { in: prodiFakultas.map((p) => p.id) }, isActive: true },
@@ -319,7 +317,14 @@ router.get(
         });
 
         const kelompok = prodiFakultas.map((prodi) => ({
-          prodi: { id: prodi.id, name: prodi.name, code: prodi.code, degree: prodi.degree, logoUrl: prodi.logoUrl, hostname: null },
+          prodi: {
+            id: prodi.id,
+            name: prodi.name,
+            code: prodi.code,
+            degree: prodi.degree,
+            logoUrl: prodi.logoUrl,
+            hostname: prodi.hostname,
+          },
           lecturers: dosenLokal
             .filter((d) => d.studyProgramId === prodi.id)
             .map((d) => ({
@@ -331,7 +336,7 @@ router.get(
               education: d.education,
               photoUrl: d.photoUrl,
               studyProgramName: prodi.name,
-              facultyName: req.tenant!.name,
+              facultyName: tenant.name,
             })),
         }));
 
@@ -348,7 +353,7 @@ router.get(
       // Lecturer & facility belum menyimpan `faculty_id`, jadi hanya dibatasi
       // untuk tenant prodi.
       const lecturers = await prisma.lecturer.findMany({
-        where: { studyProgramId: req.tenant!.id, isActive: true },
+        where: { studyProgramId: tenant.id, isActive: true },
         orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       });
       res.json({ success: true, grouped: false, lecturers });
