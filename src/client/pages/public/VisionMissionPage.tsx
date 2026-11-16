@@ -17,6 +17,44 @@ import { toApiError } from '../../services/api';
  */
 const DEFAULT_VISION_IMAGE = '/tentang-custom.png';
 
+/**
+ * Mengubah isi kolom `missions` menjadi daftar butir misi.
+ *
+ * Data tersimpan dalam dua bentuk berbeda, tergantung cara pengisiannya:
+ *  - teks biasa dengan satu butir per baris (hasil editor lama);
+ *  - JSON array string, mis. `["Butir pertama.","Butir kedua."]`.
+ *
+ * Bentuk kedua dulu tidak dikenali sehingga yang tampil di halaman publik
+ * adalah deretan tanda kutip dan koma mentah. Sekarang kedua bentuk dibaca
+ * dengan hasil yang sama.
+ */
+function uraikanMisi(missions: string): string[] {
+  if (!missions.trim()) return [];
+
+  const teks = missions.trim();
+
+  // Bentuk JSON array.
+  if (teks.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(teks);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => (typeof item === 'string' ? item : String(item ?? '')))
+          .map((item) => item.replace(/^[-•*\d.)\s]+/, '').trim())
+          .filter(Boolean);
+      }
+    } catch {
+      // Bukan JSON yang sah: jatuh ke pemecahan per baris di bawah.
+    }
+  }
+
+  // Bentuk teks biasa, satu butir per baris.
+  return teks
+    .split('\n')
+    .map((line) => line.replace(/^[-•*\d.)\s]+/, '').trim())
+    .filter(Boolean);
+}
+
 /** Halaman publik visi dan misi. */
 export const VisionMissionPage: React.FC = () => {
   const { tenant } = useTenant();
@@ -43,10 +81,7 @@ export const VisionMissionPage: React.FC = () => {
   const objectives = typeof visionMission?.objectives === 'string' ? visionMission.objectives : '';
   const goals = typeof visionMission?.strategicGoals === 'string' ? visionMission.strategicGoals : '';
 
-  const missionList = missions
-    .split('\n')
-    .map((line) => line.replace(/^[-•*\d.)\s]+/, '').trim())
-    .filter(Boolean);
+  const missionList = uraikanMisi(missions);
 
   const hasContent = vision || missionList.length > 0 || objectives || goals;
 
@@ -62,39 +97,51 @@ export const VisionMissionPage: React.FC = () => {
         description={`Arah pengembangan dan komitmen ${unitLabel.toLowerCase()} dalam penyelenggaraan Tridharma Perguruan Tinggi.`}
       />
 
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+      {/*
+        Section pembungkus sengaja TANPA `max-w-7xl`: foto pendukung harus
+        menyentuh tepi layar. Batas lebar hanya diterapkan pada teks di
+        dalamnya, supaya uraian tetap nyaman dibaca.
+      */}
+      <section className="py-0">
         {profileQuery.isLoading ? (
-          <LoadingState label="Memuat visi dan misi" rows={2} />
+          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+            <LoadingState label="Memuat visi dan misi" rows={2} />
+          </div>
         ) : profileQuery.isError ? (
-          <ErrorState
-            message={toApiError(profileQuery.error).message}
-            onRetry={() => void profileQuery.refetch()}
-          />
+          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+            <ErrorState
+              message={toApiError(profileQuery.error).message}
+              onRetry={() => void profileQuery.refetch()}
+            />
+          </div>
         ) : !hasContent ? (
-          <EmptyState
-            title="Visi dan misi belum tersedia"
-            description={`${unitLabel} belum mengisi konten visi dan misi.`}
-          />
+          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+            <EmptyState
+              title="Visi dan misi belum tersedia"
+              description={`${unitLabel} belum mengisi konten visi dan misi.`}
+            />
+          </div>
         ) : (
           /*
-           * Tata letak dua kolom: gambar di kiri (menempel saat digulir), seluruh
-           * uraian visi-misi di kanan. Di layar kecil gambar tampil lebih dahulu.
+           * Tata letak:
+           *  1. foto pendukung selebar layar, tanpa bingkai kartu;
+           *  2. uraian visi-misi di bawahnya, dibatasi lebar baca agar tetap
+           *     nyaman dibaca.
            */
-          <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-14">
-            <aside className="lg:col-span-5">
-              <figure className="overflow-hidden rounded-2xl bg-slate-100 lg:sticky lg:top-28">
-                <GambarTentang
-                  src={heroGambar}
-                  alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
-                  className="h-72 w-full object-cover object-center sm:h-96 lg:h-[520px]"
-                />
-                <figcaption className="bg-slate-50 px-4 py-3 text-[11px] font-semibold text-slate-500">
-                  {tenant?.name ?? unitLabel} &bull; Universitas Nahdlatul Ulama Sumatera Utara
-                </figcaption>
-              </figure>
-            </aside>
+          <div className="space-y-10">
+            {/* Foto pendukung: full width, tanpa rounded, border, atau max-width. */}
+            <figure className="relative w-full overflow-hidden bg-slate-100">
+              <GambarTentang
+                src={heroGambar}
+                alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
+                className="h-[280px] w-full object-cover object-center sm:h-[380px] lg:h-[520px]"
+              />
+              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-6 py-5 text-[11px] font-semibold text-white sm:px-10">
+                {tenant?.name ?? unitLabel} &bull; Universitas Nahdlatul Ulama Sumatera Utara
+              </figcaption>
+            </figure>
 
-            <div className="space-y-6 lg:col-span-7">
+            <div className="mx-auto max-w-4xl space-y-6 px-4 pb-12 sm:px-6">
               {vision ? (
                 <div className="rounded-2xl p-8" style={{ backgroundColor: accent }}>
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-900/70">Visi</p>
