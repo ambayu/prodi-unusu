@@ -270,37 +270,65 @@ export const FacultyLandingPage: React.FC = () => {
             {prodis.map((prodi) => (
               <div
                 key={prodi.id}
-                className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-lg"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-lg"
               >
-                <div className="flex items-center gap-3">
+                {/*
+                  Gambar penutup kartu. Sumbernya `study_programs.logo_url` yang
+                  diunggah admin lewat menu Struktur Organisasi. Bila belum ada,
+                  ditampilkan bidang warna tema fakultas dengan huruf kode prodi,
+                  agar kartu tetap rapi tanpa gambar rusak.
+                */}
+                <div className="relative h-40 w-full overflow-hidden bg-slate-100">
+                  {prodi.logoUrl ? (
+                    <img
+                      src={prodi.logoUrl}
+                      alt={`Gambar ${prodi.name}`}
+                      className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.04]"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-full w-full items-center justify-center"
+                      style={{ backgroundColor: `${primary}14` }}
+                    >
+                      <div className="text-center">
+                        <AcademicCapIcon className="mx-auto h-10 w-10" style={{ color: primary }} />
+                        <p className="mt-2 text-xs font-black uppercase tracking-[0.2em]" style={{ color: primary }}>
+                          {prodi.code}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Label jenjang menempel di sudut gambar */}
                   <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                    style={{ backgroundColor: `${primary}14` }}
+                    className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white shadow-sm"
+                    style={{ backgroundColor: primary }}
                   >
-                    <AcademicCapIcon className="h-5 w-5" style={{ color: primary }} />
+                    {prodi.code} &bull; {prodi.degree}
                   </span>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                      {prodi.code} &bull; {prodi.degree}
-                    </p>
-                    <h3 className="truncate text-sm font-extrabold text-slate-900">{prodi.name}</h3>
-                  </div>
                 </div>
 
-                {prodi.primaryHostname ? (
-                  <a
-                    href={`https://${prodi.primaryHostname}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-5 inline-flex items-center gap-1.5 text-xs font-bold"
-                    style={{ color: primary }}
-                  >
-                    Kunjungi website
-                    <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
-                  </a>
-                ) : (
-                  <span className="mt-5 text-xs font-semibold text-slate-400">Website belum tersedia</span>
-                )}
+                <div className="flex flex-1 flex-col p-5">
+                  <h3 className="text-sm font-extrabold leading-snug text-slate-900">{prodi.name}</h3>
+
+                  <div className="mt-auto pt-4">
+                    {prodi.primaryHostname ? (
+                      <a
+                        href={`https://${prodi.primaryHostname}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold"
+                        style={{ color: primary }}
+                      >
+                        Kunjungi website
+                        <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <span className="text-xs font-semibold text-slate-400">Website belum tersedia</span>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>

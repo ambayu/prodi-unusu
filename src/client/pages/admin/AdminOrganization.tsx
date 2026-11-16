@@ -9,14 +9,33 @@ import {
   ChevronRightIcon,
   FolderOpenIcon,
   FolderIcon,
+  PhotoIcon,
+  ArrowUpTrayIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { Field, FormModal } from '../../components/ui/FormModal';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
-import { organizationApi } from '../../services/adminApi';
+import { mediaApi, organizationApi } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
+
+/** Format berkas gambar yang diterima untuk gambar kartu program studi. */
+const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp';
+
+/**
+ * Program studi yang gambarnya sedang disunting.
+ *
+ * `null` berarti modal tertutup. Nilai awal diambil dari respons API saat
+ * tombol diklik, sehingga perubahan yang batal tidak meninggalkan sisa.
+ */
+interface ProgramImageTarget {
+  id: number;
+  code: string;
+  name: string;
+  logoUrl: string | null;
+}
 
 function toSlug(value: string): string {
   return value
@@ -47,7 +66,19 @@ export const AdminOrganization: React.FC = () => {
     slug: '',
     degree: 'S1',
     description: '',
+    logoUrl: null as string | null,
   });
+
+  /**
+   * Pengelolaan gambar kartu program studi.
+   *
+   * Gambar disimpan pada `study_programs.logo_url` dan dipakai beranda fakultas
+   * sebagai penutup kartu Program Studi. Tombol "Gambar" di tiap baris prodi
+   * membuka modal unggah, sehingga admin tidak perlu membuat prodi baru untuk
+   * memasang gambar.
+   */
+  const [imageTarget, setImageTarget] = useState<ProgramImageTarget | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const facultiesQuery = useQuery({
     queryKey: ['admin', 'faculties'],
@@ -109,13 +140,14 @@ export const AdminOrganization: React.FC = () => {
         slug: programDraft.slug || toSlug(programDraft.name),
         degree: programDraft.degree,
         description: programDraft.description || null,
+        logoUrl: programDraft.logoUrl,
         status: 'active',
         sortOrder: 0,
       }),
     onSuccess: () => {
       toast.success('Program studi berhasil dibuat beserta tema dan halaman awalnya.');
       setProgramOpen(false);
-      setProgramDraft({ facultyId: 0, code: '', name: '', slug: '', degree: 'S1', description: '' });
+      setProgramDraft({ facultyId: 0, code: '', name: '', slug: '', degree: 'S1', description: '', logoUrl: null });
       invalidate();
     },
     onError: (error) => {
@@ -123,6 +155,46 @@ export const AdminOrganization: React.FC = () => {
       toast.error(firstFieldError(apiError) ?? apiError.message);
     },
   });
+
+  /** Menyimpan `logoUrl` hasil unggahan ke baris program studi. */
+  const saveProgramImage = useMutation({
+    mutationFn: () =>
+      organizationApi.updateStudyProgram(imageTarget!.id, { logoUrl: imageTarget!.logoUrl }),
+    onSuccess: () => {
+      toast.success('Gambar program studi berhasil disimpan.');
+      setImageTarget(null);
+      invalidate();
+    },
+    onError: (error) => {
+      const apiError = toApiError(error);
+      toast.error(firstFieldError(apiError) ?? apiError.message);
+    },
+  });
+
+  /**
+   * Mengunggah berkas ke pustaka media lalu menyimpan URL-nya pada draf.
+   *
+   * Modal tetap terbuka setelah unggah agar admin dapat melihat pratinjau dan
+   * menekan "Simpan". Tombol Batal tidak mengubah data karena yang berubah hanya
+   * draf lokal.
+   */
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Pilih berkas gambar JPG, PNG, atau WebP.');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const res = await mediaApi.upload(file);
+      setImageTarget((prev) => (prev ? { ...prev, logoUrl: res.data.asset.url } : prev));
+      toast.success('Gambar berhasil diunggah. Tekan Simpan untuk menerapkan.');
+    } catch (error) {
+      toast.error(toApiError(error).message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const isLoading = facultiesQuery.isLoading || programsQuery.isLoading;
   const isError = facultiesQuery.isError || programsQuery.isError;
@@ -156,6 +228,7 @@ export const AdminOrganization: React.FC = () => {
                   slug: '',
                   degree: 'S1',
                   description: '',
+                  logoUrl: null,
                 });
                 setProgramOpen(true);
               }}
@@ -339,6 +412,7 @@ export const AdminOrganization: React.FC = () => {
                                       slug: '',
                                       degree: 'S1',
                                       description: '',
+                                      logoUrl: null,
                                     });
                                     setProgramOpen(true);
                                   }}
@@ -369,9 +443,18 @@ export const AdminOrganization: React.FC = () => {
                                       <div className="absolute -left-4 top-1/2 -mt-px w-4 h-0.5 bg-slate-200" />
 
                                       <div className="flex items-center gap-2.5 min-w-0">
-                                        <div className="h-7 w-7 rounded-md bg-blue-100 text-[#1e3a8a] flex items-center justify-center shrink-0">
-                                          <AcademicCapIcon className="h-4 w-4" />
-                                        </div>
+                                        {program.logoUrl ? (
+                                          <img
+                                            src={program.logoUrl}
+                                            alt={`Gambar ${program.name}`}
+                                            className="h-9 w-12 rounded-md border border-slate-200 object-cover shrink-0"
+                                            loading="lazy"
+                                          />
+                                        ) : (
+                                          <div className="h-9 w-12 rounded-md bg-blue-100 text-[#1e3a8a] flex items-center justify-center shrink-0">
+                                            <AcademicCapIcon className="h-4 w-4" />
+                                          </div>
+                                        )}
                                         <div className="min-w-0">
                                           <div className="flex items-center gap-1.5 flex-wrap">
                                             <span className="text-xs font-bold text-slate-800">
@@ -401,6 +484,24 @@ export const AdminOrganization: React.FC = () => {
                                       </div>
 
                                       <div className="flex items-center gap-2 self-end sm:self-center">
+                                        {has('tenant.update') ? (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setImageTarget({
+                                                id: program.id,
+                                                code: program.code,
+                                                name: program.name,
+                                                logoUrl: program.logoUrl,
+                                              })
+                                            }
+                                            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50"
+                                            title="Impor gambar kartu program studi"
+                                          >
+                                            <PhotoIcon className="h-3.5 w-3.5 text-slate-500" />
+                                            <span>Gambar</span>
+                                          </button>
+                                        ) : null}
                                         <span
                                           className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                                             program.status === 'active'
@@ -563,6 +664,120 @@ export const AdminOrganization: React.FC = () => {
             value={programDraft.description}
             onChange={(event) => setProgramDraft({ ...programDraft, description: event.target.value })}
           />
+        </Field>
+
+        <Field
+          label="Gambar kartu prodi"
+          htmlFor="program-image"
+          hint="Tampil sebagai gambar di atas kartu Program Studi pada beranda fakultas. Boleh dikosongkan dan diisi belakangan."
+        >
+          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+            <div className="relative flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-white">
+              {programDraft.logoUrl ? (
+                <img
+                  src={programDraft.logoUrl}
+                  alt="Gambar prodi"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <PhotoIcon className="h-7 w-7 text-slate-300" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                <ArrowUpTrayIcon className="h-4 w-4 text-slate-500" />
+                <span>{uploadingImage ? 'Mengunggah...' : 'Pilih Berkas Gambar'}</span>
+                <input
+                  id="program-image"
+                  type="file"
+                  accept={IMAGE_ACCEPT}
+                  disabled={uploadingImage}
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    setUploadingImage(true);
+                    void mediaApi
+                      .upload(file)
+                      .then((res) => {
+                        setProgramDraft({ ...programDraft, logoUrl: res.data.asset.url });
+                        toast.success('Gambar berhasil diunggah.');
+                      })
+                      .catch((error) => toast.error(toApiError(error).message))
+                      .finally(() => setUploadingImage(false));
+                    event.target.value = '';
+                  }}
+                />
+              </label>
+              <p className="truncate font-mono text-[10px] text-slate-400">
+                {programDraft.logoUrl || 'Belum ada gambar'}
+              </p>
+            </div>
+          </div>
+        </Field>
+      </FormModal>
+
+      {/* Modal Impor Gambar Program Studi */}
+      <FormModal
+        open={imageTarget !== null}
+        title="Gambar Kartu Program Studi"
+        description={
+          imageTarget
+            ? `Unggah gambar untuk ${imageTarget.name} (${imageTarget.code}). Gambar tampil di atas kartu Program Studi pada beranda fakultas.`
+            : ''
+        }
+        busy={saveProgramImage.isPending || uploadingImage}
+        onClose={() => setImageTarget(null)}
+        onSubmit={(event) => {
+          event.preventDefault();
+          saveProgramImage.mutate();
+        }}
+      >
+        <Field label="Berkas gambar" htmlFor="program-image-edit" hint="Format JPG, PNG, atau WebP. Rasio lanskap (mis. 16:9) paling sesuai.">
+          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+            <div className="relative flex h-24 w-36 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-white">
+              {imageTarget?.logoUrl ? (
+                <>
+                  <img
+                    src={imageTarget.logoUrl}
+                    alt="Gambar prodi"
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setImageTarget((prev) => (prev ? { ...prev, logoUrl: null } : prev))}
+                    className="absolute right-1 top-1 rounded-full bg-rose-600 p-0.5 text-white shadow-xs hover:bg-rose-700"
+                    title="Hapus gambar"
+                  >
+                    <XMarkIcon className="h-3 w-3" />
+                  </button>
+                </>
+              ) : (
+                <PhotoIcon className="h-8 w-8 text-slate-300" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                <ArrowUpTrayIcon className="h-4 w-4 text-slate-500" />
+                <span>{uploadingImage ? 'Mengunggah...' : 'Pilih Berkas Gambar'}</span>
+                <input
+                  id="program-image-edit"
+                  type="file"
+                  accept={IMAGE_ACCEPT}
+                  disabled={uploadingImage}
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void handleImageUpload(file);
+                    event.target.value = '';
+                  }}
+                />
+              </label>
+              <p className="truncate font-mono text-[10px] text-slate-400">
+                {imageTarget?.logoUrl || 'Belum ada gambar — kartu memakai huruf kode prodi'}
+              </p>
+            </div>
+          </div>
         </Field>
       </FormModal>
     </AdminLayout>

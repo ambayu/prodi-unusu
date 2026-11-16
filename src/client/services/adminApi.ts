@@ -340,6 +340,8 @@ export const organizationApi = {
         slug: string;
         degree: string;
         status: string;
+        description: string | null;
+        logoUrl: string | null;
         faculty: { id: number; name: string; code: string };
         domains: Array<{ id: number; hostname: string; isPrimary: boolean; isActive: boolean }>;
         _count: { userRoleAssignments: number; posts: number; lecturers: number };

@@ -146,6 +146,66 @@ function buildFacultyOverview(name: string, universitas: string): string {
   );
 }
 
+/**
+ * Gambar kartu bawaan per program studi.
+ *
+ * Dipakai beranda fakultas sebagai penutup kartu Program Studi. Seluruh berkas
+ * sudah ada di `public/images/prodi`, sehingga seeder tidak membuat berkas baru.
+ * Admin dapat menggantinya kapan saja lewat tombol "Gambar" pada menu Struktur
+ * Organisasi — seeder hanya mengisi kolom `logo_url` yang masih kosong.
+ */
+const PRODI_IMAGE_BY_CODE: Record<string, string> = {
+  TIF: '/images/prodi/prodi-coding.png',
+  IKO: '/images/prodi/prodi-coding.png',
+  SIN: '/images/prodi/prodi-analytics.png',
+  PGSD: '/images/prodi/prodi-education.png',
+  MAN: '/images/prodi/prodi-finance.png',
+  AGB: '/images/prodi/prodi-ai.png',
+  ITP: '/images/prodi/prodi-ai.png',
+  BDP: '/images/prodi/prodi-ai.png',
+  GIZ: '/images/prodi/prodi-analytics.png',
+  ANK: '/images/prodi/prodi-analytics.png',
+  PIAUD: '/images/prodi/prodi-education.png',
+  PAI: '/images/prodi/prodi-education.png',
+  HKI: '/images/prodi/prodi-education.png',
+  STI: '/images/prodi/prodi-education.png',
+};
+
+/**
+ * Mengisi gambar kartu untuk program studi milik fakultas yang sedang diproses.
+ *
+ * Hanya kolom `logo_url` yang kosong yang diisi, sehingga gambar hasil unggahan
+ * admin (bersumber dari pustaka media) tidak pernah tertimpa saat seeder
+ * dijalankan ulang.
+ */
+async function seedProdiImages(facultyId: number): Promise<{ diisi: number; dilewati: number }> {
+  const prodis = await prisma.studyProgram.findMany({
+    where: { facultyId },
+    select: { id: true, code: true, logoUrl: true },
+  });
+
+  let diisi = 0;
+  let dilewati = 0;
+
+  for (const prodi of prodis) {
+    if (prodi.logoUrl?.trim()) {
+      dilewati += 1;
+      continue;
+    }
+
+    const gambar = PRODI_IMAGE_BY_CODE[prodi.code];
+    if (!gambar) continue;
+
+    await prisma.studyProgram.update({
+      where: { id: prodi.id },
+      data: { logoUrl: gambar },
+    });
+    diisi += 1;
+  }
+
+  return { diisi, dilewati };
+}
+
 async function seedFacultyContents() {
   console.log('Mengisi data konten untuk seluruh Fakultas UNUSU...');
 
@@ -461,10 +521,15 @@ async function seedFacultyContents() {
       });
     }
 
+    // ------------------------------------------------------------------
+    // 9. Gambar kartu program studi di bawah fakultas
+    // ------------------------------------------------------------------
+    const gambarProdi = await seedProdiImages(faculty.id);
+
     console.log(
       `  + ${code.padEnd(9)} ${name.padEnd(28)} domain=${(hostname ?? '-').padEnd(24)} grup=${FACULTY_MENUS.length} item=${
         FACULTY_MENUS.reduce((n, g) => n + 1 + (g.children?.length ?? 0), 0)
-      }`,
+      } gambar_prodi=${gambarProdi.diisi}`,
     );
   }
 
