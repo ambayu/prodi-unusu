@@ -9,6 +9,7 @@ import { paginationSchema } from '../../../shared/schemas/common.js';
 import { getPublishedPageBySlug } from '../../services/pageService.js';
 import { buildCurriculumSummary, listPublicCurriculum } from '../../services/curriculumService.js';
 import { fetchLecturersFromApiHub } from '../../services/lecturerIntegrationService.js';
+import type { InterServiceLecturer } from '../../services/lecturerIntegrationService.js';
 
 const router = Router();
 
@@ -132,37 +133,225 @@ router.get(
   }),
 );
 
+/**
+ * Menormalkan nama program studi agar dapat dibandingkan.
+ *
+ * SIAKAD menuliskan nama prodi dengan variasi yang cukup jauh dari data lokal,
+ * misalnya:
+ *   lokal : "Pendidikan Agama Islam"
+ *   SIAKAD: "S1 Pendidikan Agama Islam (PAI)"
+ * Perbandingan literal tidak akan pernah cocok, sehingga nama dibersihkan dari
+ * gelar jenjang, teks dalam kurung, dan tanda baca, lalu dibandingkan potongan
+ * awalnya.
+ */
+function normalisasiNamaProdi(value: string | null | undefined): string {
+  return (value ?? '')
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ') // buang "(PAI)", "(Akhwal Syakhshiyyah)"
+    .replace(/\b(s1|s2|s3|d3|d4|diploma|sarjana|magister|doktor)\b/g, ' ')
+    .replace(/[^a-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Memeriksa apakah sebuah prodi milik fakultas yang sedang diakses.
+ *
+ * Urutan pemeriksaan: nama fakultas persis, lalu awalan nama prodi. Pemeriksaan
+ * nama prodi diperlukan karena SIAKAD dapat menempatkan prodi di bawah fakultas
+ * yang berbeda dari struktur resmi, sehingga fakultas yang benar tidak boleh
+ * kehilangan dosennya.
+ */
+function prodiMilikFakultas(
+  lecturer: InterServiceLecturer,
+  namaFakultas: string,
+  daftarProdi: string[],
+): boolean {
+  const fakultasDosen = (lecturer.facultyName ?? '').trim().toLowerCase();
+  const fakultasTenant = namaFakultas.trim().toLowerCase();
+
+  if (fakultasTenant && fakultasDosen === fakultasTenant) return true;
+
+  const prodiDosen = normalisasiNamaProdi(lecturer.studyProgramName);
+  if (!prodiDosen) return false;
+
+  return daftarProdi.some((nama) => {
+    const bersih = normalisasiNamaProdi(nama);
+    if (!bersih) return false;
+    return prodiDosen === bersih || prodiDosen.startsWith(bersih) || bersih.startsWith(prodiDosen);
+  });
+}
+
 /** GET /api/v1/public/lecturers: direktori dosen aktif dari API Hub ONE UNUSU. */
 router.get(
   '/lecturers',
   requireTenant,
   asyncHandler(async (req, res) => {
+    const tenant = req.tenant!;
+
     try {
       const allLecturers = await fetchLecturersFromApiHub();
-      const prodiName = req.tenant?.name?.toLowerCase() || '';
 
-      const lecturers = allLecturers.filter((l) => {
-        if (!prodiName) return true;
-        const homebase = (l.studyProgramName || '').toLowerCase();
-        return homebase.includes(prodiName) || prodiName.includes(homebase);
-      });
+      /*
+       * Website FAKULTAS mengelompokkan dosen per program studi.
+       *
+       * Dosen diambil dari homebase resmi tiap prodi (tabel lokal) agar
+       * pengelompokannya pasti benar, lalu dicocokkan dengan data API Hub untuk
+       * melengkapi NIDN, jabatan akademik, dan foto. Sebelumnya endpoint ini
+       * memfilter memakai NAMA saja dan mengembalikan seluruh dosen bila hasil
+       * filter kosong — sehingga fakultas bisa menampilkan dosen prodi lain.
+       */
+      if (tenant.tenantType === 'faculty') {
+        const prodiFakultas = await prisma.studyProgram.findMany({
+          where: { facultyId: tenant.facultyId ?? tenant.id, status: 'active' },
+          select: { id: true, name: true, code: true, degree: true, sortOrder: true, logoUrl: true },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        });
+
+        const dosenLokal = await prisma.lecturer.findMany({
+          where: { studyProgramId: { in: prodiFakultas.map((p) => p.id) }, isActive: true },
+          select: { id: true, studyProgramId: true, name: true, nidn: true },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        });
+
+        // Indeks hasil pencocokan nama: "nama|nidn" dan "nama" saja.
+        const petaHub = new Map<string, InterServiceLecturer>();
+        for (const dosen of allLecturers) {
+          const kunciNama = (dosen.name ?? '').trim().toLowerCase();
+          if (!kunciNama) continue;
+          petaHub.set(`${kunciNama}|${(dosen.nidn ?? '').trim()}`, dosen);
+          if (!petaHub.has(kunciNama)) petaHub.set(kunciNama, dosen);
+        }
+
+        /** URL website prodi, dipakai tautan "Lihat website prodi". */
+        const domainProdi = await prisma.domain.findMany({
+          where: { studyProgramId: { in: prodiFakultas.map((p) => p.id) }, isActive: true },
+          select: { studyProgramId: true, hostname: true, isPrimary: true },
+          orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
+        });
+
+        const hostnameProdi = new Map<number, string>();
+        for (const domain of domainProdi) {
+          if (domain.studyProgramId == null) continue;
+          if (!hostnameProdi.has(domain.studyProgramId)) {
+            hostnameProdi.set(domain.studyProgramId, domain.hostname);
+          }
+        }
+
+        const kelompok = prodiFakultas.map((prodi) => {
+          const angggota = dosenLokal
+            .filter((d) => d.studyProgramId === prodi.id)
+            .map((d) => {
+              const kunciNama = (d.name ?? '').trim().toLowerCase();
+              const hub =
+                petaHub.get(`${kunciNama}|${(d.nidn ?? '').trim()}`) ?? petaHub.get(kunciNama) ?? null;
+
+              return {
+                id: d.id,
+                name: d.name,
+                // Lengkapi dari API Hub bila tersedia; tetap tampil walau kosong.
+                nidn: hub?.nidn ?? d.nidn,
+                email: hub?.email ?? null,
+                academicRank: hub?.academicRank ?? null,
+                education: hub?.education ?? null,
+                photoUrl: hub?.photoUrl ?? null,
+                studyProgramName: prodi.name,
+                facultyName: tenant.name,
+              };
+            });
+
+          return {
+            prodi: {
+              id: prodi.id,
+              name: prodi.name,
+              code: prodi.code,
+              degree: prodi.degree,
+              logoUrl: prodi.logoUrl,
+              hostname: hostnameProdi.get(prodi.id) ?? null,
+            },
+            lecturers: angggota,
+          };
+        });
+
+        /*
+         * Dosen tanpa homebase tidak dimasukkan ke kelompok prodi mana pun agar
+         * tidak salah tempat. Jumlahnya dilaporkan terpisah supaya admin tahu
+         * masih ada data SIAKAD yang perlu dilengkapi.
+         */
+        const tanpaHomebase = allLecturers.filter(
+          (l) => !l.studyProgramName || l.studyProgramName.trim() === '-' || l.studyProgramName.trim() === '',
+        ).length;
+
+        res.json({
+          success: true,
+          grouped: true,
+          groups: kelompok,
+          tanpaHomebase,
+          // Daftar datar tetap dikirim demi kompatibilitas klien lama.
+          lecturers: kelompok.flatMap((g) => g.lecturers),
+        });
+        return;
+      }
+
+      // ---- Website program studi: hanya dosen dengan homebase prodi ini ----
+      const lecturers = allLecturers.filter((l) =>
+        prodiMilikFakultas(l, tenant.name, [tenant.name]),
+      );
 
       res.json({
         success: true,
-        lecturers: lecturers.length > 0 ? lecturers : allLecturers,
+        grouped: false,
+        // Tidak ada fallback "tampilkan semua": dosen prodi lain tidak boleh muncul.
+        lecturers,
       });
     } catch {
-      // Fallback ke tabel lokal jika API Hub belum tersambung
+      // Fallback ke tabel lokal jika API Hub belum tersambung.
+      if (req.tenant!.tenantType === 'faculty') {
+        const prodiFakultas = await prisma.studyProgram.findMany({
+          where: { facultyId: req.tenant!.facultyId ?? req.tenant!.id, status: 'active' },
+          select: { id: true, name: true, code: true, degree: true, sortOrder: true, logoUrl: true },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        });
+
+        const dosenLokal = await prisma.lecturer.findMany({
+          where: { studyProgramId: { in: prodiFakultas.map((p) => p.id) }, isActive: true },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        });
+
+        const kelompok = prodiFakultas.map((prodi) => ({
+          prodi: { id: prodi.id, name: prodi.name, code: prodi.code, degree: prodi.degree, logoUrl: prodi.logoUrl, hostname: null },
+          lecturers: dosenLokal
+            .filter((d) => d.studyProgramId === prodi.id)
+            .map((d) => ({
+              id: d.id,
+              name: d.name,
+              nidn: d.nidn,
+              email: d.email,
+              academicRank: d.academicRank,
+              education: d.education,
+              photoUrl: d.photoUrl,
+              studyProgramName: prodi.name,
+              facultyName: req.tenant!.name,
+            })),
+        }));
+
+        res.json({
+          success: true,
+          grouped: true,
+          groups: kelompok,
+          tanpaHomebase: 0,
+          lecturers: kelompok.flatMap((g) => g.lecturers),
+        });
+        return;
+      }
+
       // Lecturer & facility belum menyimpan `faculty_id`, jadi hanya dibatasi
-      // untuk tenant prodi. Website fakultas menampilkan daftar kosong.
+      // untuk tenant prodi.
       const lecturers = await prisma.lecturer.findMany({
-        where: {
-          studyProgramId: req.tenant!.tenantType === 'faculty' ? -1 : req.tenant!.id,
-          isActive: true,
-        },
+        where: { studyProgramId: req.tenant!.id, isActive: true },
         orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       });
-      res.json({ success: true, lecturers });
+      res.json({ success: true, grouped: false, lecturers });
     }
   }),
 );

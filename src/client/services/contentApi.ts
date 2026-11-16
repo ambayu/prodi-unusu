@@ -281,8 +281,47 @@ export interface Lecturer {
   sortOrder: number;
 }
 
+/**
+ * Dosen sebagaimana disajikan endpoint publik.
+ *
+ * Endpoint publik menggabungkan data lokal dengan API Hub ONE UNUSU, sehingga
+ * sebagian kolom lokal (mis. `expertise`) tidak selalu ada dan beberapa kolom
+ * tambahan (`studyProgramName`) ikut dikirim.
+ */
+export interface PublicLecturer extends Omit<Lecturer, 'isActive' | 'sortOrder' | 'expertise' | 'bio'> {
+  expertise?: string | null;
+  bio?: string | null;
+  isActive?: boolean;
+  sortOrder?: number;
+  studyProgramName?: string | null;
+  facultyName?: string | null;
+}
+
+/** Satu kelompok dosen pada website fakultas, yaitu dosen milik satu prodi. */
+export interface LecturerGroup {
+  prodi: {
+    id: number;
+    name: string;
+    code: string;
+    degree: string;
+    logoUrl?: string | null;
+    hostname?: string | null;
+  };
+  lecturers: PublicLecturer[];
+}
+
+export interface PublicLecturersResponse {
+  success: boolean;
+  /** `true` bila respons dikelompokkan per prodi (website fakultas). */
+  grouped?: boolean;
+  groups?: LecturerGroup[];
+  /** Jumlah dosen SIAKAD yang belum punya homebase prodi. */
+  tanpaHomebase?: number;
+  lecturers: PublicLecturer[];
+}
+
 export const lecturerApi = {
-  public: () => api.get<{ lecturers: Lecturer[] }>('/public/lecturers'),
+  public: () => api.get<PublicLecturersResponse>('/public/lecturers'),
   list: (params?: { search?: string }) => api.get<{ lecturers: Lecturer[]; allLecturers?: Lecturer[] }>('/admin/lecturers', { params }),
   all: () => api.get<{ lecturers: Lecturer[] }>('/admin/lecturers/all'),
 };
