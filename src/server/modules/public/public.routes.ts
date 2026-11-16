@@ -155,50 +155,105 @@ function normalisasiNamaProdi(value: string | null | undefined): string {
 }
 
 /**
- * Memeriksa apakah sebuah prodi milik fakultas yang sedang diakses.
+ * Singkatan program studi yang ditulis SIAKAD di dalam tanda kurung.
  *
- * Urutan pemeriksaan: nama fakultas persis, lalu awalan nama prodi. Pemeriksaan
- * nama prodi diperlukan karena SIAKAD dapat menempatkan prodi di bawah fakultas
- * yang berbeda dari struktur resmi, sehingga fakultas yang benar tidak boleh
- * kehilangan dosennya.
+ * SIAKAD menyingkat beberapa prodi dengan nama lain dari data lokal, misalnya
+ * `S1 Studi Islam (Dirasah Islamiyah)` — kode prodinya `STI`, bukan "Dirasah".
+ */
+const ALIAS_KODE_SIAKAD: Record<string, string> = {
+  'akhwal syakhshiyyah': 'HKI',
+  'dirasah islamiyah': 'STI',
+};
+
+/** Menyeragamkan kode program studi agar dapat dibandingkan. */
+function normalisasiKodeProdi(value: string | null | undefined): string {
+  return (value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * Mengambil petunjuk dari teks dalam kurung pada nama prodi SIAKAD.
+ *
+ * Contoh keluaran: `{ kode: 'PAI', teks: 'pendidikan agama islam' }` untuk
+ * `S1 Pendidikan Agama Islam (PAI)`, atau `{ kode: null, teks: 'akhwal
+ * syakhshiyyah' }` untuk `Hukum Keluarga Islam (Akhwal Syakhshiyyah)`.
+ * Hasil kosong bila nama tidak memuat tanda kurung yang berguna.
+ */
+function petunjukKurung(namaSiakad: string | null | undefined): { kode: string | null; teks: string | null } {
+  const isi = (namaSiakad ?? '').match(/\(([^)]*)\)/);
+  if (!isi) return { kode: null, teks: null };
+
+  const mentah = isi[1].trim();
+  if (!mentah) return { kode: null, teks: null };
+
+  const teks = normalisasiNamaProdi(mentah);
+  const kodeAlias = ALIAS_KODE_SIAKAD[teks.toLowerCase()] ?? null;
+  const kodeLangsung = /^[A-Za-z]{2,6}$/.test(mentah) ? normalisasiKodeProdi(mentah) : null;
+
+  return { kode: kodeAlias ?? kodeLangsung, teks: teks || null };
+}
+
+/**
+ * Menentukan apakah satu dosen benar-benar berhomebase di sebuah prodi.
+ *
+ * Pencocokan dilakukan bertingkat, dari yang paling pasti ke yang paling
+ * longgar:
+ *   1. kode prodi di dalam tanda kurung (`(PIAUD)` → kode `PIAUD`);
+ *   2. nama prodi persis setelah dinormalkan;
+ *   3. nama prodi berawalan sama, dua arah — hanya bila salah satu nama
+ *      memuat seluruh kata nama lainnya.
+ *
+ * Langkah 3 sengaja ketat. Sebelumnya cukup `startsWith` satu arah, sehingga
+ * "Pendidikan Islam Anak Usia Dini" bisa dianggap cocok dengan "Pendidikan
+ * Agama Islam" hanya karena sama-sama berawalan "Pendidikan" — dosen PIAUD
+ * lalu muncul di prodi PAI. Membandingkan kata membuat pemisahan itu aman.
+ */
+function dosenDiProdi(
+  namaSiakad: string | null | undefined,
+  prodi: { name: string; code: string },
+): boolean {
+  const nama = normalisasiNamaProdi(namaSiakad);
+  if (!nama) return false;
+
+  const petunjuk = petunjukKurung(namaSiakad);
+  if (petunjuk.kode && petunjuk.kode === normalisasiKodeProdi(prodi.code)) return true;
+
+  const namaProdi = normalisasiNamaProdi(prodi.name);
+  if (!namaProdi) return false;
+  if (nama === namaProdi) return true;
+
+  const petunjukKurungProdi = petunjukKurung(prodi.name);
+  if (petunjukKurungProdi.teks && petunjukKurungProdi.teks === petunjuk.teks) return true;
+
+  const kataDosen = nama.split(' ');
+  const kataProdi = namaProdi.split(' ');
+  const awalanSama = kataDosen.every((kata, i) => kataProdi[i] === kata);
+  const akhiranSama = kataProdi.every((kata, i) => kataDosen[i] === kata);
+
+  return awalanSama || akhiranSama;
+}
+
+/**
+ * Memeriksa apakah data satu dosen berasal dari prodi milik fakultas tertentu.
+ *
+ * Dipakai oleh website program studi, yang tidak mengetahui daftar prodi
+ * fakultasnya. Nama fakultas SIAKAD saja tidak cukup — SIAKAD menempatkan
+ * PIAUD & PAI di bawah FIP padahal keduanya prodi FAI — sehingga nama prodi
+ * tetap diperiksa sebagai pembanding.
  */
 function prodiMilikFakultas(
   lecturer: InterServiceLecturer,
   namaFakultas: string,
-  daftarProdi: string[],
+  daftarProdi: Array<{ name: string; code: string }>,
 ): boolean {
   const fakultasDosen = (lecturer.facultyName ?? '').trim().toLowerCase();
   const fakultasTenant = namaFakultas.trim().toLowerCase();
 
-  if (fakultasTenant && fakultasDosen === fakultasTenant) return true;
-
   const prodiDosen = normalisasiNamaProdi(lecturer.studyProgramName);
   if (!prodiDosen) return false;
 
-  return daftarProdi.some((nama) => {
-    const bersih = normalisasiNamaProdi(nama);
-    if (!bersih) return false;
-    return prodiDosen === bersih || prodiDosen.startsWith(bersih) || bersih.startsWith(prodiDosen);
-  });
-}
+  if (daftarProdi.some((prodi) => dosenDiProdi(lecturer.studyProgramName, prodi))) return true;
 
-/**
- * Mencocokkan nama prodi SIAKAD dengan daftar prodi fakultas.
- *
- * Dikembalikan `null` bila nama tidak menyerupai prodi mana pun di fakultas.
- * Pencocokan memakai dua arah awalan agar perbedaan gelar jenjang dan teks
- * dalam kurung tidak memutus hubungan.
- */
-function cocokkanProdi(namaSiakad: string | null | undefined, daftarProdi: Array<{ id: number; name: string }>) {
-  const bersih = normalisasiNamaProdi(namaSiakad);
-  if (!bersih) return null;
-
-  for (const prodi of daftarProdi) {
-    const nama = normalisasiNamaProdi(prodi.name);
-    if (!nama) continue;
-    if (bersih === nama || bersih.startsWith(nama) || nama.startsWith(bersih)) return prodi;
-  }
-  return null;
+  return Boolean(fakultasTenant) && fakultasDosen === fakultasTenant;
 }
 
 /** GET /api/v1/public/lecturers: direktori dosen aktif dari API Hub ONE UNUSU. */
@@ -257,9 +312,7 @@ router.get(
         }).length;
 
         const kelompok = prodiFakultas.map((prodi) => {
-          const anggota = allLecturers.filter(
-            (dosen) => cocokkanProdi(dosen.studyProgramName, [prodi]) !== null,
-          );
+          const anggota = allLecturers.filter((dosen) => dosenDiProdi(dosen.studyProgramName, prodi));
 
           return {
             prodi: {
@@ -295,9 +348,24 @@ router.get(
         return;
       }
 
-      // ---- Website program studi: hanya dosen dengan homebase prodi ini ----
+      /*
+       * ---- Website program studi: hanya dosen dengan homebase prodi ini ----
+       *
+       * `tenant.name` adalah nama prodi (mis. "Pendidikan Agama Islam"), bukan
+       * nama fakultas. Nama fakultas pemilik prodi ikut dikirim agar dosen yang
+       * tercatat pada fakultas berbeda di SIAKAD tidak otomatis ikut tampil.
+       */
+      const induk = await prisma.faculty
+        .findUnique({
+          where: { id: tenant.facultyId ?? -1 },
+          select: { name: true },
+        })
+        .catch(() => null);
+
       const lecturers = allLecturers.filter((l) =>
-        prodiMilikFakultas(l, tenant.name, [tenant.name]),
+        prodiMilikFakultas(l, induk?.name ?? '', [
+          { name: tenant.name, code: tenant.code ?? '' },
+        ]),
       );
 
       res.json({
