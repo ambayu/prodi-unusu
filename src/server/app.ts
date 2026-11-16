@@ -210,8 +210,53 @@ export function createApp() {
 
     if (clientDist) {
       app.use(express.static(clientDist));
-      app.get('*', (_req, res) => {
-        res.sendFile(path.join(clientDist, 'index.html'));
+
+      /**
+       * Fallback SPA.
+       *
+       * `index.html` dibangun sekali dengan judul generik ("Portal Multi-Prodi"),
+       * sehingga tab browser, hasil pencarian, dan pratinjau tautan (WhatsApp,
+       * media sosial) selalu menampilkan judul generik itu, bukan nama prodi
+       * atau fakultas yang sedang dibuka. Di sini judul dan deskripsi diganti
+       * sesuai tenant sebelum berkas dikirim. Bila tenant tidak ada (portal
+       * admin atau domain tak dikenal), berkas dikirim apa adanya.
+       */
+      const indexHtmlPath = path.join(clientDist, 'index.html');
+      const escapeHtml = (nilai: string) =>
+        nilai
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+
+      app.get('*', (req, res) => {
+        if (!req.tenant) {
+          res.sendFile(indexHtmlPath);
+          return;
+        }
+
+        const judul = req.tenant.websiteSetting?.siteTitle ?? req.tenant.name;
+        const deskripsi =
+          req.tenant.websiteSetting?.seoDescription ??
+          req.tenant.description ??
+          `${req.tenant.name} — Universitas Nahdlatul Ulama Sumatera Utara`;
+
+        let html: string;
+        try {
+          html = fs.readFileSync(indexHtmlPath, 'utf8');
+        } catch {
+          res.sendFile(indexHtmlPath);
+          return;
+        }
+
+        html = html
+          .replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(judul)}</title>`)
+          .replace(
+            /<meta\s+name="description"[^>]*>/,
+            `<meta name="description" content="${escapeHtml(deskripsi)}">`,
+          );
+
+        res.type('html').send(html);
       });
     } else {
       console.warn(
