@@ -136,9 +136,15 @@ export function toApiError(error: unknown): ApiError {
  * - authenticated: true -> sesi ONE UNUSU aktif.
  * - authenticated: false -> pengguna telah logout dari ONE UNUSU.
  * - authenticated: null -> gagal menghubungi server SSO (offline/network error).
+ *
+ * Alamat memakai jalur relatif agar diteruskan server portal ini sendiri
+ * (lihat `GET /api/v1/sso/session-check` di src/server/app.ts).
+ * Sebelumnya di sini tertulis `http://localhost:5000/api`, yaitu alamat
+ * komputer pengunjung — pemeriksaan selalu gagal di produksi sehingga
+ * pengguna terlempar ke halaman masuk.
  */
 export const checkOneUnusuSession = async () => {
-  const ssoApiUrl = import.meta.env.VITE_SSO_API_URL || 'http://localhost:5000/api';
+  const ssoApiUrl = import.meta.env.VITE_SSO_API_URL || '/api/v1';
   try {
     const res = await axios.get<{
       status: boolean;

@@ -133,6 +133,46 @@ export function createApp() {
     }),
   );
 
+  /**
+   * GET /api/v1/sso/session-check
+   *
+   * Meneruskan pemeriksaan sesi ONE UNUSU lewat origin portal ini sendiri.
+   *
+   * Sebelumnya browser memanggil API Hub langsung. Alamatnya berasal dari
+   * `VITE_SSO_API_URL`, yang bila tidak diisi jatuh ke `http://localhost:5000`
+   * — alamat komputer pengunjung, bukan server. Akibatnya pemeriksaan selalu
+   * gagal dan pengguna terlempar ke halaman masuk. Dengan diteruskan dari sisi
+   * server, cookie sesi ikut terbawa pada jalur yang sama seperti penukaran
+   * tiket, dan portal tidak lagi bergantung pada alamat absolut di browser.
+   *
+   * Ketidakpastian (server SSO tidak dapat dihubungi) dijawab dengan
+   * `authenticated: null`, BUKAN `false`, agar sesi lokal tidak diputus.
+   */
+  app.get(
+    '/api/v1/sso/session-check',
+    asyncHandler(async (req, res) => {
+      const baseUrl = config.sso.baseUrl.replace(/\/$/, '');
+      const cookie = req.headers.cookie ?? '';
+
+      try {
+        const upstream = await fetch(`${baseUrl}/api/sso/session-check`, {
+          headers: cookie ? { cookie } : {},
+        });
+
+        const payload = await upstream.json().catch(() => null);
+        if (!payload) {
+          return res
+            .status(502)
+            .json({ status: false, authenticated: null, message: 'Pemeriksa sesi SSO tidak merespons.' });
+        }
+
+        return res.status(upstream.status).json(payload);
+      } catch (error: any) {
+        return res.status(502).json({ status: false, authenticated: null, message: error?.message });
+      }
+    }),
+  );
+
   // Auth: login lokal, tukar tiket SSO, profil, refresh, logout.
   app.use('/api/v1/auth', authRoutes);
 
