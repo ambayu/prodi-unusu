@@ -38,6 +38,16 @@ api.interceptors.request.use((config) => {
     config.headers['X-Tenant-Id'] = activeTenantId;
   }
 
+  /*
+   * Unit fakultas dikirim terpisah karena fakultas tidak memiliki program
+   * studi, sehingga tidak dapat diwakili `X-Tenant-Id`. Tanpa header ini,
+   * simpan profil dari admin fakultas akan dialamatkan ke prodi yang salah.
+   */
+  const activeFacultyId = sessionStorage.getItem('active_faculty_id');
+  if (!activeTenantId && activeFacultyId) {
+    config.headers['X-Faculty-Id'] = activeFacultyId;
+  }
+
   return config;
 });
 

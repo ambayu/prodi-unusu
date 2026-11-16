@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { prisma } from '../../prisma.js';
 import { asyncHandler, getBody, getParams, getQuery, validate } from '../../utils/validation.js';
 import { requirePermission } from '../../middlewares/auth.js';
@@ -17,6 +17,55 @@ import {
   updateVisionMissionSchema,
 } from '../../../shared/schemas/content.js';
 import { idParamSchema, paginationSchema } from '../../../shared/schemas/common.js';
+import type { Request } from 'express';
+
+/**
+ * Menentukan pemilik konten (profil, visi-misi, kontak) untuk request admin.
+ *
+ * Kendala yang diselesaikan di sini:
+ *
+ * 1. `scopedTenantId()` selalu mengembalikan id **program studi**, sedangkan
+ *    enam domain fakultas tidak memiliki program studi (`study_program_id`
+ *    bernilai NULL di tabel `domains`). Konten fakultas wajib disimpan pada
+ *    kolom `faculty_id`; bila dipaksa memakai `studyProgramId` hasilnya baris
+ *    dengan nilai NULL yang melanggar batasan unik dan berakhir 500.
+ *
+ * 2. Portal admin dibuka lewat domain portal, sehingga `req.tenant` di sini
+ *    TIDAK berisi fakultas. Unit yang sedang dikelola dikirim klien melalui
+ *    header `X-Tenant-Id` (program studi) atau `X-Faculty-Id` (fakultas).
+ *    Header hanya dipercaya setelah dicocokkan dengan penugasan pengguna.
+ */
+function resolveContentOwner(req: Request): { studyProgramId: number | null; facultyId: number | null } {
+  const user = req.authUser;
+  if (!user) throw AppError.unauthorized();
+
+  const rawFaculty = req.headers['x-faculty-id'];
+  const facultyHeader = Array.isArray(rawFaculty) ? rawFaculty[0] : rawFaculty;
+
+  if (facultyHeader) {
+    const facultyId = Number(facultyHeader);
+    if (!Number.isInteger(facultyId) || facultyId <= 0) {
+      throw AppError.badRequest('Unit fakultas tidak valid.', 'FACULTY_ID_INVALID');
+    }
+
+    const allowed = user.facultyTenantIds ?? [];
+    if (!user.isSuperAdmin && !allowed.includes(facultyId)) {
+      throw AppError.forbidden(
+        'Anda tidak berwenang mengelola fakultas tersebut.',
+        'FACULTY_SCOPE_DENIED',
+      );
+    }
+
+    return { studyProgramId: null, facultyId };
+  }
+
+  return { studyProgramId: scopedTenantId(req), facultyId: null };
+}
+
+/** Label unit yang sedang dikelola, dipakai pada pesan respons. */
+function ownerLabel(req: Request): string {
+  return req.headers['x-faculty-id'] ? 'fakultas' : 'program studi';
+}
 
 const router = Router();
 
@@ -344,8 +393,8 @@ router.get(
   '/contact',
   requirePermission('contacts.view'),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
-    const contact = await prisma.contactInfo.findUnique({ where: { studyProgramId } });
+    const owner = resolveContentOwner(req);
+    const contact = await prisma.contactInfo.findFirst({ where: owner });
     res.json({ success: true, contact });
   }),
 );
@@ -355,14 +404,13 @@ router.put(
   requirePermission('contacts.update'),
   validate({ body: updateContactSchema }),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = resolveContentOwner(req);
     const body = getBody<Record<string, unknown>>(req);
+    const existing = await prisma.contactInfo.findFirst({ where: owner });
 
-    const contact = await prisma.contactInfo.upsert({
-      where: { studyProgramId },
-      create: { studyProgramId, ...(body as object) } as never,
-      update: body,
-    });
+    const contact = existing
+      ? await prisma.contactInfo.update({ where: { id: existing.id }, data: body })
+      : await prisma.contactInfo.create({ data: { ...owner, ...(body as object) } as never });
 
     await recordAudit({ req, action: 'UPDATE', module: 'CONTACTS', targetType: 'contact', targetId: contact.id });
     res.json({ success: true, message: 'Informasi kontak berhasil diperbarui.', contact });
@@ -405,12 +453,22 @@ router.get(
   '/profile',
   requirePermission('profile.view'),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = resolveContentOwner(req);
     const [profile, visionMission] = await Promise.all([
-      prisma.profileContent.findUnique({ where: { studyProgramId } }),
-      prisma.visionMission.findUnique({ where: { studyProgramId } }),
+      prisma.profileContent.findFirst({ where: owner }),
+      prisma.visionMission.findFirst({ where: owner }),
     ]);
-    res.json({ success: true, profile, visionMission });
+    res.json({
+      success: true,
+      profile,
+      visionMission,
+      /*
+       * `heroImageUrl` dipakai bersama oleh halaman Profil dan Visi & Misi.
+       * Nilainya dikirim terpisah agar formulir Visi & Misi dapat menampilkan
+       * gambar yang sama tanpa harus membaca ulang data profil.
+       */
+      heroImageUrl: profile?.heroImageUrl ?? null,
+    });
   }),
 );
 
@@ -419,17 +477,16 @@ router.put(
   requirePermission('profile.update'),
   validate({ body: updateProfileSchema }),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = resolveContentOwner(req);
     const body = getBody<Record<string, unknown>>(req);
+    const existing = await prisma.profileContent.findFirst({ where: owner });
 
-    const profile = await prisma.profileContent.upsert({
-      where: { studyProgramId },
-      create: { studyProgramId, ...(body as object) } as never,
-      update: body,
-    });
+    const profile = existing
+      ? await prisma.profileContent.update({ where: { id: existing.id }, data: body })
+      : await prisma.profileContent.create({ data: { ...owner, ...(body as object) } as never });
 
     await recordAudit({ req, action: 'UPDATE', module: 'PROFILE', targetType: 'profile', targetId: profile.id });
-    res.json({ success: true, message: 'Profil program studi berhasil diperbarui.', profile });
+    res.json({ success: true, message: `Profil ${ownerLabel(req)} berhasil diperbarui.`, profile });
   }),
 );
 
@@ -438,17 +495,46 @@ router.put(
   requirePermission('vision_mission.update'),
   validate({ body: updateVisionMissionSchema }),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = resolveContentOwner(req);
     const body = getBody<Record<string, unknown>>(req);
+    const existing = await prisma.visionMission.findFirst({ where: owner });
 
-    const visionMission = await prisma.visionMission.upsert({
-      where: { studyProgramId },
-      create: { studyProgramId, ...(body as object) } as never,
-      update: body,
-    });
+    const visionMission = existing
+      ? await prisma.visionMission.update({ where: { id: existing.id }, data: body })
+      : await prisma.visionMission.create({ data: { ...owner, ...(body as object) } as never });
 
     await recordAudit({ req, action: 'UPDATE', module: 'VISION_MISSION', targetType: 'vision_mission', targetId: visionMission.id });
     res.json({ success: true, message: 'Visi dan misi berhasil diperbarui.', visionMission });
+  }),
+);
+
+/**
+ * PUT /admin/hero-image
+ *
+ * Menyimpan gambar pendukung yang dipakai bersama oleh halaman Profil dan
+ * Visi & Misi. Dipisahkan dari `PUT /admin/profile` agar formulir Visi & Misi
+ * dapat mengganti gambar tanpa perlu mengirim ulang seluruh isi profil.
+ */
+router.put(
+  '/hero-image',
+  requirePermission('profile.update'),
+  validate({ body: updateProfileSchema }),
+  asyncHandler(async (req, res) => {
+    const owner = resolveContentOwner(req);
+    const body = getBody<{ heroImageUrl?: string | null }>(req);
+    const existing = await prisma.profileContent.findFirst({ where: owner });
+
+    const profile = existing
+      ? await prisma.profileContent.update({
+          where: { id: existing.id },
+          data: { heroImageUrl: body.heroImageUrl ?? null },
+        })
+      : await prisma.profileContent.create({
+          data: { ...owner, heroImageUrl: body.heroImageUrl ?? null } as never,
+        });
+
+    await recordAudit({ req, action: 'UPDATE', module: 'PROFILE', targetType: 'profile', targetId: profile.id });
+    res.json({ success: true, message: 'Gambar pendukung berhasil disimpan.', heroImageUrl: profile.heroImageUrl });
   }),
 );
 

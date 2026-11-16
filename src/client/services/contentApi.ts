@@ -588,9 +588,17 @@ export const contactApi = {
 
 export const profileApi = {
   public: () => api.get<{ profile: Record<string, unknown> | null; visionMission: Record<string, unknown> | null }>('/public/profile'),
-  get: () => api.get<{ profile: Record<string, unknown> | null; visionMission: Record<string, unknown> | null }>('/admin/profile'),
+  get: () =>
+    api.get<{
+      profile: Record<string, unknown> | null;
+      visionMission: Record<string, unknown> | null;
+      /** Gambar pendukung bersama halaman Profil & Visi-Misi. */
+      heroImageUrl?: string | null;
+    }>('/admin/profile'),
   update: (data: Record<string, unknown>) => api.put('/admin/profile', data),
   updateVisionMission: (data: Record<string, unknown>) => api.put('/admin/vision-mission', data),
+  /** Menyimpan gambar pendukung tanpa mengubah isi teks profil. */
+  updateHeroImage: (heroImageUrl: string) => api.put('/admin/hero-image', { heroImageUrl }),
 };
 
 export { api };
