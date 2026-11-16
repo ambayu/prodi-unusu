@@ -168,7 +168,7 @@ export const SsoCallback: React.FC = () => {
         const payload = (requestError as { response?: { data?: Record<string, any> } })?.response?.data ?? {};
         setMasalah(terjemahkanGagalSso(requestError, payload));
       });
-  }, [params, navigate, refreshUser]);
+  }, [navigate, refreshUser]);
 
   if (masalah) {
     return (
