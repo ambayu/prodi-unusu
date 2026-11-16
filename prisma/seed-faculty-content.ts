@@ -1,0 +1,401 @@
+/**
+ * Seeder Idempotent untuk data konten awal 6 Fakultas UNUSU.
+ *
+ * Melengkapi `seed-prodi-content.ts`: program studi sudah punya profil, visi &
+ * misi, kontak, dan berita; fakultas belum. Tanpa data ini website fakultas
+ * (fasilkom, fip, fe, faperta, fikes, fai) tampil kosong, karena halaman
+ * Profil / Visi & Misi / Berita membaca baris yang `faculty_id`-nya terisi.
+ *
+ * Prinsip yang dipegang (sama dengan seeder prodi):
+ *   - Idempotent: memakai `upsert` berkunci `facultyId` (kolom itu @unique).
+ *   - Tidak pernah `deleteMany()` data operasional.
+ *   - Hanya MENGISI kolom yang masih kosong; konten hasil suntingan admin
+ *     tidak pernah ditimpa ketika seeder dijalankan ulang.
+ *   - Menu fakultas sengaja TIDAK disalin dari prodi. Fakultas tidak memiliki
+ *     kurikulum maupun sarana-prasarana sendiri — keduanya milik prodi.
+ *
+ * Jalankan:
+ *   npx tsx prisma/seed-faculty-content.ts
+ */
+
+import 'dotenv/config';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+/**
+ * Gambar pendukung profil bawaan per fakultas.
+ *
+ * Seluruh berkas ini sudah tersedia di folder `public`, sehingga seeder tidak
+ * membuat berkas baru. Admin dapat menggantinya lewat menu Profil.
+ */
+const PROFILE_HERO_BY_FACULTY: Record<string, string> = {
+  FIK: '/rektorat-unusu.jpg',
+  FIP: '/gedung-unusu.jpg',
+  FE: '/rektorat-unusu.jpg',
+  FAPERTA: '/gedung-unusu.jpg',
+  FIKES: '/assets/campus-login.png',
+  FAI: '/rektorat-unusu.jpg',
+};
+
+const PROFILE_HERO_DEFAULT = '/rektorat-unusu.jpg';
+
+/**
+ * Hostname resmi tiap fakultas.
+ *
+ * Catatan: kode fakultas FIK memakai hostname `fasilkom`, bukan `fik`. Nilai
+ * ini harus sama dengan `server_name` di Nginx dan baris pada tabel `domains`,
+ * jika tidak `resolveSite()` menolak permintaan dengan DOMAIN_NOT_REGISTERED.
+ */
+const HOSTNAME_BY_FACULTY: Record<string, string> = {
+  FIK: 'fasilkom.unusu.ac.id',
+  FIP: 'fip.unusu.ac.id',
+  FE: 'fe.unusu.ac.id',
+  FAPERTA: 'faperta.unusu.ac.id',
+  FIKES: 'fikes.unusu.ac.id',
+  FAI: 'fai.unusu.ac.id',
+};
+
+/** Warna tema per fakultas agar tiap website punya ciri visual sendiri. */
+const THEME_BY_FACULTY: Record<string, { primary: string; secondary: string; accent: string }> = {
+  FIK: { primary: '#1e3a8a', secondary: '#0f172a', accent: '#38bdf8' },
+  FIP: { primary: '#14532d', secondary: '#0d2818', accent: '#fbbf24' },
+  FE: { primary: '#7c2d12', secondary: '#1c1917', accent: '#fbbf24' },
+  FAPERTA: { primary: '#166534', secondary: '#0f2a1a', accent: '#facc15' },
+  FIKES: { primary: '#0e7490', secondary: '#083344', accent: '#fbbf24' },
+  FAI: { primary: '#3b0764', secondary: '#1e1b4b', accent: '#fbbf24' },
+};
+
+/**
+ * Menu standar website fakultas.
+ *
+ * Berbeda dari menu prodi: tanpa "Kurikulum" dan "Sarana & Prasarana", tetapi
+ * menambahkan "Program Studi" yang mengarah ke halaman `/prodi`. Halaman itu
+ * menampilkan prodi di bawah fakultas beserta tautan ke website masing-masing.
+ */
+const FACULTY_MENUS = [
+  { title: 'Beranda', url: '/', isRequired: true },
+  { title: 'Profil', url: '/profil', isRequired: true },
+  { title: 'Visi & Misi', url: '/visi-misi', isRequired: true },
+  { title: 'Program Studi', url: '/prodi', isRequired: true },
+  { title: 'Dosen', url: '/dosen', isRequired: false },
+  { title: 'Berita & Warta', url: '/berita', isRequired: false },
+  { title: 'Galeri Kegiatan', url: '/galeri', isRequired: false },
+  { title: 'Dokumen & Unduhan', url: '/dokumen', isRequired: false },
+  { title: 'Kontak & Lokasi', url: '/kontak', isRequired: true },
+];
+
+/**
+ * Butir misi fakultas.
+ *
+ * Fakultas bergerak di tingkat yang lebih luas daripada prodi: pengelolaan
+ * beberapa program studi sekaligus, koordinasi dosen, dan kerja sama
+ * antarlembaga — bukan pengajaran satu bidang keilmuan tertentu.
+ */
+function buildFacultyMissions(name: string): string[] {
+  return [
+    `Menyelenggarakan dan mengoordinasikan pendidikan tinggi yang bermutu pada program studi di lingkungan ${name}.`,
+    'Mengembangkan penelitian dan publikasi ilmiah yang berkontribusi bagi pengembangan ilmu pengetahuan dan teknologi.',
+    'Melaksanakan pengabdian kepada masyarakat yang berorientasi pada pemberdayaan umat dan pembangunan daerah.',
+    'Menjalin kerja sama strategis dengan perguruan tinggi, dunia usaha, dunia industri, dan lembaga pemerintah.',
+    'Membina suasana akademik yang islami, inklusif, dan berlandaskan nilai Ahlussunnah wal Jama’ah An-Nahdliyah.',
+  ];
+}
+
+/** Ringkasan profil per fakultas, dipakai sebelum data admin tersedia. */
+function buildFacultyOverview(name: string, universitas: string): string {
+  return (
+    `${name} adalah salah satu fakultas di lingkungan ${universitas}. ` +
+    'Fakultas menyelenggarakan pendidikan tinggi berbasis Ahlussunnah wal Jama’ah An-Nahdliyah ' +
+    'dengan memadukan penguasaan ilmu pengetahuan dan teknologi serta pembentukan karakter mahasiswa. ' +
+    'Melalui program studi yang dikelolanya, fakultas menyiapkan lulusan yang kompeten, berintegritas, ' +
+    'dan mampu berkontribusi di tingkat nasional maupun internasional.'
+  );
+}
+
+async function seedFacultyContents() {
+  console.log('Mengisi data konten untuk seluruh Fakultas UNUSU...');
+
+  const faculties = await prisma.faculty.findMany({
+    where: { isActive: true },
+    orderBy: { sortOrder: 'asc' },
+  });
+
+  if (faculties.length === 0) {
+    console.warn('  ! Tidak ada fakultas aktif. Jalankan seeder organisasi terlebih dahulu.');
+    return;
+  }
+
+  let count = 0;
+
+  for (const faculty of faculties) {
+    count += 1;
+
+    const name = faculty.name;
+    const code = faculty.code;
+    const universitas = 'Universitas Nahdlatul Ulama Sumatera Utara';
+    const heroImageUrl = PROFILE_HERO_BY_FACULTY[code] ?? PROFILE_HERO_DEFAULT;
+    const hostname = HOSTNAME_BY_FACULTY[code];
+    const theme = THEME_BY_FACULTY[code] ?? { primary: '#1e3a8a', secondary: '#0f172a', accent: '#fbbf24' };
+
+    // ------------------------------------------------------------------
+    // 1. Website setting (judul, tagline, SEO)
+    // ------------------------------------------------------------------
+    const settingExisting = await prisma.websiteSetting.findUnique({
+      where: { facultyId: faculty.id },
+    });
+
+    const siteTitle = name;
+    const siteTagline = `Unggul, Inovatif, dan Berkarakter Aswaja — ${name} UNUSU`;
+
+    await prisma.websiteSetting.upsert({
+      where: { facultyId: faculty.id },
+      create: {
+        facultyId: faculty.id,
+        siteTitle,
+        siteTagline,
+        univName: universitas,
+        facultyName: name,
+        logoUrl: '/logo-unusu.jpg',
+        faviconUrl: '/logo-unusu.jpg',
+        seoTitle: name,
+        seoDescription: `${name} ${universitas} — informasi program studi, dosen, kurikulum, berita, dan layanan akademik.`,
+        copyrightText: `© ${new Date().getFullYear()} ${name} ${universitas}`,
+      },
+      // Hanya isi yang kosong; suntingan admin tidak ditimpa.
+      update: {
+        ...(settingExisting?.siteTitle?.trim() ? {} : { siteTitle }),
+        ...(settingExisting?.siteTagline?.trim() ? {} : { siteTagline }),
+        ...(settingExisting?.seoDescription?.trim() ? {} : {
+          seoDescription: `${name} ${universitas} — informasi program studi, dosen, kurikulum, berita, dan layanan akademik.`,
+        }),
+      },
+    });
+
+    // ------------------------------------------------------------------
+    // 2. Tema visual
+    // ------------------------------------------------------------------
+    await prisma.theme.upsert({
+      where: { facultyId: faculty.id },
+      create: {
+        facultyId: faculty.id,
+        primaryColor: theme.primary,
+        secondaryColor: theme.secondary,
+        accentColor: theme.accent,
+        fontHeading: 'Plus Jakarta Sans',
+        fontBody: 'Plus Jakarta Sans',
+      },
+      update: {},
+    });
+
+    // ------------------------------------------------------------------
+    // 3. Profil fakultas
+    // ------------------------------------------------------------------
+    const profileExisting = await prisma.profileContent.findUnique({
+      where: { facultyId: faculty.id },
+    });
+
+    await prisma.profileContent.upsert({
+      where: { facultyId: faculty.id },
+      create: {
+        facultyId: faculty.id,
+        overview: buildFacultyOverview(name, universitas),
+        history:
+          `${name} didirikan sebagai bagian dari pengembangan ${universitas} untuk menjawab kebutuhan ` +
+          'sumber daya manusia profesional dan berintegritas di Sumatera Utara dan Indonesia.',
+        objectives:
+          'Menghasilkan lulusan yang kompeten dan berdaya saing, meningkatkan mutu penelitian dan publikasi, ' +
+          'serta memperluas dampak pengabdian kepada masyarakat.',
+        targets:
+          'Terwujudnya tata kelola fakultas yang akuntabel, peningkatan peringkat akreditasi program studi, ' +
+          'dan penguatan jejaring kerja sama nasional maupun internasional.',
+        organization:
+          'Fakultas dipimpin oleh Dekan, dibantu Wakil Dekan Bidang Akademik, Wakil Dekan Bidang Umum dan ' +
+          'Keuangan, serta Senat Fakultas dan unit penjaminan mutu. Kegiatan akademik sehari-hari dikoordinasikan ' +
+          'oleh ketua program studi di lingkungan fakultas.',
+        heroImageUrl,
+      },
+      update: {
+        ...(profileExisting?.overview?.trim()
+          ? {}
+          : { overview: buildFacultyOverview(name, universitas) }),
+        ...(profileExisting?.heroImageUrl?.trim() ? {} : { heroImageUrl }),
+      },
+    });
+
+    // ------------------------------------------------------------------
+    // 4. Visi & Misi
+    // ------------------------------------------------------------------
+    const visionExisting = await prisma.visionMission.findUnique({
+      where: { facultyId: faculty.id },
+    });
+
+    const vision =
+      `Menjadi fakultas yang unggul dan terpercaya dalam pengembangan ilmu pengetahuan, teknologi, ` +
+      `dan pembentukan karakter islami di tingkat nasional pada tahun 2035.`;
+    const missions = buildFacultyMissions(name).join('\n');
+
+    await prisma.visionMission.upsert({
+      where: { facultyId: faculty.id },
+      create: {
+        facultyId: faculty.id,
+        vision,
+        missions,
+        objectives:
+          'Meningkatkan mutu penyelenggaraan pendidikan, menguatkan budaya riset, dan memperluas kontribusi ' +
+          'fakultas bagi masyarakat.',
+        strategicGoals:
+          'Akreditasi program studi unggul, peningkatan kualifikasi dan kompetensi dosen, serta penguatan ' +
+          'kerja sama tri dharma perguruan tinggi.',
+      },
+      update: {
+        ...(visionExisting?.vision?.trim() ? {} : { vision }),
+        ...(visionExisting?.missions?.trim() ? {} : { missions }),
+      },
+    });
+
+    // ------------------------------------------------------------------
+    // 5. Kontak fakultas
+    // ------------------------------------------------------------------
+    const contactExisting = await prisma.contactInfo.findUnique({
+      where: { facultyId: faculty.id },
+    });
+
+    const email = `${code.toLowerCase()}@unusu.ac.id`;
+
+    await prisma.contactInfo.upsert({
+      where: { facultyId: faculty.id },
+      create: {
+        facultyId: faculty.id,
+        address:
+          'Gedung Fakultas, Kampus Universitas Nahdlatul Ulama Sumatera Utara, ' +
+          'Jl. H.A. Manaf Lubis No.2, Gaperta Ujung, Helvetia, Medan',
+        email,
+        phone: '(061) 8451234',
+        whatsapp: '081260001926',
+        instagramUrl: 'https://instagram.com/unusu_official',
+      },
+      update: {
+        ...(contactExisting?.email?.trim() ? {} : { email }),
+      },
+    });
+
+    // ------------------------------------------------------------------
+    // 6. Domain resmi fakultas
+    // ------------------------------------------------------------------
+    if (hostname) {
+      const domainExisting = await prisma.domain.findUnique({ where: { hostname } });
+
+      if (domainExisting && domainExisting.facultyId !== faculty.id) {
+        console.warn(
+          `  ! Domain ${hostname} sudah dipakai tenant lain (facultyId=${domainExisting.facultyId}). Dilewati.`,
+        );
+      } else {
+        await prisma.domain.upsert({
+          where: { hostname },
+          create: {
+            facultyId: faculty.id,
+            hostname,
+            isPrimary: true,
+            isActive: true,
+          },
+          update: { facultyId: faculty.id, isActive: true },
+        });
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // 7. Menu website fakultas
+    // ------------------------------------------------------------------
+    for (const [index, menu] of FACULTY_MENUS.entries()) {
+      const menuExisting = await prisma.menu.findFirst({
+        where: { facultyId: faculty.id, url: menu.url },
+      });
+
+      if (menuExisting) {
+        await prisma.menu.update({
+          where: { id: menuExisting.id },
+          data: {
+            title: menu.title,
+            sortOrder: index + 1,
+            isRequired: menu.isRequired,
+            isActive: true,
+          },
+        });
+      } else {
+        await prisma.menu.create({
+          data: {
+            facultyId: faculty.id,
+            title: menu.title,
+            url: menu.url,
+            sortOrder: index + 1,
+            isRequired: menu.isRequired,
+            isActive: true,
+          },
+        });
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // 8. Kategori & berita sambutan
+    // ------------------------------------------------------------------
+    // `post_categories` hanya punya unik (studyProgramId, slug); untuk fakultas
+    // `studyProgramId` bernilai NULL, sehingga dipakai findFirst + create.
+    let category = await prisma.postCategory.findFirst({
+      where: { facultyId: faculty.id, slug: 'pengumuman' },
+    });
+
+    if (!category) {
+      category = await prisma.postCategory.create({
+        data: { facultyId: faculty.id, name: 'Pengumuman', slug: 'pengumuman' },
+      });
+    }
+
+    const welcomeSlug = 'selamat-datang-di-website-fakultas';
+    const postExisting = await prisma.post.findFirst({
+      where: { facultyId: faculty.id, slug: welcomeSlug },
+    });
+
+    if (!postExisting) {
+      await prisma.post.create({
+        data: {
+          facultyId: faculty.id,
+          categoryId: category.id,
+          title: `Selamat Datang di Website Resmi ${name}`,
+          slug: welcomeSlug,
+          excerpt:
+            `Website resmi ${name} ${universitas} sebagai pusat informasi program studi, kegiatan ` +
+            'akademik, dan layanan fakultas.',
+          content:
+            `<p>Selamat datang di portal resmi <strong>${name}</strong>, ${universitas}.</p>` +
+            '<p>Melalui portal ini, pengunjung dapat menelusuri profil fakultas, visi dan misi, daftar ' +
+            'program studi beserta tautan website masing-masing, informasi dosen, kegiatan, serta kontak ' +
+            'sekretariat fakultas.</p>',
+          status: 'published',
+          isPublished: true,
+          publishedAt: new Date(),
+        },
+      });
+    }
+
+    console.log(
+      `  + ${code.padEnd(9)} ${name.padEnd(28)} domain=${(hostname ?? '-').padEnd(24)} menu=${FACULTY_MENUS.length}`,
+    );
+  }
+
+  console.log(`Berhasil mengisi konten default untuk ${count} fakultas.`);
+}
+
+// Jalankan hanya bila berkas ini dieksekusi langsung, bukan saat diimpor.
+if (process.argv[1]?.includes('seed-faculty-content')) {
+  seedFacultyContents()
+    .catch((err) => {
+      console.error('Gagal mengisi konten fakultas:', err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
+
+export { seedFacultyContents, FACULTY_MENUS, HOSTNAME_BY_FACULTY };

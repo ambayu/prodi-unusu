@@ -23,6 +23,7 @@ import {
 } from '../src/shared/constants/organization.js';
 import { PERMISSIONS, ROLES } from '../src/shared/constants/permissions.js';
 import { seedProdiContents } from './seed-prodi-content.js';
+import { seedFacultyContents } from './seed-faculty-content.js';
 import { seedPageBuilderAndThemes } from './seed-page-builder.js';
 import { seedProdiRoles } from './seed-prodi-roles.js';
 
@@ -448,7 +449,10 @@ async function main() {
   console.log('10. Konten profil, visi misi, kontak, & dosen 14 prodi');
   await seedProdiContents();
 
-  console.log('11. Tema visual, halaman beranda, & page builder 14 prodi');
+  console.log('11. Konten profil, visi misi, kontak, menu, & domain 6 fakultas');
+  await seedFacultyContents();
+
+  console.log('12. Tema visual, halaman beranda, & page builder 14 prodi');
   await seedPageBuilderAndThemes();
 
   const durationMs = Date.now() - startedAt;
