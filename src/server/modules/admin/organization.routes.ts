@@ -279,6 +279,8 @@ router.get(
       orderBy: [{ studyProgramId: 'asc' }, { isPrimary: 'desc' }],
       include: {
         studyProgram: { select: { id: true, name: true, code: true, status: true } },
+        // Domain fakultas tidak punya program studi; identitasnya dari fakultas.
+        faculty: { select: { id: true, name: true, code: true } },
       },
     });
     res.json({ success: true, domains });

@@ -144,30 +144,32 @@ export const FacultyDetailPage: React.FC = () => {
                   <BuildingOffice2Icon className="w-4 h-4 text-emerald-700" />
                   Profil Fakultas
                 </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-4">{currentFaculty.name}</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mb-4">
+                  {/*
+                    Nama fakultas sekaligus pintu masuk ke website resminya.
+                    Tanpa tombol terpisah: teks ini diberi garis bawah saat
+                    kursor mendekat, sehingga terbaca sebagai tautan tanpa
+                    menambah elemen baru pada banner.
+                  */}
+                  {currentFaculty.hostname ? (
+                    <a
+                      href={`https://${currentFaculty.hostname}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`Buka website ${currentFaculty.name}`}
+                      className="group inline-flex items-start gap-1.5 rounded underline-offset-4 transition-colors hover:text-[#166534] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+                    >
+                      <span>{currentFaculty.name}</span>
+                      <ArrowTopRightOnSquareIcon className="mt-1.5 h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-[#166534]" />
+                    </a>
+                  ) : (
+                    currentFaculty.name
+                  )}
+                </h2>
                 <p className="text-sm text-slate-600 leading-relaxed">
                   {currentFaculty.description ||
                     `${currentFaculty.name} menaungi program studi unggulan yang berkomitmen mencetak lulusan berkarakter, berdaya saing global, dan berlandaskan nilai-nilai Ahlussunnah wal Jama'ah.`}
                 </p>
-
-                {/*
-                  Tautan ke website resmi fakultas. Halaman ini adalah detail di
-                  dalam portal; pengunjung yang ingin masuk ke portal mandiri
-                  fakultas harus punya jalan langsung dari sini, tanpa kembali
-                  dulu ke beranda portal.
-                */}
-                {currentFaculty.hostname ? (
-                  <a
-                    href={`https://${currentFaculty.hostname}/`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#166534] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#124f28] hover:shadow-md"
-                  >
-                    <GlobeAltIcon className="h-4 w-4" />
-                    Kunjungi Website Fakultas
-                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                  </a>
-                ) : null}
               </div>
 
               <div className="mt-6 pt-6 border-t border-slate-100 flex flex-wrap items-center gap-6 text-xs text-slate-500">

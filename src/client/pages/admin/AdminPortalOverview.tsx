@@ -35,6 +35,12 @@ import { toApiError } from '../../services/api';
  * prodi, lalu membuka dashboard prodi.
  */
 
+/**
+ * Baris daftar website prodi pada halaman ini.
+ *
+ * `studyProgram` dijamin ada karena domain fakultas sudah disaring saat
+ * penyusunan baris — halaman ini memang hanya mengelola website program studi.
+ */
 interface PortalDomainRow {
   id: number;
   hostname: string;
@@ -89,15 +95,22 @@ export const AdminPortalOverview: React.FC = () => {
    * Endpoint dashboard mengembalikan daftar DOMAIN, bukan daftar prodi. Prodi
    * yang belum punya domain tetap harus terlihat (justru itu yang perlu
    * ditindaklanjuti), jadi baris dikelompokkan per `studyProgram.id`.
+   *
+   * Domain milik fakultas tidak punya `studyProgram`; domain seperti itu
+   * dilewati karena halaman ini khusus website program studi.
    */
   const rows = useMemo<PortalDomainRow[]>(() => {
     const domains = superQuery.data?.domains ?? [];
     const byProdi = new Map<number, PortalDomainRow>();
     for (const domain of domains) {
-      const existing = byProdi.get(domain.studyProgram.id);
+      // Domain fakultas tidak punya program studi; lewati.
+      const prodi = domain.studyProgram;
+      if (!prodi) continue;
+
+      const existing = byProdi.get(prodi.id);
       // Domain utama diprioritaskan sebagai wakil baris prodi.
       if (!existing || (!existing.isPrimary && domain.isPrimary)) {
-        byProdi.set(domain.studyProgram.id, domain);
+        byProdi.set(prodi.id, { ...domain, studyProgram: prodi });
       }
     }
     return Array.from(byProdi.values());

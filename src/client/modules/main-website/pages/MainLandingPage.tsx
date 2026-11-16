@@ -701,7 +701,7 @@ export const MainLandingPage: React.FC = () => {
                       </div>
 
                       {/* Tombol Aksi di Bawah: "Lihat Detail Fakultas" */}
-                      <div className="mt-4 pt-2.5 border-t border-slate-100 space-y-1.5">
+                      <div className="mt-4 pt-2.5 border-t border-slate-100">
                         <Link
                           to={detailHref}
                           className="inline-flex w-full items-center justify-between rounded-lg bg-emerald-50/80 px-3 py-1.5 text-[11px] font-bold text-emerald-800 transition-all hover:bg-emerald-100/90 group-hover:bg-[#166534] group-hover:text-white"
@@ -709,22 +709,6 @@ export const MainLandingPage: React.FC = () => {
                           <span>Lihat Detail Fakultas</span>
                           <ArrowRightIcon className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                         </Link>
-
-                        {/* Tautan langsung ke website fakultas, tanpa membuka detail portal */}
-                        {domainFakultas ? (
-                          <a
-                            href={domainFakultas}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-bold text-slate-600 transition-colors hover:bg-slate-50 hover:text-[#166534]"
-                          >
-                            <span className="inline-flex items-center gap-1.5">
-                              <GlobeAltIcon className="h-3 w-3" />
-                              Kunjungi Website Fakultas
-                            </span>
-                            <ArrowTopRightOnSquareIcon className="h-3 w-3" />
-                          </a>
-                        ) : null}
                       </div>
                     </div>
                   </div>

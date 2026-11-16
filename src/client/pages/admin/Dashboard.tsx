@@ -303,7 +303,16 @@ export const Dashboard: React.FC = () => {
                       <div className="min-w-0">
                         <p className="truncate font-mono font-bold text-[#1e3a8a]">{domain.hostname}</p>
                         <p className="truncate text-[10px] text-slate-500">
-                          {domain.studyProgram.code} - {domain.studyProgram.name}
+                          {/*
+                            Domain fakultas tidak memiliki program studi, jadi
+                            identitasnya ditampilkan dari data fakultas. Tanpa
+                            pemeriksaan ini baris akan gagal dirender.
+                          */}
+                          {domain.studyProgram
+                            ? `${domain.studyProgram.code} - ${domain.studyProgram.name}`
+                            : domain.faculty
+                              ? `${domain.faculty.code} - ${domain.faculty.name}`
+                              : 'Domain fakultas'}
                         </p>
                       </div>
                       <span

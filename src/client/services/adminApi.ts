@@ -262,7 +262,14 @@ export const dashboardApi = {
         hostname: string;
         isPrimary: boolean;
         isActive: boolean;
-        studyProgram: { id: number; name: string; code: string; status: string; faculty: { name: string } };
+        /*
+         * Domain dapat dimiliki program studi ATAU fakultas. Domain fakultas
+         * tidak punya `studyProgram` sama sekali, sehingga kolom ini harus
+         * boleh null — sebelumnya tipe menganggapnya selalu ada dan tampilan
+         * runtuh saat domain fakultas mulai terdaftar.
+         */
+        studyProgram: { id: number; name: string; code: string; status: string; faculty: { name: string } } | null;
+        faculty?: { id: number; name: string; code: string } | null;
       }>;
       recentAudit: AuditEntry[];
     }>('/admin/dashboard/super'),
@@ -358,7 +365,12 @@ export const organizationApi = {
         hostname: string;
         isPrimary: boolean;
         isActive: boolean;
-        studyProgram: { id: number; name: string; code: string; status: string };
+        /*
+         * Domain fakultas tidak punya program studi (kolomnya null), sehingga
+         * `faculty` menjadi sumber identitas pengganti.
+         */
+        studyProgram: { id: number; name: string; code: string; status: string } | null;
+        faculty?: { id: number; name: string; code: string } | null;
       }>;
     }>('/admin/domains'),
   createDomain: (data: Record<string, unknown>) => api.post('/admin/domains', data),

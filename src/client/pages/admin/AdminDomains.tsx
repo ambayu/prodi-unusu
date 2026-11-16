@@ -94,14 +94,24 @@ export const AdminDomains: React.FC = () => {
     },
     {
       key: 'prodi',
-      header: 'Program Studi',
+      header: 'Program Studi / Fakultas',
       width: 260,
-      render: (domain) => (
-        <>
-          <span className="block font-semibold text-slate-800">{domain.studyProgram.name}</span>
-          <span className="font-mono text-xs text-slate-500">{domain.studyProgram.code}</span>
-        </>
-      ),
+      render: (domain) =>
+        domain.studyProgram ? (
+          <>
+            <span className="block font-semibold text-slate-800">{domain.studyProgram.name}</span>
+            <span className="font-mono text-xs text-slate-500">{domain.studyProgram.code}</span>
+          </>
+        ) : domain.faculty ? (
+          <>
+            <span className="block font-semibold text-slate-800">{domain.faculty.name}</span>
+            <span className="font-mono text-xs text-slate-500">
+              {domain.faculty.code} · Fakultas
+            </span>
+          </>
+        ) : (
+          <span className="text-xs text-slate-400">-</span>
+        ),
     },
     {
       key: 'utama',

@@ -122,6 +122,8 @@ router.get(
             faculty: { select: { name: true } },
           },
         },
+        // Domain fakultas tidak punya program studi; identitasnya dari fakultas.
+        faculty: { select: { id: true, name: true, code: true } },
       },
     });
 
