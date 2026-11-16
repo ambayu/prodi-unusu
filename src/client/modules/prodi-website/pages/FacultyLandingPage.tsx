@@ -8,6 +8,7 @@ import {
   BookOpenIcon,
   BuildingOffice2Icon,
   EnvelopeIcon,
+  GlobeAltIcon,
   MapPinIcon,
   PhoneIcon,
 } from '@heroicons/react/24/outline';
@@ -127,9 +128,9 @@ export const FacultyLandingPage: React.FC = () => {
 
   return (
     <div className="bg-white">
-      {/* ---------- HERO SLIDER ---------- */}
+      {/* ---------- HERO SLIDER (sama dengan desain website prodi) ---------- */}
       <section className="relative w-full overflow-hidden bg-slate-900 select-none">
-        <div className="relative w-full aspect-[21/9] min-h-[320px] sm:min-h-[420px] lg:min-h-[500px]">
+        <div className="relative w-full aspect-[21/9] min-h-[300px] sm:min-h-[420px] lg:min-h-[500px] xl:min-h-[540px]">
           {slides.map((src, idx) => (
             <img
               key={src}
@@ -143,11 +144,25 @@ export const FacultyLandingPage: React.FC = () => {
           ))}
 
           {/*
-            Slider murni gambar: tanpa lapisan gelap, judul, tagline, tombol,
-            maupun titik navigasi. Identitas fakultas ditampilkan pada section
-            "Tentang Fakultas" di bawah, sehingga gambar hero tampil utuh dan
-            pengunjung hanya melihat gambar yang berganti sendiri.
+            Titik navigasi mengikuti hero slider program studi: dot putih tipis,
+            dot aktif memanjang dan berwarna emas. Gambar tetap bersih tanpa
+            judul maupun tombol di atasnya.
           */}
+          {slides.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center space-x-2 sm:bottom-6">
+              {slides.map((src, idx) => (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => setSlideIdx(idx)}
+                  aria-label={`Slide ${idx + 1}`}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    idx === slideIdx ? 'w-8 bg-[#fbbf24] shadow-sm' : 'w-2 bg-white/50 hover:bg-white/80'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -235,20 +250,27 @@ export const FacultyLandingPage: React.FC = () => {
       </section>
 
       {/* ---------- PROGRAM STUDI ---------- */}
-      <section className="mx-auto max-w-7xl px-4 py-16">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: primary }}>
+      <section className="mx-auto max-w-7xl px-4 py-16 lg:py-20">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
+          <div className="max-w-2xl">
+            <p
+              className="inline-block rounded-full px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-widest"
+              style={{ backgroundColor: `${accent}25`, color: primary }}
+            >
               Program Studi
             </p>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+            <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
               Yang diselenggarakan {namaFakultas}
             </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              {directoryQuery.isLoading
+                ? 'Memuat daftar program studi…'
+                : `${prodis.length} program studi aktif, masing-masing memiliki website resmi sendiri.`}
+            </p>
           </div>
           <Link
             to="/prodi"
-            className="inline-flex items-center gap-1.5 text-xs font-bold"
-            style={{ color: primary }}
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-extrabold text-slate-700 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-50 active:scale-95"
           >
             Lihat semua
             <ArrowRightIcon className="h-4 w-4" />
@@ -256,9 +278,9 @@ export const FacultyLandingPage: React.FC = () => {
         </div>
 
         {directoryQuery.isLoading ? (
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-40 animate-pulse rounded-2xl bg-slate-100" />
+              <div key={i} className="h-64 animate-pulse rounded-2xl bg-slate-100" />
             ))}
           </div>
         ) : prodis.length === 0 ? (
@@ -266,71 +288,96 @@ export const FacultyLandingPage: React.FC = () => {
             Belum ada program studi aktif pada fakultas ini.
           </p>
         ) : (
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {prodis.map((prodi) => (
-              <div
-                key={prodi.id}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-lg"
-              >
-                {/*
-                  Gambar penutup kartu. Sumbernya `study_programs.logo_url` yang
-                  diunggah admin lewat menu Struktur Organisasi. Bila belum ada,
-                  ditampilkan bidang warna tema fakultas dengan huruf kode prodi,
-                  agar kartu tetap rapi tanpa gambar rusak.
-                */}
-                <div className="relative h-40 w-full overflow-hidden bg-slate-100">
-                  {prodi.logoUrl ? (
-                    <img
-                      src={prodi.logoUrl}
-                      alt={`Gambar ${prodi.name}`}
-                      className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.04]"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div
-                      className="flex h-full w-full items-center justify-center"
-                      style={{ backgroundColor: `${primary}14` }}
-                    >
-                      <div className="text-center">
-                        <AcademicCapIcon className="mx-auto h-10 w-10" style={{ color: primary }} />
-                        <p className="mt-2 text-xs font-black uppercase tracking-[0.2em]" style={{ color: primary }}>
-                          {prodi.code}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {prodis.map((prodi) => {
+              const url = prodi.primaryHostname ? `https://${prodi.primaryHostname}` : null;
 
-                  {/* Label jenjang menempel di sudut gambar */}
-                  <span
-                    className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white shadow-sm"
-                    style={{ backgroundColor: primary }}
-                  >
-                    {prodi.code} &bull; {prodi.degree}
-                  </span>
-                </div>
-
-                <div className="flex flex-1 flex-col p-5">
-                  <h3 className="text-sm font-extrabold leading-snug text-slate-900">{prodi.name}</h3>
-
-                  <div className="mt-auto pt-4">
-                    {prodi.primaryHostname ? (
-                      <a
-                        href={`https://${prodi.primaryHostname}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-bold"
-                        style={{ color: primary }}
-                      >
-                        Kunjungi website
-                        <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
-                      </a>
+              return (
+                <article
+                  key={prodi.id}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl"
+                >
+                  {/*
+                    Gambar penutup kartu. Sumbernya `study_programs.logo_url` yang
+                    diunggah admin lewat menu Struktur Organisasi. Bila belum ada,
+                    ditampilkan bidang gradien warna tema fakultas dengan huruf kode
+                    prodi, agar kartu tetap rapi tanpa gambar rusak.
+                  */}
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                    {prodi.logoUrl ? (
+                      <img
+                        src={prodi.logoUrl}
+                        alt={`Gambar ${prodi.name}`}
+                        className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                        loading="lazy"
+                      />
                     ) : (
-                      <span className="text-xs font-semibold text-slate-400">Website belum tersedia</span>
+                      <div
+                        className="flex h-full w-full items-center justify-center"
+                        style={{
+                          backgroundImage: `linear-gradient(135deg, ${primary} 0%, ${primary}cc 60%, ${accent}99 100%)`,
+                        }}
+                      >
+                        <div className="text-center">
+                          <AcademicCapIcon className="mx-auto h-11 w-11 text-white/90" />
+                          <p className="mt-2 text-lg font-black uppercase tracking-[0.25em] text-white">
+                            {prodi.code}
+                          </p>
+                        </div>
+                      </div>
                     )}
+
+                    {/* Gradien tipis di bawah agar label selalu terbaca */}
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
+
+                    {/* Jenjang menempel di sudut kiri atas */}
+                    <span
+                      className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-sm ring-1 ring-black/5"
+                      style={{ backgroundColor: accent }}
+                    >
+                      {prodi.degree}
+                    </span>
+
+                    {/* Kode prodi di sudut kanan atas */}
+                    <span className="absolute right-3 top-3 rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white ring-1 ring-white/25 backdrop-blur-sm">
+                      {prodi.code}
+                    </span>
+
+                    {/* Nama prodi di atas gambar */}
+                    <h3 className="absolute bottom-0 left-0 right-0 px-4 pb-3 text-base font-extrabold leading-snug text-white drop-shadow-sm">
+                      {prodi.name}
+                    </h3>
                   </div>
-                </div>
-              </div>
-            ))}
+
+                  <div className="flex flex-1 flex-col p-5">
+                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                      <BuildingOffice2Icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{namaFakultas}</span>
+                    </p>
+
+                    <div className="mt-auto pt-4">
+                      {url ? (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-extrabold text-slate-950 shadow-sm transition-all hover:brightness-105 active:scale-95"
+                          style={{ backgroundColor: accent }}
+                        >
+                          Kunjungi Website
+                          <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                        </a>
+                      ) : (
+                        <span className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-semibold text-slate-400">
+                          <GlobeAltIcon className="h-4 w-4" />
+                          Website belum tersedia
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>
