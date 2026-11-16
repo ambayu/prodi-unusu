@@ -4,6 +4,39 @@ Dokumen ini adalah **indeks pengikat**, bukan salinan. Setiap aturan tinggal di
 sumbernya agar tidak ada dua versi yang bisa saling bertentangan. Bila isi di
 sini berbeda dengan sumbernya, **sumber yang berlaku**.
 
+## ATURAN SSO — Callback, Tiket, dan Diagnosis Gagal Login
+
+Kontrak tetap antara Portal ONE UNUSU dan aplikasi ini. Melanggar satu butir cukup untuk membuat login gagal total, dan gejalanya sering menyerupai masalah lain. Katalog gejala–sebab–solusi lengkap: `one-unusu/docs/SSO_TROUBLESHOOTING.md`.
+
+### A. Aturan Wajib Callback Browser
+
+1. **Callback Berisi Token Saja**: URL callback hanya boleh berbentuk `{urlRedirect}?token=<64 heksadesimal>`. Dilarang menambahkan `client_id`/`client_key` di address bar. `client_id` dibaca dari env server (`SSO_CLIENT_ID`) dan dikirim hanya pada `POST {ONE}/api/v2/website/verify-token`.
+2. **Tiket Sekali Pakai**: komponen callback wajib memakai penanda `useRef` (`sudahJalan`) agar `POST /api/auth/sso` tidak terkirim dua kali, termasuk oleh `React.StrictMode`. Dilarang mengulang penukaran tiket yang sudah gagal — minta pengguna memulai login baru. Dilarang memasang logika `cancelled` yang membuang hasil tukar yang sudah berhasil.
+3. **Bersihkan Address Bar**: setelah tiket dibaca, jalankan `window.history.replaceState(null, '', window.location.pathname)`. Simpan tiket ke memori modul (mis. `TIKET_TERAKHIR`) **sebelum** pembersihan agar tetap tersedia bila komponen terpasang ulang.
+4. **Basis API Relatif**: nilai cadangan `VITE_API_URL` wajib jalur relatif, tidak boleh `http://localhost:<port>/api`. Verifikasi: `grep -o 'http://localhost:[0-9]*/api' dist/**/*.js` harus kosong.
+5. **Tiga Lapisan Sepakat**: `base` Vite, rute/redirect server Express, dan `urlRedirect` di tabel `sso_apps` harus menunjuk bentuk URL yang sama. Aplikasi yang memang di subpath boleh berawalan selama ketiganya sama.
+6. **Cache Bukan Sumber Kebenaran**: `localStorage` hanya untuk tampilan awal. Keputusan navigasi setelah login wajib lewat verifikasi server; dilarang mengalihkan pengguna hanya karena ada data pengguna di `localStorage`.
+
+### B. Gejala Cepat dan Arah Perbaikan
+
+| Gejala | Sebab paling sering | Solusi |
+|---|---|---|
+| "Gagal menghubungi server untuk memverifikasi tiket SSO" | Bundel memuat `http://localhost:<port>/api` | Perbaiki `VITE_API_URL` + ubah nilai cadangan jadi `'/api'` |
+| Login berhasil lalu terlempar ke `/login` | Tiket ditukar dua kali paralel | Guard `useRef` + `TIKET_TERAKHIR` + hapus penanda `cancelled` |
+| Halaman callback kosong / URL berawalan ganda | `base` Vite/redirect backend berbeda dari `urlRedirect` | Samakan ketiga lapisan pada akar domain |
+| Konsol: *MIME type 'text/html' is not executable* | Aset `.js` dibalas `index.html` | Samakan `base` build dengan lokasi aset yang dilayani nginx |
+| "Parameter tiket autentikasi SSO tidak lengkap" padahal URL membawa token | Komponen terpasang ulang setelah `replaceState` | Simpan tiket ke memori modul sebelum membersihkan URL |
+| Tiket terbit tapi `isUsed = false` selamanya | Browser tidak pernah menjalankan callback (bundel gagal dimuat) | Periksa pemuatan bundel dulu, bukan logika callback |
+
+### C. Prosedur Wajib Saat SSO Dilaporkan Gagal
+
+1. Catat gejala persis (teks pesan, URL akhir, halaman) sebelum menyentuh kode.
+2. Cari gejala yang sama di tabel ringkas `one-unusu/docs/SSO_TROUBLESHOOTING.md` §1, lalu **jalankan langkah pembuktian** entri tersebut.
+3. Terapkan solusi, lalu jalankan verifikasi entri yang sama.
+4. Bila gejala belum pernah tercatat, tambahkan entri baru (gejala, sebab, pembuktian, solusi, verifikasi) pada commit yang sama dengan perbaikannya.
+
+---
+
 ## 1. Hierarki aturan
 
 Saat dua aturan bertentangan, urutan prioritas dari tertinggi:

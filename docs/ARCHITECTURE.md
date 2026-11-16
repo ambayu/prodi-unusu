@@ -107,11 +107,11 @@ Pengguna klik Masuk dengan ONE UNUSU
         v
 Portal ONE UNUSU menerbitkan tiket sekali pakai
         v
-Portal mengarahkan ke /sso/callback?client_id=...&token=...
+Portal mengarahkan ke /sso/callback?token=...
         v
-Client memanggil POST /api/v1/auth/sso
+Client memanggil POST /api/v1/auth/sso (membawa token saja)
         v
-Server memverifikasi tiket server-ke-server memakai client_key
+Server memverifikasi tiket server-ke-server memakai client_id + client_key dari env server
         v
 Server membuat atau menyelaraskan akun lokal, lalu membuat sesi
         v
