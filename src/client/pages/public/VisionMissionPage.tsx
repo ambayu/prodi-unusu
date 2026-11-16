@@ -101,8 +101,12 @@ export const VisionMissionPage: React.FC = () => {
         Section pembungkus sengaja TANPA `max-w-7xl`: foto pendukung harus
         menyentuh tepi layar. Batas lebar hanya diterapkan pada teks di
         dalamnya, supaya uraian tetap nyaman dibaca.
+
+        Jarak atas (`pt-10 sm:pt-14`) memberi napas antara banner judul dan
+        foto/konten di bawahnya. Tanpa ini gambar langsung menempel ke banner
+        sehingga halaman terasa sesak.
       */}
-      <section className="py-0">
+      <section className="pt-10 sm:pt-14">
         {profileQuery.isLoading ? (
           <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
             <LoadingState label="Memuat visi dan misi" rows={2} />
