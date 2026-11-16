@@ -96,19 +96,29 @@ export const ProfilePage: React.FC = () => {
            *  1. foto pendukung selebar layar, tanpa bingkai kartu;
            *  2. uraian profil di bawahnya, dibatasi lebar baca.
            */
-          <div className="space-y-10">
-            <figure className="relative w-full overflow-hidden bg-slate-100">
-              <GambarTentang
-                src={heroGambar}
-                alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
-                className="h-[280px] w-full object-cover object-center sm:h-[380px] lg:h-[520px]"
-              />
-              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-6 py-5 text-[11px] font-semibold text-white sm:px-10">
-                {tenant?.name ?? unitLabel} &bull; Universitas Nahdlatul Ulama Sumatera Utara
-              </figcaption>
-            </figure>
+          /*
+           * Tata letak dua kolom: gambar di samping kiri, uraian profil di kanan.
+           *
+           * Gambar sengaja TIDAK dibungkus card: tanpa `rounded`, tanpa border,
+           * dan kolomnya menyentuh tepi layar — hanya sisinya yang diberi sudut
+           * agar tetap terpisah dari teks. Di layar kecil gambar tampil lebih
+           * dahulu, juga tanpa bingkai.
+           */
+          <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
+            <aside className="lg:col-span-6 xl:col-span-5">
+              <figure className="relative overflow-hidden bg-slate-100 lg:sticky lg:top-24">
+                <GambarTentang
+                  src={heroGambar}
+                  alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
+                  className="h-[280px] w-full object-cover object-center sm:h-[360px] lg:h-[560px] lg:rounded-r-3xl"
+                />
+                <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-6 py-5 text-[11px] font-semibold text-white">
+                  {tenant?.name ?? unitLabel} &bull; Universitas Nahdlatul Ulama Sumatera Utara
+                </figcaption>
+              </figure>
+            </aside>
 
-            <div className="mx-auto max-w-4xl space-y-8 px-4 pb-12 sm:px-6">
+            <div className="space-y-8 px-4 pb-14 sm:px-6 lg:col-span-6 lg:pr-8 xl:col-span-7">
               {filled.map((section) => (
                 <article key={section.key}>
                   <h2

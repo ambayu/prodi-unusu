@@ -123,25 +123,29 @@ export const VisionMissionPage: React.FC = () => {
           </div>
         ) : (
           /*
-           * Tata letak:
-           *  1. foto pendukung selebar layar, tanpa bingkai kartu;
-           *  2. uraian visi-misi di bawahnya, dibatasi lebar baca agar tetap
-           *     nyaman dibaca.
+           * Tata letak dua kolom: gambar di samping kiri, uraian visi-misi di
+           * kanan.
+           *
+           * Gambar sengaja TIDAK dibungkus card: tanpa `rounded`, tanpa border,
+           * dan kolomnya menyentuh tepi layar — hanya sisi kanannya yang diberi
+           * batas agar tetap terpisah dari teks. Di layar kecil gambar tampil
+           * lebih dahulu, juga tanpa bingkai.
            */
-          <div className="space-y-10">
-            {/* Foto pendukung: full width, tanpa rounded, border, atau max-width. */}
-            <figure className="relative w-full overflow-hidden bg-slate-100">
-              <GambarTentang
-                src={heroGambar}
-                alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
-                className="h-[280px] w-full object-cover object-center sm:h-[380px] lg:h-[520px]"
-              />
-              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-6 py-5 text-[11px] font-semibold text-white sm:px-10">
-                {tenant?.name ?? unitLabel} &bull; Universitas Nahdlatul Ulama Sumatera Utara
-              </figcaption>
-            </figure>
+          <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
+            <aside className="lg:col-span-6 xl:col-span-5">
+              <figure className="relative overflow-hidden bg-slate-100 lg:sticky lg:top-24">
+                <GambarTentang
+                  src={heroGambar}
+                  alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
+                  className="h-[280px] w-full object-cover object-center sm:h-[360px] lg:h-[560px] lg:rounded-r-3xl"
+                />
+                <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-6 py-5 text-[11px] font-semibold text-white">
+                  {tenant?.name ?? unitLabel} &bull; Universitas Nahdlatul Ulama Sumatera Utara
+                </figcaption>
+              </figure>
+            </aside>
 
-            <div className="mx-auto max-w-4xl space-y-6 px-4 pb-12 sm:px-6">
+            <div className="space-y-6 px-4 pb-14 sm:px-6 lg:col-span-6 lg:pr-8 xl:col-span-7">
               {vision ? (
                 <div className="rounded-2xl p-8" style={{ backgroundColor: accent }}>
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-900/70">Visi</p>
