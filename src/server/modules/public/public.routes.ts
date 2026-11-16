@@ -13,6 +13,26 @@ import { fetchLecturersFromApiHub } from '../../services/lecturerIntegrationServ
 const router = Router();
 
 /**
+ * Filter relasi tenant untuk tabel yang mendukung dua tingkat kepemilikan.
+ *
+ * Tabel seperti `menus`, `contact_infos`, dan `profile_contents` menyimpan
+ * pemiliknya di SALAH SATU kolom: `study_program_id` untuk program studi,
+ * atau `faculty_id` untuk fakultas. Kueri lama hanya memakai
+ * `studyProgramId: req.tenant.id`, sehingga pada domain fakultas
+ * (`studyProgramId` = NULL) hasilnya selalu kosong atau salah sasaran —
+ * menu fakultas hilang dan kontak yang tampil justru milik prodi ber-id sama.
+ *
+ * CATATAN: `id` fakultas dan `id` prodi berasal dari tabel berbeda dan bisa
+ * bernilai sama (mis. fakultas 1 = "Fakultas Ilmu Komputer", prodi 1 =
+ * "Teknik Informatika"), jadi pencocokan harus lewat jenis tenant.
+ */
+function tenantScope(tenant: { id: number; tenantType?: string | undefined }) {
+  return tenant.tenantType === 'faculty'
+    ? { facultyId: tenant.id, studyProgramId: null }
+    : { studyProgramId: tenant.id, facultyId: null };
+}
+
+/**
  * GET /api/v1/public/site
  *
  * Identitas lengkap tenant yang sedang dibuka. Untuk website utama dan portal
@@ -36,7 +56,7 @@ router.get(
   requireTenant,
   asyncHandler(async (req, res) => {
     const menus = await prisma.menu.findMany({
-      where: { studyProgramId: req.tenant!.id, isActive: true, parentId: null },
+      where: { ...tenantScope(req.tenant!), isActive: true, parentId: null },
       orderBy: { sortOrder: 'asc' },
       include: {
         children: {
@@ -56,7 +76,7 @@ router.get(
   requireTenant,
   asyncHandler(async (req, res) => {
     const pages = await prisma.page.findMany({
-      where: { studyProgramId: req.tenant!.id, isPublished: true },
+      where: { ...tenantScope(req.tenant!), isPublished: true },
       select: {
         id: true,
         slug: true,
@@ -83,7 +103,12 @@ router.get(
   validate({ params: slugParamSchema }),
   asyncHandler(async (req, res) => {
     const { slug } = getParams<{ slug: string }>(req);
-    const page = await getPublishedPageBySlug(req.tenant!.id, slug);
+    const fakultas = req.tenant!.tenantType === 'faculty';
+    const page = await getPublishedPageBySlug(
+      fakultas ? null : req.tenant!.id,
+      slug,
+      fakultas ? req.tenant!.id : null,
+    );
 
     if (!page) {
       throw AppError.notFound('Halaman tidak ditemukan atau belum dipublikasikan.');
@@ -128,8 +153,13 @@ router.get(
       });
     } catch {
       // Fallback ke tabel lokal jika API Hub belum tersambung
+      // Lecturer & facility belum menyimpan `faculty_id`, jadi hanya dibatasi
+      // untuk tenant prodi. Website fakultas menampilkan daftar kosong.
       const lecturers = await prisma.lecturer.findMany({
-        where: { studyProgramId: req.tenant!.id, isActive: true },
+        where: {
+          studyProgramId: req.tenant!.tenantType === 'faculty' ? -1 : req.tenant!.id,
+          isActive: true,
+        },
         orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       });
       res.json({ success: true, lecturers });
@@ -151,7 +181,7 @@ router.get(
   requireTenant,
   asyncHandler(async (req, res) => {
     const facilities = await prisma.facility.findMany({
-      where: { studyProgramId: req.tenant!.id },
+      where: { studyProgramId: req.tenant!.tenantType === 'faculty' ? -1 : req.tenant!.id },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
 
@@ -167,7 +197,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { page, perPage, search } = getQuery<{ page: number; perPage: number; search?: string }>(req);
     const where = {
-      studyProgramId: req.tenant!.id,
+      ...tenantScope(req.tenant!),
       status: 'published' as const,
       isPublished: true,
       ...(search ? { title: { contains: search } } : {}),
@@ -213,7 +243,7 @@ router.get(
     const { slug } = getParams<{ slug: string }>(req);
     const post = await prisma.post.findFirst({
       where: {
-        studyProgramId: req.tenant!.id,
+        ...tenantScope(req.tenant!),
         slug,
         status: 'published',
         isPublished: true,
@@ -236,7 +266,7 @@ router.get(
   requireTenant,
   asyncHandler(async (req, res) => {
     const galleries = await prisma.gallery.findMany({
-      where: { studyProgramId: req.tenant!.id, isPublished: true },
+      where: { ...tenantScope(req.tenant!), isPublished: true },
       orderBy: [{ eventDate: 'desc' }, { id: 'desc' }],
       include: { items: { orderBy: { sortOrder: 'asc' } } },
     });
@@ -251,8 +281,8 @@ router.get(
   requireTenant,
   asyncHandler(async (req, res) => {
     const [profile, visionMission] = await Promise.all([
-      prisma.profileContent.findUnique({ where: { studyProgramId: req.tenant!.id } }),
-      prisma.visionMission.findUnique({ where: { studyProgramId: req.tenant!.id } }),
+      prisma.profileContent.findFirst({ where: tenantScope(req.tenant!) }),
+      prisma.visionMission.findFirst({ where: tenantScope(req.tenant!) }),
     ]);
 
     res.json({ success: true, profile, visionMission });
@@ -264,8 +294,8 @@ router.get(
   '/contact',
   requireTenant,
   asyncHandler(async (req, res) => {
-    const contact = await prisma.contactInfo.findUnique({
-      where: { studyProgramId: req.tenant!.id },
+    const contact = await prisma.contactInfo.findFirst({
+      where: tenantScope(req.tenant!),
     });
     res.json({ success: true, contact });
   }),

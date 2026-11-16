@@ -109,10 +109,24 @@ function mapPage(page: {
   };
 }
 
-/** Versi publik sebuah halaman. Hanya mengembalikan halaman yang sudah terbit. */
-export async function getPublishedPageBySlug(studyProgramId: number, slug: string): Promise<RenderedPage | null> {
+/**
+ * Versi publik sebuah halaman. Hanya mengembalikan halaman yang sudah terbit.
+ *
+ * `facultyId` opsional dipakai website fakultas: halaman milik fakultas tidak
+ * punya `studyProgramId`, sehingga pencocokan harus lewat kolom fakultas.
+ */
+export async function getPublishedPageBySlug(
+  studyProgramId: number | null,
+  slug: string,
+  facultyId: number | null = null,
+): Promise<RenderedPage | null> {
   const page = await prisma.page.findFirst({
-    where: { studyProgramId, slug, isPublished: true },
+    where: {
+      studyProgramId,
+      facultyId,
+      slug,
+      isPublished: true,
+    },
     include: pageWithSections,
   });
 
