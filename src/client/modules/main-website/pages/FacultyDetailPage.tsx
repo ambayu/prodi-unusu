@@ -149,6 +149,25 @@ export const FacultyDetailPage: React.FC = () => {
                   {currentFaculty.description ||
                     `${currentFaculty.name} menaungi program studi unggulan yang berkomitmen mencetak lulusan berkarakter, berdaya saing global, dan berlandaskan nilai-nilai Ahlussunnah wal Jama'ah.`}
                 </p>
+
+                {/*
+                  Tautan ke website resmi fakultas. Halaman ini adalah detail di
+                  dalam portal; pengunjung yang ingin masuk ke portal mandiri
+                  fakultas harus punya jalan langsung dari sini, tanpa kembali
+                  dulu ke beranda portal.
+                */}
+                {currentFaculty.hostname ? (
+                  <a
+                    href={`https://${currentFaculty.hostname}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#166534] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#124f28] hover:shadow-md"
+                  >
+                    <GlobeAltIcon className="h-4 w-4" />
+                    Kunjungi Website Fakultas
+                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                  </a>
+                ) : null}
               </div>
 
               <div className="mt-6 pt-6 border-t border-slate-100 flex flex-wrap items-center gap-6 text-xs text-slate-500">
@@ -183,7 +202,7 @@ export const FacultyDetailPage: React.FC = () => {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {currentFaculty.prodis.map((prodi) => {
               const Icon = getProdiIcon(prodi.code);
-              const prodiUrl = prodi.primaryHostname ? `http://${prodi.primaryHostname}` : null;
+              const prodiUrl = prodi.primaryHostname ? `https://${prodi.primaryHostname}/` : null;
 
               return (
                 <div
