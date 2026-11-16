@@ -6,7 +6,15 @@ export interface DirectoryProdi {
   degree: string;
   logoUrl: string | null;
   primaryHostname: string | null;
-  faculty: { id: number; name: string; code: string; slug?: string; description?: string | null };
+  faculty: {
+    id: number;
+    name: string;
+    code: string;
+    slug?: string;
+    description?: string | null;
+    /** Hostname website resmi fakultas, mis. `fasilkom.unusu.ac.id`. */
+    hostname?: string | null;
+  };
 }
 
 export interface DirectoryResponse {
@@ -21,6 +29,8 @@ export interface DirectoryFaculty {
   name: string;
   slug?: string;
   description?: string | null;
+  /** Hostname website resmi fakultas, bila sudah punya domain sendiri. */
+  hostname?: string | null;
   prodis: DirectoryProdi[];
 }
 
@@ -89,6 +99,7 @@ export function groupByFaculty(prodis: DirectoryProdi[]): DirectoryFaculty[] {
         name: prodi.faculty.name,
         slug: prodi.faculty.slug,
         description: prodi.faculty.description,
+        hostname: prodi.faculty.hostname,
         prodis: [prodi],
       });
     }

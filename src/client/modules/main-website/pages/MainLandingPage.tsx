@@ -50,6 +50,41 @@ function getFakultasImage(code: string): string {
   return FAKULTAS_IMAGES[c] || '/images/fakultas/fik.png';
 }
 
+/**
+ * Panel hijau pada kartu fakultas: badge kode, nama fakultas, dan foto
+ * representatif.
+ *
+ * Dipisahkan menjadi komponen karena panel ini dipakai dua kali — sebagai
+ * tautan ke website fakultas bila domainnya tersedia, dan sebagai panel biasa
+ * bila belum punya domain. Isinya harus tetap sama persis pada kedua keadaan.
+ */
+const PanelFakultas: React.FC<{
+  faculty: { code: string; name: string };
+  facultyImg: string;
+}> = ({ faculty, facultyImg }) => (
+  <>
+    {/* Header Panel Kiri: Badge Kode & Nama Fakultas */}
+    <div className="relative z-10 space-y-2">
+      <span className="inline-flex items-center rounded-md bg-amber-400 px-2.5 py-0.5 text-[11px] font-black tracking-wider text-slate-950 shadow-xs">
+        {faculty.code}
+      </span>
+      <h3 className="text-base font-black leading-tight text-white drop-shadow-xs">{faculty.name}</h3>
+    </div>
+
+    {/* Foto Ilustrasi Representatif Fakultas */}
+    <div className="relative z-0 -mx-4 -mb-4 -mt-3 h-20 sm:h-24 w-[calc(100%+2rem)] overflow-hidden bg-[#166534]">
+      <img
+        src={facultyImg}
+        alt={faculty.name}
+        loading="lazy"
+        className="h-full w-full object-cover object-center transition-transform duration-500 will-change-transform group-hover:scale-105"
+      />
+      <div className="pointer-events-none absolute -top-1 inset-x-0 h-12 bg-gradient-to-b from-[#166534] via-[#166534]/85 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-black/35 to-transparent" />
+    </div>
+  </>
+);
+
 function getProdiThumbnail(code: string): string {
   const c = code.toUpperCase();
   if (['TIF', 'TI'].includes(c)) return '/images/prodi/prodi-coding.png';
@@ -592,35 +627,41 @@ export const MainLandingPage: React.FC = () => {
             const facultyImg = getFakultasImage(faculty.code);
             const delay = (idx % 3) * 120; // Stagger per baris (0ms, 120ms, 240ms)
 
+            /*
+             * Dua tujuan berbeda pada satu kartu:
+             *  - kartu & panel fakultas menuju website resmi fakultas
+             *    (`https://fasilkom.unusu.ac.id`), karena itu portal mandiri
+             *    yang ingin dicapai pengunjung;
+             *  - tombol "Lihat Detail Fakultas" menuju halaman detail internal
+             *    portal (`/fakultas/fakultas-ilmu-komputer`) yang memuat
+             *    keterangan lengkap tanpa meninggalkan portal.
+             */
+            const domainFakultas = faculty.hostname ? `https://${faculty.hostname}/` : null;
+            const detailHref = faculty.slug
+              ? `/fakultas/${faculty.slug}`
+              : `/fakultas?faculty=${faculty.id}`;
+
             return (
               <Reveal key={faculty.id} direction="up" delayMs={delay} className="flex">
                 <div className="group flex flex-col flex-1 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg">
                   {/* Bagian Atas: 2 Kolom (Kiri: Panel Hijau Foto | Kanan: Daftar List Prodi) */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 flex-1">
                     {/* Kolom Kiri Card: Panel Hijau Tua Navbar (#166534) dengan Gambar Menjorok Halus ke Bawah Teks */}
-                    <div className="relative flex flex-col justify-between overflow-hidden bg-[#166534] p-4 text-white sm:col-span-5 min-h-[165px] sm:min-h-[175px]">
-                      {/* Header Panel Kiri: Badge Kode & Nama Fakultas */}
-                      <div className="relative z-10 space-y-2">
-                        <span className="inline-flex items-center rounded-md bg-amber-400 px-2.5 py-0.5 text-[11px] font-black tracking-wider text-slate-950 shadow-xs">
-                          {faculty.code}
-                        </span>
-                        <h3 className="text-base font-black leading-tight text-white drop-shadow-xs">
-                          {faculty.name}
-                        </h3>
+                    {domainFakultas ? (
+                      <a
+                        href={domainFakultas}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`Buka website ${faculty.name}`}
+                        className="relative flex flex-col justify-between overflow-hidden bg-[#166534] p-4 text-white sm:col-span-5 min-h-[165px] sm:min-h-[175px] transition-colors hover:bg-[#124f28]"
+                      >
+                        <PanelFakultas faculty={faculty} facultyImg={facultyImg} />
+                      </a>
+                    ) : (
+                      <div className="relative flex flex-col justify-between overflow-hidden bg-[#166534] p-4 text-white sm:col-span-5 min-h-[165px] sm:min-h-[175px]">
+                        <PanelFakultas faculty={faculty} facultyImg={facultyImg} />
                       </div>
-
-                      {/* Foto Ilustrasi Representatif Fakultas */}
-                      <div className="relative z-0 -mx-4 -mb-4 -mt-3 h-20 sm:h-24 w-[calc(100%+2rem)] overflow-hidden bg-[#166534]">
-                        <img
-                          src={facultyImg}
-                          alt={faculty.name}
-                          loading="lazy"
-                          className="h-full w-full object-cover object-center transition-transform duration-500 will-change-transform group-hover:scale-105"
-                        />
-                        <div className="pointer-events-none absolute -top-1 inset-x-0 h-12 bg-gradient-to-b from-[#166534] via-[#166534]/85 to-transparent" />
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-black/35 to-transparent" />
-                      </div>
-                    </div>
+                    )}
 
                     {/* Kolom Kanan Card: Header "Program Studi" + List Bullet Prodi + Tombol "Lihat Detail Fakultas" */}
                     <div className="flex flex-col justify-between p-4 sm:col-span-7 bg-white">
@@ -660,14 +701,30 @@ export const MainLandingPage: React.FC = () => {
                       </div>
 
                       {/* Tombol Aksi di Bawah: "Lihat Detail Fakultas" */}
-                      <div className="mt-4 pt-2.5 border-t border-slate-100">
+                      <div className="mt-4 pt-2.5 border-t border-slate-100 space-y-1.5">
                         <Link
-                          to={`/fakultas?faculty=${faculty.id}`}
+                          to={detailHref}
                           className="inline-flex w-full items-center justify-between rounded-lg bg-emerald-50/80 px-3 py-1.5 text-[11px] font-bold text-emerald-800 transition-all hover:bg-emerald-100/90 group-hover:bg-[#166534] group-hover:text-white"
                         >
                           <span>Lihat Detail Fakultas</span>
                           <ArrowRightIcon className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                         </Link>
+
+                        {/* Tautan langsung ke website fakultas, tanpa membuka detail portal */}
+                        {domainFakultas ? (
+                          <a
+                            href={domainFakultas}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-bold text-slate-600 transition-colors hover:bg-slate-50 hover:text-[#166534]"
+                          >
+                            <span className="inline-flex items-center gap-1.5">
+                              <GlobeAltIcon className="h-3 w-3" />
+                              Kunjungi Website Fakultas
+                            </span>
+                            <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+                          </a>
+                        ) : null}
                       </div>
                     </div>
                   </div>

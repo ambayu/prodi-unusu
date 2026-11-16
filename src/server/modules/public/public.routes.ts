@@ -626,6 +626,27 @@ router.get(
       },
     });
 
+    /*
+     * Hostname website resmi fakultas.
+     *
+     * Kartu fakultas pada beranda portal harus dapat diklik menuju domain
+     * fakultas (`fasilkom.unusu.ac.id`), bukan hanya menuju halaman internal
+     * portal. Domain fakultas disimpan terpisah pada kolom `faculty_id`.
+     */
+    const domainFakultas = await prisma.domain.findMany({
+      where: { facultyId: { not: null }, isActive: true },
+      select: { facultyId: true, hostname: true, isPrimary: true },
+      orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
+    });
+
+    const hostnameFakultas = new Map<number, string>();
+    for (const domain of domainFakultas) {
+      if (domain.facultyId == null) continue;
+      if (!hostnameFakultas.has(domain.facultyId)) {
+        hostnameFakultas.set(domain.facultyId, domain.hostname);
+      }
+    }
+
     res.json({
       success: true,
       total: studyPrograms.length,
@@ -636,6 +657,11 @@ router.get(
           prodi.domains.find((domain) => domain.isPrimary)?.hostname ??
           prodi.domains[0]?.hostname ??
           null,
+        faculty: {
+          ...prodi.faculty,
+          // Hostname website fakultas, untuk tautan kartu fakultas.
+          hostname: hostnameFakultas.get(prodi.faculty.id) ?? null,
+        },
       })),
     });
   }),
