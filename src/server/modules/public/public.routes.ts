@@ -298,61 +298,18 @@ router.get(
 
         /*
          * SIAKAD dapat menempatkan prodi di bawah fakultas yang berbeda dari
-         * struktur resmi: PIAUD & PAI tercatat di Fakultas Ilmu Pendidikan,
-         * padahal keduanya berada di Fakultas Agama Islam. Karena itu prodi
-         * yang muncul pada data dosen fakultas ini ikut dicari di seluruh
-         * daftar prodi, lalu ditampilkan dengan identitas prodi resminya
-         * (kode & tautan website yang benar). Tanpa langkah ini dosen PIAUD
-         * dan PAI tidak pernah muncul di FAI, dan FIP tampak hanya punya satu
-         * program studi.
+         * struktur resmi, misalnya PIAUD & PAI yang tercatat di Fakultas Ilmu
+         * Pendidikan padahal keduanya berada di Fakultas Agama Islam.
+         *
+         * Prodi seperti itu HANYA ditampilkan pada fakultas pemiliknya. Bila
+         * ditampilkan di kedua fakultas, nama dosen yang sama muncul dua kali
+         * di dua menu berbeda dan pengunjung tidak tahu mana yang benar.
+         * Akibatnya FIP hanya menampilkan PGSD — sesuai struktur resmi.
          */
-        const adaDiDaftar = (nama: string | null | undefined) =>
-          prodiFakultas.some((p) => dosenDiProdi(nama, p));
-
-        const namaAsing = [
-          ...new Set(
-            allLecturers
-              .filter((l) => {
-                const nama = (l.studyProgramName ?? '').trim();
-                return (
-                  nama !== '' &&
-                  nama !== '-' &&
-                  !adaDiDaftar(nama) &&
-                  (l.facultyName ?? '').trim().toLowerCase() === tenant.name.trim().toLowerCase()
-                );
-              })
-              .map((l) => (l.studyProgramName ?? '').trim()),
-          ),
-        ];
-
-        const semuaProdi = namaAsing.length
-          ? await prisma.studyProgram.findMany({
-              where: { status: 'active', facultyId: { not: tenant.facultyId ?? tenant.id } },
-              select: { id: true, name: true, code: true, degree: true, sortOrder: true, logoUrl: true },
-              orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-            })
-          : [];
-
-        const prodiTambahan = semuaProdi
-          .map((p) => ({ ...p, hostname: null as string | null }))
-          .filter((p) => {
-            if (adaDiDaftar(p.name)) return false;
-            return namaAsing.some((nama) => dosenDiProdi(nama, p));
-          });
-
-        // Lengkapi hostname website untuk prodi tambahan.
-        if (prodiTambahan.length) {
-          const domain = await prisma.domain.findMany({
-            where: { studyProgramId: { in: prodiTambahan.map((p) => p.id) }, isActive: true },
-            select: { studyProgramId: true, hostname: true, isPrimary: true },
-            orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
-          });
-          for (const d of domain) {
-            if (d.studyProgramId == null) continue;
-            const target = prodiTambahan.find((p) => p.id === d.studyProgramId);
-            if (target && !target.hostname) target.hostname = d.hostname;
-          }
-        }
+        const prodiTambahan: Array<{
+          id: number; name: string; code: string; degree: string;
+          sortOrder: number; logoUrl: string | null; hostname: string | null;
+        }> = [];
 
         const tanpaHomebase = allLecturers.filter((l) => {
           const nama = (l.studyProgramName ?? '').trim();
