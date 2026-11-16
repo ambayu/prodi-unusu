@@ -35,7 +35,9 @@ import type { Request } from 'express';
  *    header `X-Tenant-Id` (program studi) atau `X-Faculty-Id` (fakultas).
  *    Header hanya dipercaya setelah dicocokkan dengan penugasan pengguna.
  */
-function resolveContentOwner(req: Request): { studyProgramId: number | null; facultyId: number | null } {
+async function resolveContentOwner(
+  req: Request,
+): Promise<{ studyProgramId: number | null; facultyId: number | null }> {
   const user = req.authUser;
   if (!user) throw AppError.unauthorized();
 
@@ -54,6 +56,16 @@ function resolveContentOwner(req: Request): { studyProgramId: number | null; fac
         'Anda tidak berwenang mengelola fakultas tersebut.',
         'FACULTY_SCOPE_DENIED',
       );
+    }
+
+    /*
+     * Fakultas harus benar-benar ada. Tanpa pemeriksaan ini, ID karangan dari
+     * header akan membuat baris konten milik "fakultas hantu" dan gambar yang
+     * tersimpan tidak akan pernah terbaca halaman publik mana pun.
+     */
+    const exists = await prisma.faculty.count({ where: { id: facultyId } });
+    if (exists === 0) {
+      throw AppError.notFound('Fakultas yang diminta tidak ditemukan.', 'FACULTY_NOT_FOUND');
     }
 
     return { studyProgramId: null, facultyId };
@@ -393,7 +405,7 @@ router.get(
   '/contact',
   requirePermission('contacts.view'),
   asyncHandler(async (req, res) => {
-    const owner = resolveContentOwner(req);
+    const owner = await resolveContentOwner(req);
     const contact = await prisma.contactInfo.findFirst({ where: owner });
     res.json({ success: true, contact });
   }),
@@ -404,7 +416,7 @@ router.put(
   requirePermission('contacts.update'),
   validate({ body: updateContactSchema }),
   asyncHandler(async (req, res) => {
-    const owner = resolveContentOwner(req);
+    const owner = await resolveContentOwner(req);
     const body = getBody<Record<string, unknown>>(req);
     const existing = await prisma.contactInfo.findFirst({ where: owner });
 
@@ -453,7 +465,7 @@ router.get(
   '/profile',
   requirePermission('profile.view'),
   asyncHandler(async (req, res) => {
-    const owner = resolveContentOwner(req);
+    const owner = await resolveContentOwner(req);
     const [profile, visionMission] = await Promise.all([
       prisma.profileContent.findFirst({ where: owner }),
       prisma.visionMission.findFirst({ where: owner }),
@@ -477,7 +489,7 @@ router.put(
   requirePermission('profile.update'),
   validate({ body: updateProfileSchema }),
   asyncHandler(async (req, res) => {
-    const owner = resolveContentOwner(req);
+    const owner = await resolveContentOwner(req);
     const body = getBody<Record<string, unknown>>(req);
     const existing = await prisma.profileContent.findFirst({ where: owner });
 
@@ -495,7 +507,7 @@ router.put(
   requirePermission('vision_mission.update'),
   validate({ body: updateVisionMissionSchema }),
   asyncHandler(async (req, res) => {
-    const owner = resolveContentOwner(req);
+    const owner = await resolveContentOwner(req);
     const body = getBody<Record<string, unknown>>(req);
     const existing = await prisma.visionMission.findFirst({ where: owner });
 
@@ -520,7 +532,7 @@ router.put(
   requirePermission('profile.update'),
   validate({ body: updateProfileSchema }),
   asyncHandler(async (req, res) => {
-    const owner = resolveContentOwner(req);
+    const owner = await resolveContentOwner(req);
     const body = getBody<{ heroImageUrl?: string | null }>(req);
     const existing = await prisma.profileContent.findFirst({ where: owner });
 
