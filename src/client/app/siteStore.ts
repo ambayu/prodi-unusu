@@ -112,17 +112,9 @@ export const useSiteStore = create<SiteState>((set, get) => ({
       try {
         const ssoStatus = await checkOneUnusuSession();
         if (ssoStatus?.authenticated === false) {
-          try {
-            await api.post('/auth/logout');
-          } catch {
-            // Abaikan kegagalan panggilan logout
-          }
-          sessionStorage.removeItem(PORTAL_SCOPE_KEY);
-          set({ user: null, activeTenantId: null, portalScope: false, userLoading: false });
-          return;
-        }
-
-        if (
+          // Pertahankan sesi lokal yang valid agar tidak terjadi infinite login loop
+          console.warn('[SSO] Sesi ONE UNUSU tidak terdeteksi, mempertahankan sesi lokal Prodi.');
+        } else if (
           ssoStatus?.authenticated === true &&
           ssoStatus.user?.username &&
           currentUser?.username &&
