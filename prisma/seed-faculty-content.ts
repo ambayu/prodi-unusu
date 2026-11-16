@@ -410,13 +410,18 @@ async function seedFacultyContents() {
      * mungkin sudah disunting admin tidak hilang, tetapi dijadikan anak dari grup
      * yang sesuai. Baris "Profil" bertabrak dengan anak grup, sehingga dipakai
      * ulang baris yang sudah ada dan diberikan `parentId`.
+     *
+     * PENTING: grup dikenali dari `title`, bukan `url`. Semua grup memakai url
+     * "#", sehingga mencari berdasarkan url akan selalu menemukan grup pertama
+     * dan grup kedua menimpa yang pertama — akibatnya "Tentang Fakultas" hilang.
      */
     for (const [index, grup] of FACULTY_MENUS.entries()) {
       const urutanGrup = index + 1;
+      const adalahGrup = (grup.children?.length ?? 0) > 0;
 
       // ---- Induk / tautan utama ----
       let induk = await prisma.menu.findFirst({
-        where: { facultyId: faculty.id, url: grup.url },
+        where: { facultyId: faculty.id, title: grup.title, parentId: null },
         orderBy: { id: 'asc' },
       });
 
@@ -424,11 +429,10 @@ async function seedFacultyContents() {
         induk = await prisma.menu.update({
           where: { id: induk.id },
           data: {
-            title: grup.title,
+            url: grup.url,
             sortOrder: urutanGrup,
             isRequired: grup.isRequired,
             isActive: true,
-            // Grup tetap berada di akar navbar.
             parentId: null,
           },
         });
@@ -444,6 +448,9 @@ async function seedFacultyContents() {
           },
         });
       }
+
+      // Grup tanpa anak tidak punya anggota untuk diproses.
+      if (!adalahGrup) continue;
 
       // ---- Anak (anggota dropdown) ----
       for (const [anakIndex, anak] of (grup.children ?? []).entries()) {
@@ -476,6 +483,29 @@ async function seedFacultyContents() {
             },
           });
         }
+      }
+    }
+
+    /*
+     * Bersihkan menu duplikat warisan seeder versi sebelumnya.
+     *
+     * Versi lama mengenali grup dari `url`, sehingga setiap grup ber-url "#"
+     * bertabrakan dan hanya satu yang bertahan. Sisa baris grup lama kini tidak
+     * punya anak sama sekali — tidak tampil di navbar, tetapi mengotori daftar
+     * menu di Page Builder. Baris "#" tanpa anak dihapus; menu lain tidak disentuh.
+     */
+    const grupKosong = await prisma.menu.findMany({
+      where: { facultyId: faculty.id, url: '#', parentId: null },
+      select: { id: true, title: true },
+    });
+
+    const judulGrupSah = new Set(FACULTY_MENUS.filter((g) => (g.children?.length ?? 0) > 0).map((g) => g.title));
+
+    for (const baris of grupKosong) {
+      if (judulGrupSah.has(baris.title)) continue; // grup sah yang memang kosong sementara
+      const punyaAnak = await prisma.menu.count({ where: { parentId: baris.id } });
+      if (punyaAnak === 0) {
+        await prisma.menu.delete({ where: { id: baris.id } });
       }
     }
 
