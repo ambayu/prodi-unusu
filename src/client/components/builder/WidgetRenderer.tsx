@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { postApi, galleryApi, lecturerApi, curriculumApi, facilityApi, arsipDokumenApi, profileApi } from '../../services/contentApi';
 import { useTenant } from '../../hooks/useSite';
+import { GambarTentang } from '../ui/GambarTentang';
 
 interface WidgetInstanceProps {
   widgetCode: string;
@@ -326,7 +327,7 @@ const AboutProdiWidget: React.FC<{
           */}
           <div className={`relative ${isImageRight ? 'lg:col-span-5 lg:order-2' : 'lg:col-span-5 lg:order-1'}`}>
             <div className="relative overflow-hidden rounded-2xl bg-slate-100">
-              <img
+              <GambarTentang
                 src={imageUrl}
                 alt={`Gambar profil ${tenantName || tenant?.name || 'Program Studi'}`}
                 className="h-80 w-full object-cover object-center sm:h-96 lg:h-full lg:min-h-[480px]"

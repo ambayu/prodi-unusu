@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { GambarTentang } from '../../components/ui/GambarTentang';
 import { useSeo } from '../../hooks/useSeo';
 import { useTenant } from '../../hooks/useSite';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
@@ -82,11 +83,10 @@ export const VisionMissionPage: React.FC = () => {
           <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-14">
             <aside className="lg:col-span-5">
               <figure className="overflow-hidden rounded-2xl bg-slate-100 lg:sticky lg:top-28">
-                <img
+                <GambarTentang
                   src={heroGambar}
                   alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
                   className="h-72 w-full object-cover object-center sm:h-96 lg:h-[520px]"
-                  loading="lazy"
                 />
                 <figcaption className="bg-slate-50 px-4 py-3 text-[11px] font-semibold text-slate-500">
                   {tenant?.name ?? unitLabel} &bull; Universitas Nahdlatul Ulama Sumatera Utara

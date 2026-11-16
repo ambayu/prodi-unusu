@@ -13,6 +13,7 @@ import {
   PhoneIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '../../../services/api';
+import { GambarTentang } from '../../../components/ui/GambarTentang';
 import { useTenant } from '../../../hooks/useSite';
 import { useSeo } from '../../../hooks/useSeo';
 import type { DirectoryProdi, DirectoryResponse } from '../../../services/directory';
@@ -244,11 +245,10 @@ export const FacultyLandingPage: React.FC = () => {
             */}
             <div className="relative lg:col-span-5">
               <div className="relative overflow-hidden rounded-2xl bg-slate-100">
-                <img
+                <GambarTentang
                   src={heroGambar}
                   alt={`Gambar ${namaFakultas}`}
                   className="h-72 w-full object-cover object-center sm:h-96 lg:h-full lg:min-h-[480px]"
-                  loading="lazy"
                 />
               </div>
             </div>
