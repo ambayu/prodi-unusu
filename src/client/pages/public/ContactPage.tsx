@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   EnvelopeIcon,
@@ -23,7 +23,10 @@ const SOCIALS = [
 /** Halaman publik kontak beserta formulir pesan. */
 export const ContactPage: React.FC = () => {
   const { tenant } = useTenant();
-  useSeo({ tenant, title: 'Kontak', description: 'Alamat, email, dan formulir pesan program studi.' });
+  const isFaculty = tenant?.tenantType === 'faculty';
+  const unitLabel = isFaculty ? 'fakultas' : 'program studi';
+
+  useSeo({ tenant, title: 'Kontak', description: `Alamat, email, dan formulir pesan ${unitLabel}.` });
 
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [sent, setSent] = useState(false);
@@ -60,7 +63,7 @@ export const ContactPage: React.FC = () => {
       <PageHeader
         eyebrow="Informasi"
         title="Hubungi Kami"
-        description="Sampaikan pertanyaan seputar akademik, pendaftaran, atau layanan program studi."
+        description={`Sampaikan pertanyaan seputar akademik, pendaftaran, atau layanan ${unitLabel}.`}
       />
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -79,7 +82,7 @@ export const ContactPage: React.FC = () => {
 
                 {!contact ? (
                   <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
-                    Informasi kontak belum diisi oleh pengelola program studi.
+                    {`Informasi kontak belum diisi oleh pengelola ${unitLabel}.`}
                   </p>
                 ) : (
                   <ul className="mt-4 space-y-3">
@@ -149,7 +152,7 @@ export const ContactPage: React.FC = () => {
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                   <iframe
                     src={contact.mapsEmbedUrl}
-                    title="Peta lokasi program studi"
+                    title={`Peta lokasi ${unitLabel}`}
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
                     className="h-64 w-full border-0"
@@ -161,7 +164,7 @@ export const ContactPage: React.FC = () => {
             <div className="rounded-2xl border border-slate-200 bg-white p-6">
               <h2 className="text-sm font-bold text-slate-900">Kirim Pesan</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Pesan Anda akan diterima langsung oleh pengelola program studi.
+                {`Pesan Anda akan diterima langsung oleh pengelola ${unitLabel}.`}
               </p>
 
               {sent ? (

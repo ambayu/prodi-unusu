@@ -12,6 +12,7 @@ import { CampusContactPage, CampusServicesPage } from './modules/main-website/pa
 // Ekosistem website program studi.
 import { ProdiWebsiteLayout } from './modules/prodi-website/layouts/ProdiWebsiteLayout';
 import { ProdiLandingPage } from './modules/prodi-website/pages/ProdiLandingPage';
+import { FacultyLandingPage } from './modules/prodi-website/pages/FacultyLandingPage';
 
 // Halaman publik modul CMS.
 import { CurriculumPage } from './pages/public/CurriculumPage';
@@ -20,6 +21,7 @@ import { LecturersPage } from './pages/public/LecturersPage';
 import { ContactPage } from './pages/public/ContactPage';
 import { ProfilePage } from './pages/public/ProfilePage';
 import { VisionMissionPage } from './pages/public/VisionMissionPage';
+import { FacultyProgramsPage } from './pages/public/FacultyProgramsPage';
 import { FacilitiesPage } from './pages/public/FacilitiesPage';
 import { PostsPage } from './pages/public/PostsPage';
 import { GalleriesPage } from './pages/public/GalleriesPage';
@@ -633,9 +635,22 @@ function prodiRouteElements() {
 
   return (
     <>
-      <Route path="/" element={wrap(<ProdiLandingPage />)} />
+      <Route
+        path="/"
+        element={wrap(
+          tenant.tenantType === 'faculty' ? <FacultyLandingPage /> : <ProdiLandingPage />,
+        )}
+      />
       <Route path="/profil" element={wrap(<ProfilePage />)} />
       <Route path="/visi-misi" element={wrap(<VisionMissionPage />)} />
+      {/*
+        Program studi di bawah fakultas. Rute ini hanya bermakna pada website
+        fakultas; website prodi tidak memiliki daftar prodi sendiri sehingga
+        menu ini tidak pernah muncul di navbar-nya.
+      */}
+      {tenant.tenantType === 'faculty' ? (
+        <Route path="/prodi" element={wrap(<FacultyProgramsPage />)} />
+      ) : null}
       <Route path="/kurikulum" element={wrap(<CurriculumPage />)} />
       <Route path="/dokumen" element={wrap(<DocumentsPage />)} />
       <Route path="/dosen" element={wrap(<LecturersPage />)} />

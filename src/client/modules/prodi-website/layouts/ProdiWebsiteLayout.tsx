@@ -49,6 +49,7 @@ const ICON_BY_PATH: Record<string, React.ComponentType<{ className?: string }>> 
   '/berita': NewspaperIcon,
   '/galeri': PhotoIcon,
   '/kontak': PhoneIcon,
+  '/prodi': AcademicCapIcon,
 };
 
 export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -57,6 +58,19 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const navContainerRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Website fakultas memakai layout yang sama tetapi dengan penanda sendiri.
+   *
+   * Sebelumnya seluruh label ditulis untuk prodi ("PRODI FIK", "Hubungi Prodi",
+   * "Sekretariat Prodi"), sehingga domain fakultas tampil seolah-olah program
+   * studi. Semua label di bawah kini mengikuti jenis tenant.
+   */
+  const adalahFakultas = tenant?.tenantType === 'faculty';
+  const labelUnit = adalahFakultas ? 'FAKULTAS' : 'PRODI';
+  const labelHubungi = adalahFakultas ? 'Hubungi Fakultas' : 'Hubungi Prodi';
+  const labelKode = adalahFakultas ? tenant?.code || 'FIK' : tenant?.code || 'SIN';
+  const labelGelar = adalahFakultas ? 'Fakultas' : tenant?.degree || 'S1';
 
   // Ambil warna tema tenant (fallback ke identitas default UNUSU)
   const primaryColor = tenant?.theme?.primaryColor || '#1e3a8a';
@@ -190,13 +204,13 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                     className="font-extrabold text-base tracking-tight"
                     style={{ color: accentColor }}
                   >
-                    PRODI {tenant?.code || 'SIN'}
+                    {labelUnit} {labelKode}
                   </span>
                   <span
                     className="text-[10px] bg-white font-extrabold px-1.5 py-0.5 rounded shadow-xs"
                     style={{ color: primaryColor }}
                   >
-                    {tenant?.degree || 'S1'}
+                    {labelGelar}
                   </span>
                 </div>
                 <p className="text-[11px] text-white/90 font-medium mt-1 leading-tight">
@@ -315,7 +329,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                 className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-slate-950 font-extrabold text-xs shadow-md transition-all active:scale-95 hover:brightness-105"
                 style={{ backgroundColor: accentColor }}
               >
-                Hubungi Prodi
+                {labelHubungi}
               </Link>
             </div>
 
@@ -407,7 +421,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                 className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl text-slate-950 font-extrabold text-xs shadow-md"
                 style={{ backgroundColor: accentColor }}
               >
-                Hubungi Prodi
+                {labelHubungi}
               </Link>
             </div>
           </div>
@@ -429,7 +443,9 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                   <img src="/logo-unusu.jpg" alt="UNUSU" className="w-full h-full object-contain" />
                 </div>
                 <div>
-                  <p className="font-extrabold text-black text-sm">PRODI {tenant?.name}</p>
+                  <p className="font-extrabold text-black text-sm">
+                    {labelUnit} {tenant?.name}
+                  </p>
                   <p className="text-[11px] text-slate-500">UNUSU Sumatera Utara</p>
                 </div>
               </div>
@@ -441,10 +457,34 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
             <div>
               <p className="font-extrabold text-black text-xs uppercase tracking-wider mb-3">Tautan Cepat</p>
               <ul className="space-y-1.5">
-                <li><Link to="/profil" className="hover:text-[#007aff] transition-colors">Profil Program Studi</Link></li>
-                <li><Link to="/kurikulum" className="hover:text-[#007aff] transition-colors">Struktur Kurikulum & RPS</Link></li>
-                <li><Link to="/dosen" className="hover:text-[#007aff] transition-colors">Direktori Tenaga Pengajar</Link></li>
-                <li><Link to="/dokumen" className="hover:text-[#007aff] transition-colors">Bank Dokumen & SOP</Link></li>
+                <li>
+                  <Link to="/profil" className="hover:text-[#007aff] transition-colors">
+                    {adalahFakultas ? 'Profil Fakultas' : 'Profil Program Studi'}
+                  </Link>
+                </li>
+                {adalahFakultas ? (
+                  <li>
+                    <Link to="/prodi" className="hover:text-[#007aff] transition-colors">
+                      Program Studi
+                    </Link>
+                  </li>
+                ) : (
+                  <li>
+                    <Link to="/kurikulum" className="hover:text-[#007aff] transition-colors">
+                      Struktur Kurikulum &amp; RPS
+                    </Link>
+                  </li>
+                )}
+                <li>
+                  <Link to="/dosen" className="hover:text-[#007aff] transition-colors">
+                    Direktori Tenaga Pengajar
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/dokumen" className="hover:text-[#007aff] transition-colors">
+                    Bank Dokumen &amp; SOP
+                  </Link>
+                </li>
               </ul>
             </div>
 
@@ -459,17 +499,19 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
             </div>
 
             <div>
-              <p className="font-extrabold text-black text-xs uppercase tracking-wider mb-3">Sekretariat Prodi</p>
+              <p className="font-extrabold text-black text-xs uppercase tracking-wider mb-3">
+                {adalahFakultas ? 'Sekretariat Fakultas' : 'Sekretariat Prodi'}
+              </p>
               <p className="text-slate-600 leading-relaxed text-[11px]">
                 Gedung Fakultas, Kampus Universitas Nahdlatul Ulama Sumatera Utara
                 <br />Jl. H.A. Manaf Lubis No.2, Gaperta Ujung, Helvetia, Medan
-                <br /><strong className="text-black">Email:</strong> {tenant?.slug || 'prodi'}@unusu.ac.id
+                <br /><strong className="text-black">Email:</strong> {tenant?.contact?.email || `${tenant?.slug || 'prodi'}@unusu.ac.id`}
               </p>
             </div>
           </div>
 
           <div className="pt-6 border-t border-slate-200 text-center text-slate-500 text-[11px]">
-            © {new Date().getFullYear()} Program Studi {tenant?.name || 'Sistem Informasi'} • Universitas Nahdlatul Ulama Sumatera Utara
+            © {new Date().getFullYear()} {adalahFakultas ? tenant?.name : `Program Studi ${tenant?.name || 'Sistem Informasi'}`} • Universitas Nahdlatul Ulama Sumatera Utara
           </div>
         </div>
       </footer>
