@@ -6,7 +6,6 @@ import {
   MagnifyingGlassIcon,
   UserCircleIcon,
   ArrowTopRightOnSquareIcon,
-  BuildingOffice2Icon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useSeo } from '../../hooks/useSeo';
@@ -107,7 +106,6 @@ const LecturerCard: React.FC<{ dosen: PublicLecturer; primary: string; accent: s
 export const LecturersPage: React.FC = () => {
   const { tenant } = useTenant();
   const isFaculty = tenant?.tenantType === 'faculty';
-  const unitLabel = isFaculty ? 'fakultas' : 'program studi';
 
   const primary = tenant?.theme?.primaryColor ?? '#1e3a8a';
   const accent = tenant?.theme?.accentColor ?? '#fbbf24';
@@ -275,17 +273,6 @@ export const LecturersPage: React.FC = () => {
                 ))}
               </div>
             )}
-
-            {/* Catatan data yang belum lengkap — hanya relevan untuk fakultas. */}
-            {isFaculty && data?.grouped && (data.tanpaHomebase ?? 0) > 0 ? (
-              <p className="mt-10 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] leading-relaxed text-amber-900">
-                <BuildingOffice2Icon className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  Sebanyak {data.tanpaHomebase} dosen belum memiliki homebase program studi pada data SIAKAD,
-                  sehingga belum dapat ditampilkan pada {unitLabel} ini.
-                </span>
-              </p>
-            ) : null}
           </>
         )}
       </section>
