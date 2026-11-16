@@ -2,6 +2,7 @@ import {
   NAVBAR_CATCHALL_LABEL,
   NAVBAR_GROUP_DEFINITIONS,
   NAVBAR_LOOSE_URLS,
+  navbarGroupDefinitions,
 } from '../constants/navbarGroups.js';
 
 /**
@@ -78,8 +79,14 @@ export function isGroupMenu(menu: NavbarMenuRow): boolean {
  *      panjang tanpa dropdown.
  *   3. Halaman yang tidak masuk grup mana pun dikumpulkan pada satu dropdown
  *      penampung, agar halaman kustom tetap dapat dijangkau pengunjung.
+ *
+ * `tenantType` menentukan istilah yang dipakai label grup cadangan: website
+ * fakultas memakai "Tentang Fakultas", bukan "Tentang Prodi".
  */
-export function buildNavbarTree(menus: NavbarMenuRow[]): NavbarNode[] {
+export function buildNavbarTree(
+  menus: NavbarMenuRow[],
+  tenantType?: 'prodi' | 'fakultas',
+): NavbarNode[] {
   const aktif = (menus ?? []).filter((menu) => menu.isActive !== false);
   if (aktif.length === 0) return [];
 
@@ -133,7 +140,7 @@ export function buildNavbarTree(menus: NavbarMenuRow[]): NavbarNode[] {
     terpakai.add(beranda.id);
   }
 
-  for (const definisi of NAVBAR_GROUP_DEFINITIONS) {
+  for (const definisi of navbarGroupDefinitions(tenantType)) {
     const anggota = semua.filter(
       (menu) => !terpakai.has(menu.id) && definisi.urls.includes(menu.url),
     );

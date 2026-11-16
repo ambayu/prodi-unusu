@@ -47,6 +47,34 @@ export const NAVBAR_GROUP_DEFINITIONS: NavbarGroupDefinition[] = [
 ];
 
 /**
+ * Label grup untuk website fakultas.
+ *
+ * Fakultas bukan program studi, jadi judul grup ditulis dalam istilah fakultas.
+ * Hanya grup "tentang" yang berbeda: grup Akademik dan Informasi memakai istilah
+ * yang sama untuk kedua jenis tenant. Grup yang isinya satu item tidak pernah
+ * menjadi dropdown, sehingga label pada `NAVBAR_GROUP_DEFINITIONS` tetap dipakai
+ * apa adanya untuk kasus itu.
+ */
+const FACULTY_GROUP_LABELS: Record<string, string> = {
+  tentang: 'Tentang Fakultas',
+};
+
+/**
+ * Definisi grup yang sudah disesuaikan dengan jenis tenant.
+ *
+ * Dipakai oleh navbar pengunjung maupun Page Builder, sehingga admin fakultas
+ * melihat nama grup yang sama dengan yang tampil di website.
+ */
+export function navbarGroupDefinitions(tenantType?: 'prodi' | 'fakultas'): NavbarGroupDefinition[] {
+  if (tenantType !== 'fakultas') return NAVBAR_GROUP_DEFINITIONS;
+
+  return NAVBAR_GROUP_DEFINITIONS.map((definisi) => ({
+    ...definisi,
+    label: FACULTY_GROUP_LABELS[definisi.key] ?? definisi.label,
+  }));
+}
+
+/**
  * Grup penampung. Anggotanya adalah halaman yang tidak termasuk grup mana pun
  * dan bukan Beranda/Kontak — termasuk halaman kustom buatan admin.
  */

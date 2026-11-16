@@ -131,7 +131,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
    * database masih datar.
    */
   const groupedNavItems: NavItem[] = React.useMemo(() => {
-    const pohon = buildNavbarTree(menusQuery.data ?? []);
+    const pohon = buildNavbarTree(menusQuery.data ?? [], adalahFakultas ? 'fakultas' : 'prodi');
 
     /**
      * Kontak & Lokasi diwakili tombol "Hubungi Prodi" di sisi kanan navbar agar
@@ -152,7 +152,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
         icon: ICON_BY_PATH[anak.path] ?? DocumentCheckIcon,
       })),
     }));
-  }, [menusQuery.data]);
+  }, [menusQuery.data, adalahFakultas]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white font-sans text-slate-900">

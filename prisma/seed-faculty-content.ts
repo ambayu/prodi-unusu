@@ -67,21 +67,54 @@ const THEME_BY_FACULTY: Record<string, { primary: string; secondary: string; acc
 };
 
 /**
- * Menu standar website fakultas.
+ * Struktur menu navbar website fakultas.
  *
- * Berbeda dari menu prodi: tanpa "Kurikulum" dan "Sarana & Prasarana", tetapi
- * menambahkan "Program Studi" yang mengarah ke halaman `/prodi`. Halaman itu
- * menampilkan prodi di bawah fakultas beserta tautan ke website masing-masing.
+ * Disimpan bertingkat karena navbar membaca `parentId`: item tanpa `parent`
+ * tampil sebagai tautan utama, sedangkan item dalam `children` menjadi dropdown.
+ *
+ * Perbedaan penting dengan menu prodi:
+ *   - Tidak ada "Kurikulum" dan "Sarana & Prasarana" — keduanya milik prodi.
+ *   - Ada "Program Studi" yang menuju `/prodi` dan menautkan ke website tiap
+ *     prodi di bawah fakultas.
+ *   - Grup Profil + Visi & Misi dinamai "Tentang Fakultas", bukan
+ *     "Tentang Prodi" sebagaimana label cadangan untuk website prodi.
  */
-const FACULTY_MENUS = [
+interface FacultyMenuNode {
+  title: string;
+  url: string;
+  isRequired: boolean;
+  children?: Array<{ title: string; url: string; isRequired: boolean }>;
+}
+
+const FACULTY_MENUS: FacultyMenuNode[] = [
   { title: 'Beranda', url: '/', isRequired: true },
-  { title: 'Profil', url: '/profil', isRequired: true },
-  { title: 'Visi & Misi', url: '/visi-misi', isRequired: true },
+  {
+    title: 'Tentang Fakultas',
+    // Grup wadah: tidak menunjuk halaman sendiri, hanya membuka dropdown.
+    url: '#',
+    isRequired: true,
+    children: [
+      { title: 'Profil', url: '/profil', isRequired: true },
+      { title: 'Visi & Misi', url: '/visi-misi', isRequired: true },
+    ],
+  },
   { title: 'Program Studi', url: '/prodi', isRequired: true },
-  { title: 'Dosen', url: '/dosen', isRequired: false },
-  { title: 'Berita & Warta', url: '/berita', isRequired: false },
-  { title: 'Galeri Kegiatan', url: '/galeri', isRequired: false },
-  { title: 'Dokumen & Unduhan', url: '/dokumen', isRequired: false },
+  {
+    title: 'Akademik',
+    url: '#',
+    isRequired: false,
+    children: [{ title: 'Dosen', url: '/dosen', isRequired: false }],
+  },
+  {
+    title: 'Informasi & Dokumen',
+    url: '#',
+    isRequired: false,
+    children: [
+      { title: 'Berita & Warta', url: '/berita', isRequired: false },
+      { title: 'Galeri Kegiatan', url: '/galeri', isRequired: false },
+      { title: 'Dokumen & Unduhan', url: '/dokumen', isRequired: false },
+    ],
+  },
   { title: 'Kontak & Lokasi', url: '/kontak', isRequired: true },
 ];
 
@@ -305,34 +338,84 @@ async function seedFacultyContents() {
     }
 
     // ------------------------------------------------------------------
-    // 7. Menu website fakultas
+    // 7. Menu website fakultas (bertingkat: grup + anak)
     // ------------------------------------------------------------------
-    for (const [index, menu] of FACULTY_MENUS.entries()) {
-      const menuExisting = await prisma.menu.findFirst({
-        where: { facultyId: faculty.id, url: menu.url },
+    /*
+     * Navbar membaca `parentId`, jadi grup harus berupa baris menu sungguhan
+     * yang menjadi induk dari anggotanya. Sebelumnya menu fakultas disemai datar
+     * dan navbar terpaksa memakai label cadangan "Tentang Prodi" — istilah yang
+     * keliru untuk sebuah fakultas.
+     *
+     * Menu datar lama (mis. "Profil" tanpa induk) tidak dihapus agar konten yang
+     * mungkin sudah disunting admin tidak hilang, tetapi dijadikan anak dari grup
+     * yang sesuai. Baris "Profil" bertabrak dengan anak grup, sehingga dipakai
+     * ulang baris yang sudah ada dan diberikan `parentId`.
+     */
+    for (const [index, grup] of FACULTY_MENUS.entries()) {
+      const urutanGrup = index + 1;
+
+      // ---- Induk / tautan utama ----
+      let induk = await prisma.menu.findFirst({
+        where: { facultyId: faculty.id, url: grup.url },
+        orderBy: { id: 'asc' },
       });
 
-      if (menuExisting) {
-        await prisma.menu.update({
-          where: { id: menuExisting.id },
+      if (induk) {
+        induk = await prisma.menu.update({
+          where: { id: induk.id },
           data: {
-            title: menu.title,
-            sortOrder: index + 1,
-            isRequired: menu.isRequired,
+            title: grup.title,
+            sortOrder: urutanGrup,
+            isRequired: grup.isRequired,
             isActive: true,
+            // Grup tetap berada di akar navbar.
+            parentId: null,
           },
         });
       } else {
-        await prisma.menu.create({
+        induk = await prisma.menu.create({
           data: {
             facultyId: faculty.id,
-            title: menu.title,
-            url: menu.url,
-            sortOrder: index + 1,
-            isRequired: menu.isRequired,
+            title: grup.title,
+            url: grup.url,
+            sortOrder: urutanGrup,
+            isRequired: grup.isRequired,
             isActive: true,
           },
         });
+      }
+
+      // ---- Anak (anggota dropdown) ----
+      for (const [anakIndex, anak] of (grup.children ?? []).entries()) {
+        const anakExisting = await prisma.menu.findFirst({
+          where: { facultyId: faculty.id, url: anak.url },
+          orderBy: { id: 'asc' },
+        });
+
+        if (anakExisting) {
+          await prisma.menu.update({
+            where: { id: anakExisting.id },
+            data: {
+              title: anak.title,
+              parentId: induk.id,
+              sortOrder: anakIndex + 1,
+              isRequired: anak.isRequired,
+              isActive: true,
+            },
+          });
+        } else {
+          await prisma.menu.create({
+            data: {
+              facultyId: faculty.id,
+              parentId: induk.id,
+              title: anak.title,
+              url: anak.url,
+              sortOrder: anakIndex + 1,
+              isRequired: anak.isRequired,
+              isActive: true,
+            },
+          });
+        }
       }
     }
 
@@ -379,7 +462,9 @@ async function seedFacultyContents() {
     }
 
     console.log(
-      `  + ${code.padEnd(9)} ${name.padEnd(28)} domain=${(hostname ?? '-').padEnd(24)} menu=${FACULTY_MENUS.length}`,
+      `  + ${code.padEnd(9)} ${name.padEnd(28)} domain=${(hostname ?? '-').padEnd(24)} grup=${FACULTY_MENUS.length} item=${
+        FACULTY_MENUS.reduce((n, g) => n + 1 + (g.children?.length ?? 0), 0)
+      }`,
     );
   }
 

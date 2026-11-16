@@ -142,59 +142,12 @@ export const FacultyLandingPage: React.FC = () => {
             />
           ))}
 
-          {/* Lapisan gelap agar teks tetap terbaca di atas gambar apa pun */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/55 to-black/25" />
-
-          {/* Teks identitas fakultas */}
-          <div className="absolute inset-0 flex items-center">
-            <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
-              <p className="text-xs font-bold uppercase tracking-[0.25em]" style={{ color: accent }}>
-                Universitas Nahdlatul Ulama Sumatera Utara
-              </p>
-              <h1 className="mt-3 max-w-3xl text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
-                {namaFakultas}
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">
-                {tenant?.websiteSetting?.siteTagline ??
-                  `Menyelenggarakan pendidikan, penelitian, dan pengabdian masyarakat di lingkungan ${namaFakultas}.`}
-              </p>
-
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Link
-                  to="/prodi"
-                  className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold text-slate-950 shadow-md transition-all hover:brightness-105 active:scale-95"
-                  style={{ backgroundColor: accent }}
-                >
-                  Lihat Program Studi
-                  <ArrowRightIcon className="h-4 w-4" />
-                </Link>
-                <Link
-                  to="/profil"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/40 px-5 py-3 text-xs font-extrabold text-white transition-colors hover:bg-white/10"
-                >
-                  Profil Fakultas
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Titik navigasi */}
-          {slides.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center space-x-2 sm:bottom-6">
-              {slides.map((src, idx) => (
-                <button
-                  key={src}
-                  type="button"
-                  onClick={() => setSlideIdx(idx)}
-                  aria-label={`Slide ${idx + 1}`}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    idx === slideIdx ? 'w-8' : 'w-2 bg-white/50 hover:bg-white/80'
-                  }`}
-                  style={idx === slideIdx ? { backgroundColor: accent } : undefined}
-                />
-              ))}
-            </div>
-          )}
+          {/*
+            Slider murni gambar: tanpa lapisan gelap, judul, tagline, tombol,
+            maupun titik navigasi. Identitas fakultas ditampilkan pada section
+            "Tentang Fakultas" di bawah, sehingga gambar hero tampil utuh dan
+            pengunjung hanya melihat gambar yang berganti sendiri.
+          */}
         </div>
       </section>
 

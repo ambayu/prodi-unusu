@@ -588,21 +588,44 @@ export const App: React.FC = () => {
 /**
  * Rute untuk permukaan portal administrasi (ADMIN_HOST, `prodi.unusu.ac.id`).
  *
- * Portal pusat bukan website prodi dan tidak mengelola konten prodi. Beranda
- * hanya menampilkan landing statis `MainLandingPage` — bagian "PROGRAM STUDI
- * TERAKREDITASI / Tentang Program Studi di UNUSU" beserta tiga kartu
- * (Kurikulum MBKM, Dosen Berkualitas, Website Mandiri).
+ * Beranda memakai landing statis `MainLandingPage`. Landing itu menautkan
+ * halaman publik universitas — "Lihat Detail Fakultas" ke `/fakultas` dan
+ * "Lihat Selengkapnya" berita ke `/berita`. Sebelumnya tautan tersebut tidak
+ * terdaftar di sini sehingga jatuh ke `path="*"` dan pengunjung dilempar ke
+ * halaman login, padahal keduanya halaman publik yang tidak butuh akun.
  *
- * Rute konten universitas seperti `/tentang`, `/fakultas`, `/akademik`,
- * `/pmb`, `/lppm`, `/kontak`, `/layanan`, dan `/berita` sengaja TIDAK dirender
- * di sini: itu milik website prodi/universitas dan tidak ada datanya pada
- * portal pusat. Path lain diarahkan ke login agar pengelola langsung
- * menemukan pintu masuk.
+ * Karena itu rute publik yang benar-benar ditautkan dari landing ikut
+ * dirender. Rute admin tetap diurus `adminPortalRouteElements` di tempat lain;
+ * `path="*"` dipertahankan agar path tak dikenal tetap diarahkan ke login.
  */
 function adminPortalRouteElements() {
   return (
     <>
       <Route path="/" element={<MainWebsiteLayout><MainLandingPage /></MainWebsiteLayout>} />
+      <Route
+        path="/fakultas"
+        element={
+          <MainWebsiteLayout>
+            <FacultiesPage />
+          </MainWebsiteLayout>
+        }
+      />
+      <Route
+        path="/fakultas/:slug"
+        element={
+          <MainWebsiteLayout>
+            <FacultyDetailPage />
+          </MainWebsiteLayout>
+        }
+      />
+      <Route
+        path="/berita"
+        element={
+          <MainWebsiteLayout>
+            <PortalNewsPage />
+          </MainWebsiteLayout>
+        }
+      />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </>
   );
