@@ -266,7 +266,14 @@ const AboutProdiWidget: React.FC<{
   const overview = typeof stored?.overview === 'string' ? stored.overview.trim() : '';
   const heroImageUrl = typeof stored?.heroImageUrl === 'string' ? stored.heroImageUrl.trim() : '';
 
-  const imageUrl = heroImageUrl || fallbackImage || '/rektorat-unusu.jpg';
+  /**
+   * Gambar pendamping blok profil.
+   *
+   * Urutan sumber: gambar hasil unggahan admin (`heroImageUrl`), lalu gambar
+   * yang ditetapkan Page Builder (`fallbackImage`), lalu gambar gedung bawaan
+   * portal `/tentang-custom.png`.
+   */
+  const imageUrl = heroImageUrl || fallbackImage || '/tentang-custom.png';
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-[#eef4ff] via-white to-white py-16 lg:py-24">
@@ -310,19 +317,20 @@ const AboutProdiWidget: React.FC<{
             </div>
           </div>
 
-          {/* Gambar Ilustrasi */}
+          {/*
+            Gambar ilustrasi tanpa bingkai kartu.
+
+            Sebelumnya gambar dibatasi `rounded-3xl` + border putih + tinggi
+            tetap, sehingga tampak seperti kotak kecil. Sekarang gambar dibiarkan
+            mengalir bebas mengikuti tinggi kolom teks di sebelahnya.
+          */}
           <div className={`relative ${isImageRight ? 'lg:col-span-5 lg:order-2' : 'lg:col-span-5 lg:order-1'}`}>
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-slate-100">
+            <div className="relative overflow-hidden rounded-2xl bg-slate-100">
               <img
                 src={imageUrl}
                 alt={`Gambar profil ${tenantName || tenant?.name || 'Program Studi'}`}
-                className="w-full h-80 sm:h-96 object-cover object-center"
+                className="h-80 w-full object-cover object-center sm:h-96 lg:h-full lg:min-h-[480px]"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-              <div className="absolute bottom-5 left-5 right-5 text-white">
-                <p className="text-xs font-black uppercase tracking-wider text-amber-400">Terakreditasi Baik</p>
-                <p className="text-sm sm:text-base font-bold leading-tight">{tenant?.name || 'Program Studi UNUSU'}</p>
-              </div>
             </div>
           </div>
         </div>

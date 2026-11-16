@@ -106,10 +106,17 @@ export const FacultyLandingPage: React.FC = () => {
       ? tentangQuery.data.overview.trim()
       : null;
 
+  /**
+   * Gambar pendamping blok "Tentang Fakultas".
+   *
+   * Urutan sumber: gambar hasil unggahan admin (`heroImageUrl`), lalu gambar
+   * gedung bawaan portal `/tentang-custom.png`. Gambar hero slider sengaja tidak
+   * dipakai lagi agar blok ini punya wajah yang tetap dan tidak ikut berganti
+   * setiap kali slider berputar.
+   */
   const heroGambar =
     (typeof tentangQuery.data?.heroImageUrl === 'string' && tentangQuery.data.heroImageUrl.trim()) ||
-    slides[0] ||
-    '/rektorat-unusu.jpg';
+    '/tentang-custom.png';
 
   const beritaQuery = useQuery({
     queryKey: ['public', 'posts', 3],
@@ -227,22 +234,22 @@ export const FacultyLandingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Gambar */}
+            {/*
+              Gambar profil tanpa bingkai kartu.
+              
+              Dulu gambar dibatasi `rounded-3xl` + border putih + rasio tetap,
+              sehingga terasa seperti kotak kecil di samping teks. Sekarang
+              dibiarkan mengalir bebas mengikuti tinggi kolomnya, dengan sudut
+              membulat tipis saja agar tetap menyatu dengan tata letak.
+            */}
             <div className="relative lg:col-span-5">
-              <div className="relative overflow-hidden rounded-3xl border-4 border-white bg-slate-100 shadow-2xl">
+              <div className="relative overflow-hidden rounded-2xl bg-slate-100">
                 <img
                   src={heroGambar}
-                  alt={`Gambar profil ${namaFakultas}`}
-                  className="h-72 w-full object-cover object-center sm:h-96"
+                  alt={`Gambar ${namaFakultas}`}
+                  className="h-72 w-full object-cover object-center sm:h-96 lg:h-full lg:min-h-[480px]"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                <div className="absolute bottom-5 left-5 right-5 text-white">
-                  <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: accent }}>
-                    Fakultas
-                  </p>
-                  <p className="text-sm font-bold leading-tight sm:text-base">{namaFakultas}</p>
-                </div>
               </div>
             </div>
           </div>
