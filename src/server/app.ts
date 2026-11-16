@@ -13,6 +13,7 @@ import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 
 import authRoutes from './modules/auth/auth.routes.js';
 import publicRoutes from './modules/public/public.routes.js';
+import organisasiPublikRoutes from './modules/public/organisasiPublik.routes.js';
 import arsipDokumenRoutes from './modules/admin/arsipDokumen.routes.js';
 import websiteRoutes from './modules/admin/website.routes.js';
 import portalRoutes from './modules/admin/portal.routes.js';
@@ -175,6 +176,15 @@ export function createApp() {
 
   // Auth: login lokal, tukar tiket SSO, profil, refresh, logout.
   app.use('/api/v1/auth', authRoutes);
+
+  /*
+   * Organisasi lintas-tenant — dipanggil server-ke-server oleh ONE UNUSU.
+   *
+   * Dipasang SEBELUM router publik di bawah karena `publicRoutes` selalu
+   * diikat ke tenant dari hostname, sedangkan endpoint ini justru harus
+   * mengembalikan SELURUH fakultas dan prodi sekaligus.
+   */
+  app.use('/api/v1/public', organisasiPublikRoutes);
 
   // Publik: dibaca tanpa login, selalu terikat tenant dari hostname.
   app.use('/api/v1/public', publicRoutes);

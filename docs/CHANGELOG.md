@@ -2,6 +2,16 @@
 
 Semua perubahan penting dicatat di sini. Format tanggal: YYYY-MM-DD.
 
+## 2026-11-16 - Endpoint Organisasi untuk ONE UNUSU
+
+### Added
+- **`POST /api/v1/public/organisasi`** — endpoint server-ke-server yang mengembalikan seluruh fakultas beserta program studi aktif di dalamnya, dalam satu respons bersarang. Dipakai ONE UNUSU sebagai **sumber tunggal** data organisasi, sehingga aplikasi cabang (LPM, LPPM, BAKSI, BAKSA) tidak perlu tahu Portal Prodi ada. Wajib menyertakan `Authorization: Bearer <PRODI_API_KEY>` atau `X-API-Key`.
+- **`PRODI_API_KEY`** pada `.env`. Bila variabel ini kosong, endpoint menolak seluruh permintaan dengan 503 (fail-closed) — lebih aman daripada diam-diam terbuka untuk umum.
+
+### Notes
+- Endpoint dipasang **sebelum** `publicRoutes` di `app.ts`, karena `publicRoutes` selalu diikat ke tenant dari hostname, sedangkan endpoint ini justru harus mengembalikan seluruh fakultas sekaligus.
+- Hanya kolom yang dibutuhkan pemanggil yang dikirim. `hostname`, `logo_url`, dan `external_prodi_code` sengaja tidak disertakan agar topologi tenant tidak bocor.
+
 ## 2026-11-19 - Callback SSO Token-Only
 
 ### Changed
