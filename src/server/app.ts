@@ -209,7 +209,10 @@ export function createApp() {
     const clientDist = candidates.find((dir) => fs.existsSync(path.join(dir, 'index.html')));
 
     if (clientDist) {
-      app.use(express.static(clientDist));
+      // `index: false` penting: tanpa itu `express.static` menyajikan
+      // `index.html` mentah untuk "/" sebelum fallback di bawah sempat berjalan,
+      // sehingga judul tenant tidak pernah disuntikkan.
+      app.use(express.static(clientDist, { index: false }));
 
       /**
        * Fallback SPA.
