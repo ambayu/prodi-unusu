@@ -2,6 +2,13 @@
 
 Semua perubahan penting dicatat di sini. Format tanggal: YYYY-MM-DD.
 
+## 2026-11-19 - Callback SSO Token-Only
+
+### Changed
+- Callback SSO beralih ke pola token-only (`/sso/callback?token=...`). Client ID dan Key diambil langsung dari konfigurasi server aplikasi demi keamanan identitas client.
+- Parameter token di URL dihapus dari address bar segera setelah dibaca.
+
+
 ## 2026-11-16 - Halaman Penuh Form Kurikulum & Penawaran MK (Governance Compliance)
 
 ### Added

@@ -257,11 +257,7 @@ router.post(
   loginLimiter,
   validate({ body: ssoExchangeSchema }),
   asyncHandler(async (req, res) => {
-    const { client_id, token } = getBody<{ client_id: string; token: string }>(req);
-
-    if (client_id !== config.sso.clientId) {
-      throw AppError.badRequest('Client ID tidak sesuai dengan aplikasi ini.', 'SSO_CLIENT_MISMATCH');
-    }
+    const { token } = getBody<{ client_id?: string; token: string }>(req);
 
     const { user: ssoUser, access, app } = await exchangeSsoTicket(token);
 

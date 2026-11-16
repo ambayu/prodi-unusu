@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api, toApiError } from '../services/api';
 import { useSiteStore } from '../app/siteStore';
 import { SsoLoadingScreen } from '../components/SsoLoadingScreen';
@@ -114,7 +114,6 @@ function terjemahkanGagalSso(err: unknown, payload: Record<string, any>): SsoPro
 }
 
 export const SsoCallback: React.FC = () => {
-  const [params] = useSearchParams();
   const navigate = useNavigate();
   const refreshUser = useSiteStore((state) => state.refreshUser);
   const started = useRef(false);
@@ -124,10 +123,12 @@ export const SsoCallback: React.FC = () => {
     if (started.current) return;
     started.current = true;
 
-    const clientId = params.get('client_id');
-    const token = params.get('token');
+    const token = new URLSearchParams(window.location.search).get('token');
 
-    if (!clientId || !token) {
+    // Bersihkan token dari address bar
+    window.history.replaceState(null, '', `${window.location.pathname}`);
+
+    if (!token) {
       setMasalah({
         jenis: 'kosong',
         judul: 'Permintaan Masuk Belum Selesai',
@@ -143,7 +144,7 @@ export const SsoCallback: React.FC = () => {
     }
 
     api
-      .post('/auth/sso', { client_id: clientId, token })
+      .post('/auth/sso', { token })
       .then(async (res) => {
         /*
          * Menu sidebar diturunkan dari permission dan tenant aktif. Keduanya

@@ -11,7 +11,7 @@ export const loginSchema = z.object({
 });
 
 export const ssoExchangeSchema = z.object({
-  client_id: z.string().trim().min(1).max(100),
+  client_id: z.string().trim().min(1).max(100).optional(),
   token: z.string().trim().min(1).max(200),
 });
 
