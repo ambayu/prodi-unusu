@@ -534,7 +534,7 @@ export async function seedPageBuilderAndThemes() {
           snapshot: JSON.stringify({
             title: beranda.title,
             publishedAt: new Date(),
-            totalSections: 6,
+            totalSections: 5,
             theme: palette,
           }),
           note: 'Publikasi Otomatis Full Page Beranda (Update)',

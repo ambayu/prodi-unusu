@@ -503,9 +503,20 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                 {adalahFakultas ? 'Sekretariat Fakultas' : 'Sekretariat Prodi'}
               </p>
               <p className="text-slate-600 leading-relaxed text-[11px]">
-                Gedung Fakultas, Kampus Universitas Nahdlatul Ulama Sumatera Utara
-                <br />Jl. H.A. Manaf Lubis No.2, Gaperta Ujung, Helvetia, Medan
-                <br /><strong className="text-black">Email:</strong> {tenant?.contact?.email || `${tenant?.slug || 'prodi'}@unusu.ac.id`}
+                {tenant?.contact?.address || 'Jl. H.A. Manaf Lubis No.2, Gaperta Ujung, Helvetia, Medan, Sumatera Utara'}
+                {tenant?.contact?.phone ? (
+                  <>
+                    <br />
+                    <strong className="text-black">Telepon / WhatsApp:</strong> {tenant.contact.phone}
+                  </>
+                ) : (
+                  <>
+                    <br />
+                    <strong className="text-black">Telepon / WhatsApp:</strong> (061) 8451234
+                  </>
+                )}
+                <br />
+                <strong className="text-black">Surel Resmi:</strong> {tenant?.contact?.email || `${tenant?.slug || 'prodi'}@unusu.ac.id`}
               </p>
             </div>
           </div>
