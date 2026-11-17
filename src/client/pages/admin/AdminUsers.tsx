@@ -7,8 +7,10 @@ import {
   TrashIcon,
   EllipsisVerticalIcon,
   UserPlusIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
+import { ModalPilihPenggunaSso } from '../../components/admin/ModalPilihPenggunaSso';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
@@ -161,6 +163,7 @@ export const AdminUsers: React.FC = () => {
   const [roleTarget, setRoleTarget] = useState<ManagedUser | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<{ userId: number; assignmentId: number } | null>(null);
   const [disableTarget, setDisableTarget] = useState<ManagedUser | null>(null);
+  const [tambahModalOpen, setTambahModalOpen] = useState(false);
 
   const [roleDraft, setRoleDraft] = useState<{
     roleCode: string;
@@ -276,23 +279,34 @@ export const AdminUsers: React.FC = () => {
           ? 'Seluruh akun berasal dari SSO ONE UNUSU. Tinjau peran portal pusat, lalu berikan peran aplikasi.'
           : 'Akun yang ditampilkan hanya yang ditugaskan pada program studi ini.'
       }
+      actions={
+        has('users.create') ? (
+          <button
+            type="button"
+            onClick={() => setTambahModalOpen(true)}
+            className="btn-primary"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Tambah Pengguna
+          </button>
+        ) : null
+      }
     >
       {/*
-        Penjelasan asal akun. Dulu ada tombol "Buat Akun", padahal akun dengan
-        kata sandi lokal tidak mencerminkan data kepegawaian resmi dan bisa
-        dipakai masuk tanpa melewati portal pusat.
+        Penjelasan asal akun. Pemilihan akun langsung dari direktori ONE UNUSU
+        seperti di portal LPPM, tanpa membuat akun lokal lepas dari pusat.
       */}
       <div className="mb-4 flex items-start gap-3 rounded-[14px] border border-[#CBD5E1] bg-blue-50/60 px-4 py-3">
         <ShieldCheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#1e3a8a]" />
         <div className="text-[11px] leading-relaxed text-slate-700">
-          <p className="font-bold text-[#1e3a8a]">Akun dibuat otomatis oleh SSO ONE UNUSU</p>
+          <p className="font-bold text-[#1e3a8a]">Direktori Terhubung ke SSO ONE UNUSU</p>
           <p className="mt-0.5">
-            Tidak ada pembuatan akun manual di halaman ini. Pengguna masuk sekali lewat SSO, lalu muncul pada
-            tabel menunggu validasi. Peran yang dapat diberikan hanya Admin Utama dan Admin Prodi.
+            Klik tombol <strong>Tambah Pengguna</strong> untuk memilih langsung dosen, tenaga kependidikan, atau staf dari direktori ONE UNUSU.
+            Setelah ditambahkan, Anda dapat memberikan peran aplikasi melalui menu aksi di tiap baris.
           </p>
           {menungguValidasi.length > 0 ? (
             <p className="mt-1 font-bold text-amber-800">
-              {menungguValidasi.length} akun sedang menunggu validasi.
+              {menungguValidasi.length} akun sedang menunggu penugasan peran.
             </p>
           ) : null}
         </div>
@@ -320,21 +334,30 @@ export const AdminUsers: React.FC = () => {
           columns={
             [
               {
+                key: 'username',
+                header: 'NIDN / NIM',
+                width: 140,
+                cellClassName: 'font-mono text-xs font-semibold text-slate-800',
+                render: (user) => user.username,
+              },
+              {
                 key: 'nama',
-                header: 'Nama',
+                header: 'Nama Lengkap',
                 render: (user) => (
-                  <>
-                    {/* Kolom identitas akun saja. */}
-                    <span className="block font-bold text-slate-900">{user.name}</span>
-                    <span className="mt-0.5 block text-xs text-slate-500">{user.username}</span>
-                    <span className="block text-xs text-slate-400">{user.email}</span>
-                  </>
+                  <span className="font-bold text-slate-900">{user.name}</span>
                 ),
+              },
+              {
+                key: 'email',
+                header: 'Email',
+                width: 220,
+                cellClassName: 'font-mono text-xs text-slate-600',
+                render: (user) => user.email || '—',
               },
               {
                 key: 'peran-sso',
                 header: 'Peran SSO',
-                width: 170,
+                width: 160,
                 // Peran dari portal pusat, sebagai dasar validasi.
                 render: (user) => {
                   /*
@@ -633,6 +656,17 @@ export const AdminUsers: React.FC = () => {
           if (disableTarget) disableMutation.mutate(disableTarget.id);
         }}
         onCancel={() => setDisableTarget(null)}
+      />
+
+      <ModalPilihPenggunaSso
+        open={tambahModalOpen}
+        onClose={() => setTambahModalOpen(false)}
+        onSuccess={() => {
+          toast.success('Pengguna berhasil didaftarkan dari direktori ONE UNUSU.');
+          invalidate();
+        }}
+        idTerdaftar={akun.map((u) => (u.ssoId ? Number(u.ssoId) : u.id))}
+        usernameTerdaftar={akun.map((u) => u.username)}
       />
     </AdminLayout>
   );

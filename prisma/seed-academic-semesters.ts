@@ -122,7 +122,7 @@ export async function seedAcademicSemesters() {
     }
   }
 
-  console.log('SUKSES: Master Semester 1 s/d 8 2026 berhasil disemai.');
+  console.log('SUKSES: Master Semester-1-2026 s/d Semester-8-2026 berhasil disemai.');
 }
 
 seedAcademicSemesters()

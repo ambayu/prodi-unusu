@@ -306,9 +306,24 @@ export interface ManagedUser {
   }>;
 }
 
+export interface KandidatOneUnusu {
+  id: number;
+  username: string;
+  nama: string;
+  email: string | null;
+  role: string;
+  fakultas: string | null;
+  prodi: string | null;
+  sudahTerdaftar?: boolean;
+}
+
 export const userApi = {
   list: () => api.get<{ users: ManagedUser[] }>('/admin/users'),
   get: (id: number) => api.get<{ user: ManagedUser }>(`/admin/users/${id}`),
+  createFromSso: (data: { userIds: number[]; kandidat?: KandidatOneUnusu[] }) =>
+    api.post<{ success: boolean; message: string; users: ManagedUser[] }>('/admin/users', data),
+  kandidat: (params?: { search?: string; role?: string; fakultas?: string; prodi?: string }) =>
+    api.get<{ success: boolean; data: KandidatOneUnusu[] }>('/admin/users/meta/kandidat', { params }),
   update: (id: number, data: Record<string, unknown>) => api.put(`/admin/users/${id}`, data),
   assignRole: (
     id: number,

@@ -1,4 +1,5 @@
 ﻿import { Router } from 'express';
+import { config } from '../../config/index.js';
 import { prisma } from '../../prisma.js';
 import { asyncHandler, getBody, getParams, validate } from '../../utils/validation.js';
 import { requirePermission } from '../../middlewares/auth.js';
@@ -20,6 +21,91 @@ const router = Router();
  * permintaan ke `/meta/roles` tertangkap sebagai id bernilai "meta" lalu gagal
  * validasi sehingga daftar peran selalu kosong di formulir.
  */
+
+/** GET /api/v1/admin/users/meta/kandidat: cari kandidat pengguna dari direktori ONE UNUSU (seperti LPPM). */
+router.get(
+  '/meta/kandidat',
+  requirePermission('users.view'),
+  asyncHandler(async (req, res) => {
+    const search = String(req.query.search ?? '').trim();
+    const role = String(req.query.role ?? '').trim();
+    const fakultas = String(req.query.fakultas ?? '').trim();
+    const prodi = String(req.query.prodi ?? '').trim();
+
+    if (search.length === 1) {
+      throw AppError.unprocessableCode('Ketik minimal 2 karakter untuk mencari pengguna.', 'SEARCH_TOO_SHORT');
+    }
+
+    const apiKey = config.sso.apiKey;
+    if (!apiKey) {
+      throw AppError.badGateway('ONE_UNUSU_API_KEY belum dikonfigurasi di server.', 'SSO_API_KEY_MISSING');
+    }
+
+    let upstreamRes: Response;
+    try {
+      upstreamRes = await fetch(`${config.sso.baseUrl.replace(/\/$/, '')}/api/v2/website/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          ...(search.length >= 2 ? { search: search.slice(0, 100) } : {}),
+          ...(role ? { role } : {}),
+          ...(fakultas ? { fakultas } : {}),
+          ...(prodi ? { prodi } : {}),
+          limit: 30,
+        }),
+      });
+    } catch {
+      throw AppError.badGateway('Gagal menghubungi portal ONE UNUSU.', 'UPSTREAM_UNREACHABLE');
+    }
+
+    const payload = (await upstreamRes.json().catch(() => null)) as {
+      status?: boolean;
+      data?: Array<{
+        id: number;
+        username: string;
+        nama: string;
+        email: string | null;
+        role: string;
+        fakultas: string | null;
+        prodi: string | null;
+      }>;
+      message?: string;
+    } | null;
+
+    if (!upstreamRes.ok || !payload?.status) {
+      throw AppError.badGateway(payload?.message || 'ONE UNUSU mengembalikan respon gagal.', 'UPSTREAM_ERROR');
+    }
+
+    const daftar = Array.isArray(payload.data) ? payload.data : [];
+    const terdaftarUsers = await prisma.user.findMany({
+      where: {
+        OR: [
+          { ssoId: { in: daftar.map((d) => String(d.id)) } },
+          { username: { in: daftar.map((d) => d.username) } },
+        ],
+      },
+      select: { ssoId: true, username: true },
+    });
+
+    const setTerdaftar = new Set<string>();
+    terdaftarUsers.forEach((u) => {
+      if (u.ssoId) setTerdaftar.add(u.ssoId);
+      if (u.username) setTerdaftar.add(u.username);
+    });
+
+    res.json({
+      success: true,
+      data: daftar.map((u) => ({
+        ...u,
+        sudahTerdaftar: setTerdaftar.has(String(u.id)) || setTerdaftar.has(u.username),
+      })),
+      meta: { total: daftar.length, search, role, fakultas, prodi },
+    });
+  }),
+);
 
 /** GET /api/v1/admin/roles: daftar peran sistem. */
 router.get(
@@ -161,25 +247,77 @@ router.get(
 
 /**
  * POST /api/v1/admin/users
- *
- * Akun hanya boleh berasal dari SSO ONE UNUSU. Pembuatan akun manual dihapus
- * karena akun seperti itu memiliki kata sandi lokal yang dapat dipakai masuk
- * tanpa melewati portal pusat, sehingga status kepegawaiannya tidak lagi
- * mencerminkan data resmi universitas.
- *
- * Endpoint dipertahankan agar pemanggil lama menerima penjelasan yang jelas,
- * bukan galat 404 yang membingungkan.
+ * Mendaftarkan pengguna dari direktori ONE UNUSU (seperti skema LPPM).
  */
 router.post(
   '/',
   requirePermission('users.create'),
-  validate({ body: createUserSchema }),
-  asyncHandler(async () => {
-    throw AppError.forbidden(
-      'Akun tidak dapat dibuat manual. Seluruh akun dibuat otomatis saat pengguna masuk melalui SSO ONE UNUSU, ' +
-        'lalu divalidasi di halaman ini sebelum diberikan peran.',
-      'ACCOUNTS_FROM_SSO_ONLY',
-    );
+  asyncHandler(async (req, res) => {
+    const { userIds, kandidat } = req.body ?? {};
+
+    let listKandidat: Array<{ id: number; username: string; nama: string; email?: string | null; role?: string }> = [];
+
+    if (Array.isArray(kandidat) && kandidat.length > 0) {
+      listKandidat = kandidat;
+    } else if (Array.isArray(userIds) && userIds.length > 0) {
+      // Ambil detail kandidat dari ONE UNUSU
+      const apiKey = config.sso.apiKey;
+      const upstreamRes = await fetch(`${config.sso.baseUrl.replace(/\/$/, '')}/api/v2/website/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ limit: 100 }),
+      });
+      const payload = (await upstreamRes.json().catch(() => null)) as {
+        status?: boolean;
+        data?: Array<{ id: number; username: string; nama: string; email: string | null; role: string }>;
+      } | null;
+
+      if (payload?.status && Array.isArray(payload.data)) {
+        const targetIds = new Set(userIds.map(Number));
+        listKandidat = payload.data.filter((u) => targetIds.has(Number(u.id)));
+      }
+    }
+
+    if (listKandidat.length === 0) {
+      throw AppError.badRequest('Pilih minimal satu pengguna dari direktori ONE UNUSU.', 'EMPTY_USER_SELECTION');
+    }
+
+    const hasil = [];
+    for (const k of listKandidat) {
+      const email = (k.email ?? `${k.username}@unusu.ac.id`).toLowerCase();
+      const existing = await prisma.user.findFirst({
+        where: { OR: [{ ssoId: String(k.id) }, { username: k.username }, { email }] },
+      });
+
+      if (existing) {
+        hasil.push(existing);
+        continue;
+      }
+
+      const roleStr = k.role ? [k.role] : [];
+      const created = await prisma.user.create({
+        data: {
+          ssoId: String(k.id),
+          name: k.nama,
+          email,
+          username: k.username,
+          isActive: true,
+          ssoRole: k.role || null,
+          ssoRoles: JSON.stringify(roleStr),
+          ssoSyncedAt: new Date(),
+        },
+      });
+      hasil.push(created);
+    }
+
+    res.json({
+      success: true,
+      message: `${hasil.length} pengguna berhasil didaftarkan.`,
+      users: hasil,
+    });
   }),
 );
 

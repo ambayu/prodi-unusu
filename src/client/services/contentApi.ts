@@ -143,7 +143,12 @@ export const academicSemesterApi = {
 };
 
 export const curriculumApi = {
-  public: () => api.get<{ curriculums: Curriculum[]; summary: CurriculumSummary }>('/public/curriculum'),
+  public: () =>
+    api.get<{
+      curriculums: Curriculum[];
+      masterSemesters?: Array<{ id: number; code: string; name: string; isActive: boolean }>;
+      summary: CurriculumSummary;
+    }>('/public/curriculum'),
   list: () => api.get<{ curriculums: Curriculum[] }>('/admin/curriculums'),
   /**
    * Daftar mata kuliah datar lintas semester untuk halaman `/admin/kurikulum`.

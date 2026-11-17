@@ -124,10 +124,17 @@ router.get(
   '/curriculum',
   requireTenant,
   asyncHandler(async (req, res) => {
-    const curriculums = await listPublicCurriculum(req.tenant!.id);
+    const [curriculums, masterSemesters] = await Promise.all([
+      listPublicCurriculum(req.tenant!.id),
+      prisma.academicSemester.findMany({
+        orderBy: { code: 'asc' },
+        select: { id: true, code: true, name: true, isActive: true },
+      }),
+    ]);
     res.json({
       success: true,
       curriculums,
+      masterSemesters,
       summary: buildCurriculumSummary(curriculums),
     });
   }),

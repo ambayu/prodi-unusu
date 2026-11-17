@@ -8,20 +8,20 @@ function formatSemesterFilter(smt: string | number | null | undefined): string {
   if (smt === null || smt === undefined || smt === '') return '-';
   const str = String(smt).trim();
   if (/^\d+$/.test(str)) return `Semester ${str}`;
-  return str;
+  return str.replace(/-/g, ' ');
 }
 
 /**
  * Label ringkas untuk kolom tabel agar muat presisi.
- * Contoh: "Semester 1 2026" -> "Semester 1", atau "1" -> "Semester 1".
+ * Contoh: "Semester-1-2026" -> "Semester 1", atau "1" -> "Semester 1".
  */
 function formatSemesterTable(smt: string | number | null | undefined): string {
   if (smt === null || smt === undefined || smt === '') return '-';
   const str = String(smt).trim();
   if (/^\d+$/.test(str)) return `Semester ${str}`;
-  // Jika "Semester 1 2026", ambil "Semester 1"
-  const match = str.match(/^(Semester\s+\d+)/i);
-  if (match) return match[1];
+  // Jika "Semester-1-2026" atau "Semester 1 2026", ambil "Semester 1"
+  const match = str.match(/^Semester[- ](\d+)/i);
+  if (match) return `Semester ${match[1]}`;
   return str;
 }
 
@@ -110,16 +110,35 @@ export const CurriculumPage: React.FC = () => {
     return [...fromItems, ...fromLegacy];
   }, [activeCurriculum]);
 
-  /** Pilihan filter semester dibangun dari nilai yang benar-benar ada. */
+  /**
+   * Pilihan filter semester: memprioritaskan seluruh master semester dari database
+   * (Semester-1-2026 s/d Semester-8-2026), lalu digabung dengan semester dari courses jika ada.
+   */
   const semesterOptions = useMemo(() => {
+    const list: string[] = [];
     const set = new Set<string>();
-    for (const course of courses) {
-      if (course.semesterNumber !== null && course.semesterNumber !== undefined) {
-        set.add(String(course.semesterNumber));
+
+    if (curriculumQuery.data?.masterSemesters?.length) {
+      for (const ms of curriculumQuery.data.masterSemesters) {
+        if (!set.has(ms.name)) {
+          set.add(ms.name);
+          list.push(ms.name);
+        }
       }
     }
-    return [...set].sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
-  }, [courses]);
+
+    for (const course of courses) {
+      if (course.semesterNumber !== null && course.semesterNumber !== undefined) {
+        const val = String(course.semesterNumber);
+        if (!set.has(val)) {
+          set.add(val);
+          list.push(val);
+        }
+      }
+    }
+
+    return list.sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+  }, [curriculumQuery.data?.masterSemesters, courses]);
 
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();

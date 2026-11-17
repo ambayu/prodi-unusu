@@ -101,6 +101,7 @@ export const config = {
     baseUrl: ssoBaseUrl,
     clientId: optional('SSO_CLIENT_ID', '70c76ea9b5d5d3a8'),
     clientKey: process.env.SSO_CLIENT_KEY || '',
+    apiKey: process.env.ONE_UNUSU_API_KEY || '',
     portalUrl: ssoPortalUrl,
   },
 
