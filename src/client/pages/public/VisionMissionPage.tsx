@@ -135,17 +135,14 @@ export const VisionMissionPage: React.FC = () => {
            * batas agar tetap terpisah dari teks. Di layar kecil gambar tampil
            * lebih dahulu, juga tanpa bingkai.
            */
-          <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:gap-10">
-            <aside className="lg:col-span-6 xl:col-span-5">
-              <figure className="relative overflow-hidden bg-slate-100 lg:sticky lg:top-24">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-10">
+            <aside className="lg:col-span-6 xl:col-span-5 lg:relative">
+              <figure className="lg:absolute lg:inset-0">
                 <GambarTentang
                   src={heroGambar}
                   alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
-                  className="h-[280px] w-full object-cover object-center sm:h-[360px] lg:h-[560px] lg:rounded-r-3xl"
+                  className="h-auto w-full object-contain lg:h-full"
                 />
-                <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-6 py-5 text-[11px] font-semibold text-white">
-                  {tenant?.name ?? unitLabel} &bull; Universitas Nahdlatul Ulama Sumatera Utara
-                </figcaption>
               </figure>
             </aside>
 

@@ -3,6 +3,28 @@ import { useQuery } from '@tanstack/react-query';
 import { MagnifyingGlassIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+/** Label lengkap untuk dropdown filter di atas. */
+function formatSemesterFilter(smt: string | number | null | undefined): string {
+  if (smt === null || smt === undefined || smt === '') return '-';
+  const str = String(smt).trim();
+  if (/^\d+$/.test(str)) return `Semester ${str}`;
+  return str;
+}
+
+/**
+ * Label ringkas untuk kolom tabel agar muat presisi.
+ * Contoh: "Semester 1 2026" -> "Semester 1", atau "1" -> "Semester 1".
+ */
+function formatSemesterTable(smt: string | number | null | undefined): string {
+  if (smt === null || smt === undefined || smt === '') return '-';
+  const str = String(smt).trim();
+  if (/^\d+$/.test(str)) return `Semester ${str}`;
+  // Jika "Semester 1 2026", ambil "Semester 1"
+  const match = str.match(/^(Semester\s+\d+)/i);
+  if (match) return match[1];
+  return str;
+}
+
 import { useSeo } from '../../hooks/useSeo';
 import { useTenant } from '../../hooks/useSite';
 import { curriculumApi, type CurriculumRpsRow } from '../../services/contentApi';
@@ -148,15 +170,27 @@ export const CurriculumPage: React.FC = () => {
     {
       key: 'semester',
       header: 'Smt',
-      width: 64,
+      width: 120,
       align: 'center',
-      cellClassName: 'whitespace-nowrap text-slate-500',
-      render: (course) => course.semesterNumber,
+      cellClassName: 'whitespace-nowrap',
+      render: (course) => {
+        const ringkas = formatSemesterTable(course.semesterNumber);
+        const lengkap = formatSemesterFilter(course.semesterNumber);
+        if (ringkas === '-') return <span className="text-slate-400">—</span>;
+        return (
+          <span
+            className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700"
+            title={lengkap}
+          >
+            {ringkas}
+          </span>
+        );
+      },
     },
     {
       key: 'keterangan',
       header: 'Keterangan',
-      width: 180,
+      width: 200,
       render: (course) =>
         course.description ? (
           <span className="text-slate-700">{course.description}</span>
@@ -250,12 +284,12 @@ export const CurriculumPage: React.FC = () => {
                 value={semesterFilter}
                 onChange={(event) => setSemesterFilter(event.target.value)}
                 aria-label="Saring berdasarkan semester"
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                className="rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 shadow-2xs hover:border-slate-400 focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer transition-colors"
               >
                 <option value="all">Semua semester</option>
                 {semesterOptions.map((semester) => (
                   <option key={semester} value={semester}>
-                    {semester}
+                    {formatSemesterFilter(semester)}
                   </option>
                 ))}
               </select>
@@ -276,7 +310,7 @@ export const CurriculumPage: React.FC = () => {
                     ? 'Tidak ada mata kuliah yang cocok dengan pencarian Anda.'
                     : 'Program studi belum mempublikasikan data kurikulum. Silakan hubungi admin prodi atau periksa kembali nanti.'
                 }
-                minWidth={920}
+                minWidth={980}
                 columns={columns}
               />
             </div>

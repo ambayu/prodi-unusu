@@ -24,6 +24,7 @@ import {
 import { PERMISSIONS, ROLES } from '../src/shared/constants/permissions.js';
 import { seedProdiContents } from './seed-prodi-content.js';
 import { seedFacultyContents } from './seed-faculty-content.js';
+import { seedAcademicSemesters } from './seed-academic-semesters.js';
 import { seedPageBuilderAndThemes } from './seed-page-builder.js';
 import { seedProdiRoles } from './seed-prodi-roles.js';
 

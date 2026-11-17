@@ -23,18 +23,44 @@ const FACULTY_PALETTES: Record<string, { primary: string; accent: string; second
   FAI: { primary: '#1e3a8a', accent: '#fbbf24', secondary: '#0b1c46' },  // Biru UNUSU & Emas Nahdliyin
 };
 
-// 10 Menu navigasi standar universitas
-const STANDARD_MENUS = [
-  { title: 'Beranda', url: '/', sortOrder: 1, isRequired: true },
-  { title: 'Profil', url: '/profil', sortOrder: 2, isRequired: true },
-  { title: 'Visi & Misi', url: '/visi-misi', sortOrder: 3, isRequired: true },
-  { title: 'Kurikulum', url: '/kurikulum', sortOrder: 4, isRequired: true },
-  { title: 'Dosen Pengajar', url: '/dosen', sortOrder: 5, isRequired: true },
-  { title: 'Sarana & Prasarana', url: '/sarana-prasarana', sortOrder: 6, isRequired: true },
-  { title: 'Berita & Warta', url: '/berita', sortOrder: 7, isRequired: true },
-  { title: 'Galeri Kegiatan', url: '/galeri', sortOrder: 8, isRequired: true },
-  { title: 'Dokumen & Unduhan', url: '/dokumen', sortOrder: 9, isRequired: true },
-  { title: 'Kontak & Lokasi', url: '/kontak', sortOrder: 10, isRequired: true },
+// Struktur Navigasi Berkelompok Standar Universitas (Hierarki dengan parentId)
+interface StandardNavItem {
+  title: string;
+  url: string;
+  isRequired?: boolean;
+  children?: Array<{ title: string; url: string; isRequired?: boolean }>;
+}
+
+const STANDARD_NAV_STRUCTURE: StandardNavItem[] = [
+  { title: 'Beranda', url: '/', isRequired: true },
+  {
+    title: 'Tentang Prodi',
+    url: '#',
+    children: [
+      { title: 'Profil', url: '/profil', isRequired: true },
+      { title: 'Visi & Misi', url: '/visi-misi', isRequired: true },
+    ],
+  },
+  {
+    title: 'Akademik',
+    url: '#',
+    children: [
+      { title: 'Kurikulum', url: '/kurikulum', isRequired: true },
+      { title: 'Dosen Pengajar', url: '/dosen', isRequired: true },
+      { title: 'Sarana & Prasarana', url: '/sarana-prasarana', isRequired: true },
+      { title: 'Akreditasi & Prestasi', url: '/akreditasi-dan-capaian', isRequired: false },
+    ],
+  },
+  {
+    title: 'Informasi & Dokumen',
+    url: '#',
+    children: [
+      { title: 'Berita & Warta', url: '/berita', isRequired: true },
+      { title: 'Galeri Kegiatan', url: '/galeri', isRequired: true },
+      { title: 'Dokumen', url: '/dokumen', isRequired: true },
+    ],
+  },
+  { title: 'Kontak & Lokasi', url: '/kontak', isRequired: true },
 ];
 
 export async function seedPageBuilderAndThemes() {
@@ -120,35 +146,98 @@ export async function seedPageBuilderAndThemes() {
     });
 
     // =========================================================================
-    // 2. NAVIGASI NAVBAR LENGKAP (10 Menu Standar)
+    // 2. NAVIGASI NAVBAR STANDAR (3 Grup Dropdown + Item Mandiri)
     // =========================================================================
-    for (const menu of STANDARD_MENUS) {
-      const existing = await prisma.menu.findFirst({
-        where: { studyProgramId: prodi.id, url: menu.url },
-      });
+    let orderIndex = 1;
+    for (const item of STANDARD_NAV_STRUCTURE) {
+      if (item.children && item.children.length > 0) {
+        // Cari atau buat grup dropdown induk (url = '#')
+        let parentMenu = await prisma.menu.findFirst({
+          where: { studyProgramId: prodi.id, title: item.title, url: '#', parentId: null },
+        });
 
-      if (existing) {
-        await prisma.menu.update({
-          where: { id: existing.id },
-          data: {
-            title: menu.title,
-            sortOrder: menu.sortOrder,
-            isRequired: menu.isRequired,
-            isActive: true,
-          },
-        });
+        if (!parentMenu) {
+          parentMenu = await prisma.menu.create({
+            data: {
+              studyProgramId: prodi.id,
+              title: item.title,
+              url: '#',
+              sortOrder: orderIndex++,
+              isRequired: false,
+              isActive: true,
+              target: '_self',
+            },
+          });
+        } else {
+          await prisma.menu.update({
+            where: { id: parentMenu.id },
+            data: { sortOrder: orderIndex++, isActive: true },
+          });
+        }
+
+        let childOrder = 1;
+        for (const child of item.children) {
+          const existingChild = await prisma.menu.findFirst({
+            where: { studyProgramId: prodi.id, url: child.url },
+          });
+
+          if (existingChild) {
+            await prisma.menu.update({
+              where: { id: existingChild.id },
+              data: {
+                parentId: parentMenu.id,
+                title: child.title,
+                sortOrder: childOrder++,
+                isRequired: child.isRequired ?? false,
+                isActive: true,
+              },
+            });
+          } else {
+            await prisma.menu.create({
+              data: {
+                studyProgramId: prodi.id,
+                parentId: parentMenu.id,
+                title: child.title,
+                url: child.url,
+                sortOrder: childOrder++,
+                isRequired: child.isRequired ?? false,
+                isActive: true,
+                target: '_self',
+              },
+            });
+          }
+        }
       } else {
-        await prisma.menu.create({
-          data: {
-            studyProgramId: prodi.id,
-            title: menu.title,
-            url: menu.url,
-            sortOrder: menu.sortOrder,
-            isRequired: menu.isRequired,
-            isActive: true,
-            target: '_self',
-          },
+        // Item tunggal di root (misal: Beranda, Kontak)
+        const existing = await prisma.menu.findFirst({
+          where: { studyProgramId: prodi.id, url: item.url },
         });
+
+        if (existing) {
+          await prisma.menu.update({
+            where: { id: existing.id },
+            data: {
+              parentId: null,
+              title: item.title,
+              sortOrder: orderIndex++,
+              isRequired: item.isRequired ?? false,
+              isActive: true,
+            },
+          });
+        } else {
+          await prisma.menu.create({
+            data: {
+              studyProgramId: prodi.id,
+              parentId: null,
+              title: item.title,
+              url: item.url,
+              sortOrder: orderIndex++,
+              isRequired: item.isRequired ?? false,
+              isActive: true,
+              target: '_self',
+            },
+          });
+        }
       }
     }
 
@@ -570,9 +659,9 @@ export async function seedPageBuilderAndThemes() {
       },
       {
         slug: 'dokumen',
-        title: 'Dokumen & Unduhan',
+        title: 'Dokumen',
         isSystem: true,
-        seoTitle: `Dokumen & Unduhan Program Studi ${name} - UNUSU`,
+        seoTitle: `Dokumen Program Studi ${name} - UNUSU`,
         seoDescription: `Pusat unduhan pedoman akademik, panduan skripsi, silabus, dan dokumen mutu Program Studi ${name} UNUSU.`,
         sectionTitle: 'Pusat Unduhan Pedoman & Dokumen',
         widget: 'document_list',
@@ -593,20 +682,7 @@ export async function seedPageBuilderAndThemes() {
           title: `Sekretariat Program Studi ${name}`,
         },
       },
-      {
-        slug: 'sejarah-dan-profil',
-        title: 'Sejarah & Perkembangan',
-        isSystem: false,
-        seoTitle: `Sejarah Program Studi ${name} - UNUSU`,
-        seoDescription: `Riwayat pendirian dan perkembangan Program Studi ${name} Universitas Nahdlatul Ulama Sumatera Utara.`,
-        sectionTitle: 'Sejarah & Rekam Jejak',
-        widget: 'about_prodi',
-        widgetConfig: {
-          eyebrow: 'Mengenal Lebih Dekat',
-          imageUrl: '',
-          alignment: 'left',
-        },
-      },
+
       {
         slug: 'akreditasi-dan-capaian',
         title: 'Akreditasi & Prestasi',

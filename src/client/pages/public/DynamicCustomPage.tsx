@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { api, toApiError } from '../../services/api';
 import { WidgetRenderer } from '../../components/builder/WidgetRenderer';
 import { LoadingState, ErrorState } from '../../components/ui/States';
-import { HomeIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { HomeIcon } from '@heroicons/react/24/outline';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { useTenant } from '../../hooks/useSite';
 
 interface RenderedWidget {
@@ -62,7 +63,7 @@ export const DynamicCustomPage: React.FC = () => {
         </p>
         <Link
           to="/"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 text-white font-bold text-xs shadow-md hover:bg-emerald-800 transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1e3a8a] text-white font-bold text-xs hover:bg-[#172f6e] transition-colors"
         >
           <HomeIcon className="w-4 h-4" />
           <span>Kembali ke Beranda</span>
@@ -75,20 +76,8 @@ export const DynamicCustomPage: React.FC = () => {
   const sections = (page.sections ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <div className="font-sans bg-white pb-16">
-      {/* Page Header Banner */}
-      <div className="bg-slate-900 text-white py-12 px-4 sm:px-6 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto relative z-10 space-y-3">
-          <nav className="flex items-center gap-2 text-xs text-slate-300 font-medium">
-            <Link to="/" className="hover:text-amber-400 transition-colors">
-              Beranda
-            </Link>
-            <ChevronRightIcon className="w-3.5 h-3.5 text-slate-500" />
-            <span className="text-white font-bold">{page.title}</span>
-          </nav>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">{page.title}</h1>
-        </div>
-      </div>
+    <div className="bg-white">
+      <PageHeader eyebrow="Halaman" title={page.title} />
 
       {/* Render All Sections & Widgets */}
       <div className="w-full">

@@ -36,7 +36,6 @@ import { toApiError, firstFieldError } from '../../services/api';
 import { WidgetVisualForm } from '../../components/builder/WidgetVisualForm';
 import {
   buildNavbarTree,
-  findOrphanPages,
   flattenMenus,
   pageUrl,
   type NavbarMenuRow,
@@ -83,7 +82,7 @@ function parseConfig(raw: string): Record<string, unknown> {
 const WIDGET_SIDEBAR_LABELS: Record<string, string> = {
   curriculum_overview: 'Struktur Kurikulum Merdeka & OBE',
   lecturer_list: 'Dosen Pembina & Pengajar Ahli',
-  document_list: 'Dokumen & Unduhan',
+  document_list: 'Dokumen',
   facility_grid: 'Sarana & Prasarana',
   latest_news: 'Warta & Pengumuman',
   gallery_grid: 'Galeri Aktivitas Mahasiswa',
@@ -756,13 +755,13 @@ export const AdminBuilder: React.FC = () => {
               sortOrder: urutan ?? semuaMenu.length + 1,
               isActive: true,
               isGroup: true,
-            } as any);
-            grupTujuanId = ((grupRes as any)?.data?.menu?.id as number | undefined) ?? null;
+            });
+            grupTujuanId = grupRes.data.menu?.id ?? null;
 
             if (grupTujuanId && node.children?.length) {
               await Promise.all(
                 node.children.map((anak, index) =>
-                  settingsApi.updateMenu(anak.id, { parentId: grupTujuanId, sortOrder: index + 1 } as any),
+                  settingsApi.updateMenu(anak.id, { parentId: grupTujuanId, sortOrder: index + 1 }),
                 ),
               );
             }
@@ -770,6 +769,20 @@ export const AdminBuilder: React.FC = () => {
           }
           break;
         }
+      }
+
+      // Mode dropdown: buat wadah grup nyata di tabel menus; tanpa ini item jatuh ke "Halaman Lainnya".
+      if (navbarType === 'dropdown' && grupTujuanId === null) {
+        const grupRes = await settingsApi.createMenu({
+          title: judul,
+          url: '#',
+          target: '_self',
+          sortOrder: flattenMenus(menusQuery.data ?? []).length + 1,
+          isActive: true,
+          isGroup: true,
+        });
+        grupTujuanId = grupRes.data.menu?.id ?? null;
+        if (grupTujuanId === null) throw new Error('Grup dropdown gagal dibuat. Coba lagi.');
       }
 
       const pageRes = await builderApi.createPage({ title: judul, slug, layout: 'default' });
@@ -782,7 +795,7 @@ export const AdminBuilder: React.FC = () => {
         target: '_self',
         sortOrder: 0,
         isActive: true,
-      } as any);
+      });
 
       if (navbarType === 'dropdown') {
         for (const item of dropdownItems) {
@@ -800,13 +813,13 @@ export const AdminBuilder: React.FC = () => {
             target: '_self',
             sortOrder: 0,
             isActive: true,
-          } as any);
+          });
         }
       }
 
       return pageRes;
     },
-    onSuccess: (res: any) => {
+    onSuccess: (res) => {
       toast.success(
         navbarType === 'dropdown'
           ? 'Halaman beserta sub-menunya berhasil dibuat.'
@@ -818,7 +831,7 @@ export const AdminBuilder: React.FC = () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'pages'] });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'menus'] });
       void queryClient.invalidateQueries({ queryKey: ['public', 'menus'] });
-      if (res?.data?.page?.id) {
+      if (res.data.page?.id) {
         setSelectedPageId(res.data.page.id);
       }
     },
@@ -856,24 +869,6 @@ export const AdminBuilder: React.FC = () => {
       void queryClient.invalidateQueries({ queryKey: ['public', 'menus'] });
     },
     onError: (error) => toast.error(toApiError(error).message),
-  });
-
-  /**
-   * Menautkan halaman Builder yang belum punya entri menu ke tabel menus.
-   *
-   * Ini satu-satunya cara agar halaman seperti "Sejarah & Perkembangan" muncul
-   * di navbar pengunjung: navbar dibaca dari `menus`, bukan dari `pages`.
-   */
-  const attachPageToMenuMutation = useMutation({
-    mutationFn: (data: { slug: string; parentId?: number | null }) => settingsApi.attachPageToMenu(data),
-    onSuccess: () => {
-      toast.success('Halaman berhasil ditambahkan ke navbar.');
-      refreshNavbar();
-    },
-    onError: (error) => {
-      const apiError = toApiError(error);
-      toast.error(firstFieldError(apiError) ?? apiError.message);
-    },
   });
 
   /**
@@ -918,9 +913,9 @@ export const AdminBuilder: React.FC = () => {
       sortOrder: urutanPertama ?? semuaMenu.length + 1,
       isActive: true,
       isGroup: true,
-    } as any);
+    });
 
-    const grupId = (grupRes as any)?.data?.menu?.id as number | undefined;
+    const grupId = grupRes.data.menu?.id;
     if (!grupId) {
       throw new Error('Grup navbar gagal dibuat. Coba lagi.');
     }
@@ -928,7 +923,7 @@ export const AdminBuilder: React.FC = () => {
     // Pindahkan seluruh anggota ke bawah grup tanpa mengubah urutannya.
     await Promise.all(
       anggota.map((anak, index) =>
-        settingsApi.updateMenu(anak.menuId as number, { parentId: grupId, sortOrder: index + 1 } as any),
+        settingsApi.updateMenu(anak.menuId as number, { parentId: grupId, sortOrder: index + 1 }),
       ),
     );
 
@@ -1048,7 +1043,7 @@ export const AdminBuilder: React.FC = () => {
         sortOrder: urutanTerakhir + 1,
         isActive: true,
         isGroup: true,
-      } as any);
+      });
       toast.success(`Grup "${judul}" berhasil dibuat.`);
       setNewGroupOpen(false);
       setNewGroupTitle('');
@@ -1095,7 +1090,7 @@ export const AdminBuilder: React.FC = () => {
       await settingsApi.updateMenu(item.menuId, {
         parentId: targetId,
         sortOrder: urutanTerakhir + 1,
-      } as any);
+      });
 
       toast.success(
         targetNode
@@ -1409,7 +1404,6 @@ export const AdminBuilder: React.FC = () => {
               /** Semua grup, dipakai sebagai pilihan tujuan pemindahan item. */
               const semuaGrup = entri.filter((e) => e.isGroup);
               /** Halaman terbit yang belum punya entri di tabel menus. */
-              const halamanTanpaMenu = findOrphanPages(allPages, rawMenus as NavbarMenuRow[]);
 
               /**
                * Grup lain yang boleh menjadi tujuan pemindahan.
@@ -1644,7 +1638,7 @@ export const AdminBuilder: React.FC = () => {
 
               return (
                 <div className="space-y-2">
-                  {entri.length === 0 && halamanTanpaMenu.length === 0 ? (
+                  {entri.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-center text-[11px] text-slate-500">
                       Navigasi masih kosong. Tambahkan menu dengan tombol “Tambah” di atas.
                     </p>
@@ -1671,47 +1665,6 @@ export const AdminBuilder: React.FC = () => {
                       <PlusIcon className="h-3.5 w-3.5" />
                       Buat Grup Dropdown Baru
                     </button>
-                  ) : null}
-
-                  {halamanTanpaMenu.length > 0 ? (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-2 space-y-1.5">
-                      <p className="flex items-center gap-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-amber-800">
-                        <InformationCircleIcon className="h-3.5 w-3.5" />
-                        Halaman belum ada di navbar ({halamanTanpaMenu.length})
-                      </p>
-                      <p className="px-1 text-[10px] leading-relaxed text-amber-900/80">
-                        Halaman ini bisa diedit tetapi tidak terlihat pengunjung karena belum punya entri menu.
-                      </p>
-                      {halamanTanpaMenu.map((hal) => {
-                        const halamanBuilder = allPages.find((p) => p.slug === hal.slug);
-                        return (
-                          <div
-                            key={hal.slug}
-                            className="flex items-center justify-between gap-2 rounded-lg bg-white px-2 py-1.5"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => halamanBuilder && setSelectedPageId(halamanBuilder.id)}
-                              className="min-w-0 flex-1 truncate text-left text-[11px] font-semibold text-slate-700 hover:text-[#1e3a8a]"
-                              title={hal.title}
-                            >
-                              {hal.title}
-                            </button>
-                            {has('navigation.create') ? (
-                              <button
-                                type="button"
-                                disabled={isReorderingMenu}
-                                onClick={() => void attachPageToMenuMutation.mutate({ slug: hal.slug })}
-                                className="shrink-0 rounded bg-[#1e3a8a] px-2 py-0.5 text-[10px] font-bold text-white hover:bg-[#172554] disabled:opacity-50"
-                                title="Buat entri menu agar halaman tampil di navbar"
-                              >
-                                Tambahkan ke menu
-                              </button>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
                   ) : null}
                 </div>
               );

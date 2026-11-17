@@ -725,6 +725,8 @@ function prodiRouteElements() {
       <Route path="/galeri" element={wrap(<GalleriesPage />)} />
       <Route path="/kontak" element={wrap(<ContactPage />)} />
       <Route path="/halaman/:slug" element={wrap(<DynamicCustomPage />)} />
+      {/* Halaman Builder: menu navbar memakai URL `/<slug>`; slug tak dikenal ditangani DynamicCustomPage. */}
+      <Route path="/:slug" element={wrap(<DynamicCustomPage />)} />
       <Route path="*" element={wrap(<NotFoundPage />)} />
     </>
   );

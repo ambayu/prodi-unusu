@@ -2,6 +2,10 @@
 
 Semua perubahan penting dicatat di sini. Format tanggal: YYYY-MM-DD.
 
+## 2026-11-18 — Gambar Visi & Misi mengikuti Profil
+
+- Gambar kiri `/visi-misi` mengikuti aturan `/profil`: `object-contain`, tinggi alami pada mobile dan mengikuti kolom konten pada desktop, tanpa crop, radius, atau caption overlay.
+
 ## 2026-11-16 - Endpoint Organisasi untuk ONE UNUSU
 
 ### Added

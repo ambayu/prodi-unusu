@@ -94,7 +94,6 @@ export function buildNavbarTree(
     .filter((menu) => menu.parentId == null)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
 
-  const punyaGrupDb = akar.some((menu) => (menu.children?.length ?? 0) > 0);
 
   const keNode = (menu: NavbarMenuRow): NavbarNode => ({
     id: menu.id,
@@ -103,86 +102,19 @@ export function buildNavbarTree(
     sortOrder: menu.sortOrder,
   });
 
-  if (punyaGrupDb) {
-    const hasil: NavbarNode[] = [];
-
-    for (const menu of akar) {
-      const anak = [...(menu.children ?? [])].sort(
-        (a, b) => a.sortOrder - b.sortOrder || a.id - b.id,
-      );
-
-      if (anak.length > 0) {
-        hasil.push({ ...keNode(menu), isGroup: true, children: anak.map(keNode) });
-        continue;
-      }
-
-      // Grup yang seluruh anggotanya dinonaktifkan dibiarkan sebagai wadah
-      // kosong agar admin tetap melihatnya di Builder, tetapi tidak dikirim ke
-      // navbar: URL-nya "#" sehingga akan menjadi tautan mati bagi pengunjung.
-      if (isGroupMenu(menu) && (menu.children?.length ?? 0) === 0) continue;
-
-      hasil.push(keNode(menu));
-    }
-
-    return hasil;
-  }
-
-  /* ---------- Jalur cadangan: database masih datar ---------- */
-
-  const semua = [...akar];
-  const terpakai = new Set<number>();
   const hasil: NavbarNode[] = [];
-
-  // Beranda selalu paling depan agar pola navigasi tetap dikenal pengunjung.
-  const beranda = semua.find((menu) => menu.url === '/');
-  if (beranda) {
-    hasil.push(keNode(beranda));
-    terpakai.add(beranda.id);
-  }
-
-  for (const definisi of navbarGroupDefinitions(tenantType)) {
-    const anggota = semua.filter(
-      (menu) => !terpakai.has(menu.id) && definisi.urls.includes(menu.url),
-    );
-    if (anggota.length === 0) continue;
-
-    anggota.forEach((menu) => terpakai.add(menu.id));
-
-    // Grup berisi satu item tidak perlu dropdown; tampil sebagai tautan biasa.
-    if (anggota.length === 1) {
-      hasil.push(keNode(anggota[0]));
+  for (const menu of akar) {
+    const anak = [...(menu.children ?? [])]
+      .filter((a) => a.isActive !== false)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+    if (anak.length > 0) {
+      hasil.push({ ...keNode(menu), isGroup: true, children: anak.map(keNode) });
       continue;
     }
-
-    hasil.push({
-      id: -anggota[0].id,
-      label: definisi.label,
-      path: anggota[0].url,
-      sortOrder: anggota[0].sortOrder,
-      isGroup: true,
-      children: anggota.map(keNode),
-    });
+    // Grup kosong (URL "#") tidak dikirim ke navbar: tautan mati bagi pengunjung.
+    if (isGroupMenu(menu)) continue;
+    hasil.push(keNode(menu));
   }
-
-  // Kontak diwakili tombol ajakan di sisi kanan navbar, jadi tidak diulang.
-  const sisa = semua.filter(
-    (menu) => !terpakai.has(menu.id) && !NAVBAR_LOOSE_URLS.includes(menu.url),
-  );
-
-  if (sisa.length === 1) {
-    hasil.push(keNode(sisa[0]));
-  } else if (sisa.length > 1) {
-    hasil.push({
-      id: -100000 - sisa[0].id,
-      label: NAVBAR_CATCHALL_LABEL,
-      path: sisa[0].url,
-      sortOrder: sisa[0].sortOrder,
-      isGroup: true,
-      children: sisa.map(keNode),
-    });
-  }
-
-  void NAVBAR_LOOSE_URLS;
   return hasil;
 }
 

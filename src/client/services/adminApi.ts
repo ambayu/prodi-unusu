@@ -49,7 +49,7 @@ export interface WidgetDefinition {
 export const builderApi = {
   pages: () => api.get<{ pages: BuilderPage[] }>('/admin/pages'),
   page: (id: number) => api.get<{ page: BuilderPage }>(`/admin/pages/${id}`),
-  createPage: (data: { slug: string; title: string; layout?: string }) => api.post('/admin/pages', data),
+  createPage: (data: { slug: string; title: string; layout?: string }) => api.post<{ page: { id: number } }>('/admin/pages', data),
   updatePage: (id: number, data: Record<string, unknown>) => api.put(`/admin/pages/${id}`, data),
   deletePage: (id: number) => api.delete(`/admin/pages/${id}`),
   publishPage: (id: number) => api.post(`/admin/pages/${id}/publish`),
@@ -143,7 +143,7 @@ export const settingsApi = {
   updateTheme: (data: Partial<Theme>) => api.put<{ theme: Theme }>('/admin/settings/theme', data),
 
   menus: () => api.get<{ menus: MenuItem[] }>('/admin/menus'),
-  createMenu: (data: Partial<MenuItem> & { isGroup?: boolean }) => api.post('/admin/menus', data),
+  createMenu: (data: Partial<MenuItem> & { isGroup?: boolean }) => api.post<{ menu: MenuItem }>('/admin/menus', data),
   updateMenu: (id: number, data: Partial<MenuItem>) => api.put(`/admin/menus/${id}`, data),
   deleteMenu: (id: number) => api.delete(`/admin/menus/${id}`),
   /** Menautkan halaman Builder yang belum punya entri navigasi ke tabel menus. */
