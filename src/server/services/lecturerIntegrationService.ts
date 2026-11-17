@@ -34,7 +34,7 @@ export async function fetchLecturersFromApiHub(query?: { prodi?: string; search?
     return cached.items;
   }
 
-  const ssoBaseUrl = (config.sso.baseUrl || 'http://localhost:5173').replace(/\/$/, '');
+  const ssoBaseUrl = config.sso.baseUrl.replace(/\/$/, '');
   const url = new URL(`${ssoBaseUrl}/api/v1/inter-service/dosen`);
   if (query?.prodi) url.searchParams.set('prodi', query.prodi);
   if (query?.search) url.searchParams.set('search', query.search);

@@ -12,7 +12,7 @@ import { SsoLoadingScreen } from '../components/SsoLoadingScreen';
 import { useTenant } from '../hooks/useSite';
 import { useSiteStore } from '../app/siteStore';
 
-const ONE_UNUSU_URL = import.meta.env.VITE_ONE_UNUSU_URL || 'http://localhost:5173';
+import { ONE_UNUSU_URL } from '../services/ssoConfig';
 const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || '70c76ea9b5d5d3a8';
 
 /**
