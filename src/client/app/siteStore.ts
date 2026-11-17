@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { api, toApiError, checkOneUnusuSession } from '../services/api';
 import type { AuthUser, SiteResolution, SiteSurface, TenantContext } from '../../shared/types/index';
 
-const ONE_UNUSU_URL = import.meta.env.VITE_ONE_UNUSU_URL || 'http://localhost:5178';
+const ONE_UNUSU_URL = import.meta.env.VITE_ONE_UNUSU_URL || 'http://localhost:5173';
 const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || '70c76ea9b5d5d3a8';
 
 /**

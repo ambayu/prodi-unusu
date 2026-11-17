@@ -94,10 +94,10 @@ export const config = {
   },
 
   sso: {
-    baseUrl: optional('SSO_BASE_URL', 'http://localhost:5178'),
+    baseUrl: optional('SSO_BASE_URL', 'http://localhost:5173'),
     clientId: optional('SSO_CLIENT_ID', '70c76ea9b5d5d3a8'),
     clientKey: process.env.SSO_CLIENT_KEY || '',
-    portalUrl: optional('SSO_PORTAL_URL', 'http://localhost:5178'),
+    portalUrl: optional('SSO_PORTAL_URL', 'http://localhost:5173'),
   },
 
   /**
