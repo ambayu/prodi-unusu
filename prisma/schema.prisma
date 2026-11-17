@@ -84,6 +84,7 @@ model StudyProgram {
   curriculumCourses   CurriculumCourse[]
   courses             Course[]
   lecturers           Lecturer[]
+  documents           Document[]
   facilities          Facility[]
   posts               Post[]
   postCategories      PostCategory[]
@@ -721,11 +722,32 @@ model Lecturer {
   @@map("lecturers")
 }
 
-// Model `Document` (bank dokumen lokal) sudah DIHAPUS.
-//
-// Arsip dokumen prodi kini bersumber dari aplikasi LPM & LPPM melalui
-// ONE UNUSU API Hub (`/inter-service/dokumen-lpm` dan `-lppm`) dan hanya
-// dibaca. Lihat `services/arsipDokumenService.ts`.
+// Dokumen buatan prodi sendiri (bank dokumen / arsip surat). Tabel `documents`
+// sudah ada sejak migrasi awal dan tidak pernah di-drop, sehingga model ini
+// hanya memetakan ulang tabel itu tanpa migrasi baru. `is_public` = Publish.
+// Dokumen kiriman pusat tetap dibaca lewat `services/arsipDokumenService.ts`.
+model Document {
+  id             Int      @id @default(autoincrement())
+  studyProgramId Int      @map("study_program_id")
+  code           String?  @db.VarChar(50)
+  title          String   @db.VarChar(255)
+  category       String   @db.VarChar(100)
+  description    String?  @db.Text
+  year           Int      @default(2026)
+  fileUrl        String   @map("file_url") @db.VarChar(500)
+  fileSize       Int?     @map("file_size")
+  mimeType       String?  @map("mime_type") @db.VarChar(120)
+  isPublic       Boolean  @default(true) @map("is_public")
+  downloadCount  Int      @default(0) @map("download_count")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+
+  @@index([studyProgramId, isPublic])
+  @@index([category])
+  @@map("documents")
+}
 
 model Facility {
   id             Int      @id @default(autoincrement())

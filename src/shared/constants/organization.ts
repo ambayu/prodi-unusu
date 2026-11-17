@@ -243,8 +243,7 @@ export const PERMISSION_GROUPS: Array<{ code: string; name: string; permissions:
   {
     code: 'EDITOR_DOKUMEN',
     name: 'Pengelola Arsip Dokumen',
-    // Arsip mutu dikelola LPM/LPPM; di sini hanya hak baca arsip prodi.
-    permissions: ['documents.view'],
+    permissions: ['documents.view', 'documents.create', 'documents.update', 'documents.delete'],
   },
   {
     code: 'EDITOR_KURIKULUM',
@@ -291,7 +290,7 @@ export const ADMIN_MENUS: Array<{
   { menuKey: 'content.profile', label: 'Profil', route: '/admin/konten/profil', icon: 'UserIcon', parentKey: 'content', sortOrder: 31, requiredPermission: 'profile.view', scopeType: 'prodi' },
   { menuKey: 'content.vision', label: 'Visi & Misi Program Studi', route: '/admin/konten/visi-misi', icon: 'EyeIcon', parentKey: 'content', sortOrder: 32, requiredPermission: 'vision_mission.view', scopeType: 'prodi' },
   { menuKey: 'content.curriculum', label: 'Kurikulum', route: '/admin/kurikulum', icon: 'BookOpenIcon', parentKey: 'content', sortOrder: 33, requiredPermission: 'curriculum.view', scopeType: 'prodi' },
-  { menuKey: 'content.documents', label: 'Arsip Dokumen (LPM/LPPM)', route: '/admin/dokumen', icon: 'FolderOpenIcon', parentKey: 'content', sortOrder: 34, requiredPermission: 'documents.view', scopeType: 'prodi' },
+  { menuKey: 'content.documents', label: 'Bank Dokumen', route: '/admin/dokumen', icon: 'FolderOpenIcon', parentKey: 'content', sortOrder: 34, requiredPermission: 'documents.view', scopeType: 'prodi' },
   { menuKey: 'content.lecturers', label: 'Dosen', route: '/admin/dosen', icon: 'UserGroupIcon', parentKey: 'content', sortOrder: 35, requiredPermission: 'lecturers.view', scopeType: 'prodi' },
   { menuKey: 'content.facilities', label: 'Sarpras', route: '/admin/sarpras', icon: 'BuildingOfficeIcon', parentKey: 'content', sortOrder: 36, requiredPermission: 'facilities.view', scopeType: 'prodi' },
   { menuKey: 'content.posts', label: 'Berita', route: '/admin/berita', icon: 'NewspaperIcon', parentKey: 'content', sortOrder: 37, requiredPermission: 'posts.view', scopeType: 'prodi' },
@@ -377,6 +376,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'curriculum.delete',
     'curriculum.publish',
     'documents.view',
+    'documents.create',
+    'documents.update',
+    'documents.delete',
     'lecturers.view',
     'lecturers.create',
     'lecturers.update',

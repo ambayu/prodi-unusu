@@ -815,8 +815,8 @@ export const adminMenuApi = {
           },
           {
             menuKey: 'content.documents',
-            label: 'Arsip Dokumen',
-            desc: 'Arsip mutu dari LPM & LPPM',
+            label: 'Bank Dokumen',
+            desc: 'Arsip surat dan dokumen program studi',
             route: '/admin/dokumen',
             icon: 'FolderOpenIcon',
             parentKey: null,

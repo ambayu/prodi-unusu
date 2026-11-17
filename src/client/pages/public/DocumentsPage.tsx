@@ -13,10 +13,11 @@ import { useSeo } from '../../hooks/useSeo';
 import { useTenant } from '../../hooks/useSite';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { DokumenPreviewModal } from '../../components/DokumenPreviewModal';
-import { arsipDokumenApi, type ArsipDokumenPublik, type ArsipSumber } from '../../services/contentApi';
+import { arsipDokumenApi, dokumenProdiApi, type ArsipDokumenPublik, type DokumenAsal } from '../../services/contentApi';
 import { toApiError } from '../../services/api';
 
-const SUMBER_LABEL: Record<ArsipSumber, string> = { lpm: 'LPM', lppm: 'LPPM' };
+/** Dokumen dari dua sumber disajikan seragam; `asal` hanya menentukan jalur pengambilan berkas. */
+type DokumenPublik = ArsipDokumenPublik & { asal: DokumenAsal };
 
 /** Kunci kategori untuk dokumen yang belum diklasifikasikan. */
 const TANPA_KATEGORI = '__tanpa_kategori__';
@@ -24,7 +25,7 @@ const TANPA_KATEGORI = '__tanpa_kategori__';
 const LABEL_TANPA_KATEGORI = 'Tanpa kategori';
 
 /**
- * Halaman publik arsip dokumen mutu program studi.
+ * Halaman publik bank dokumen (arsip surat) program studi.
  *
  * Alur yang dipakai:
  *   1. Daftar dokumen TERBUKA — siapa pun boleh melihat judul, kategori,
@@ -42,7 +43,7 @@ export const DocumentsPage: React.FC = () => {
   useSeo({
     tenant,
     title: 'Dokumen',
-    description: 'Arsip dokumen mutu program studi dari LPM dan LPPM.',
+    description: 'Arsip surat dan dokumen program studi.',
   });
 
   const [search, setSearch] = useState('');
@@ -56,20 +57,33 @@ export const DocumentsPage: React.FC = () => {
   const [password, setPassword] = useState('');
 
   /** Dokumen yang sedang diminta untuk dibuka (memicu dialog kata sandi). */
-  const [dokumenDiminta, setDokumenDiminta] = useState<ArsipDokumenPublik | null>(null);
+  const [dokumenDiminta, setDokumenDiminta] = useState<DokumenPublik | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
 
   /** Dokumen yang pratinjaunya sedang terbuka. */
-  const [previewTarget, setPreviewTarget] = useState<ArsipDokumenPublik | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<DokumenPublik | null>(null);
 
-  const listQuery = useQuery({
+  const pusatQuery = useQuery({
     queryKey: ['public', 'arsip-dokumen'],
     queryFn: () => arsipDokumenApi.publicInfo().then((res) => res.data),
     retry: 1,
   });
+  const prodiQuery = useQuery({
+    queryKey: ['public', 'dokumen-prodi'],
+    queryFn: () => dokumenProdiApi.publicList().then((res) => res.data.items),
+    retry: 1,
+  });
 
-  const items = listQuery.data?.items ?? [];
-  const meta = listQuery.data?.meta;
+  // Bila salah satu sumber gagal, sumber lain tetap tampil.
+  const listQuery = { isLoading: pusatQuery.isLoading || prodiQuery.isLoading, isError: pusatQuery.isError && prodiQuery.isError, error: pusatQuery.error, refetch: () => Promise.all([pusatQuery.refetch(), prodiQuery.refetch()]) };
+  const items = useMemo<DokumenPublik[]>(
+    () => [
+      ...(prodiQuery.data ?? []).map((d) => ({ ...d, asal: 'prodi' as const })),
+      ...(pusatQuery.data?.items ?? []).map((d) => ({ ...d, asal: 'arsip' as const })),
+    ],
+    [prodiQuery.data, pusatQuery.data],
+  );
+  const meta = pusatQuery.data?.meta;
 
   const unlockMutation = useMutation({
     mutationFn: (sandi: string) => arsipDokumenApi.unlock(sandi).then((res) => res.data),
@@ -126,7 +140,7 @@ export const DocumentsPage: React.FC = () => {
    * Bila kata sandi sudah dipegang untuk halaman ini, pratinjau langsung
    * dibuka. Bila belum, dialog kata sandi yang muncul lebih dulu.
    */
-  const mintaBukaDokumen = (dokumen: ArsipDokumenPublik) => {
+  const mintaBukaDokumen = (dokumen: DokumenPublik) => {
     if (password) {
       setPreviewTarget(dokumen);
       return;
@@ -145,9 +159,9 @@ export const DocumentsPage: React.FC = () => {
   return (
     <>
       <PageHeader
-        eyebrow="Arsip Mutu"
+        eyebrow="Bank Dokumen"
         title="Dokumen Program Studi"
-        description="Daftar dokumen mutu dari LPM dan LPPM. Untuk membuka isi berkas, masukkan kata sandi arsip program studi."
+        description="Arsip surat dan dokumen program studi. Untuk membuka isi berkas, masukkan kata sandi arsip program studi."
       />
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -161,7 +175,7 @@ export const DocumentsPage: React.FC = () => {
         ) : items.length === 0 ? (
           <EmptyState
             title="Belum ada dokumen"
-            description="Dokumen mutu yang ditujukan kepada program studi ini akan muncul di sini setelah diterbitkan oleh LPM atau LPPM."
+            description="Dokumen yang dipublikasikan program studi ini akan muncul di sini."
           />
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -258,7 +272,7 @@ export const DocumentsPage: React.FC = () => {
                 ) : (
                   filtered.map((dokumen) => (
                     <li
-                      key={`${dokumen.sumber}-${dokumen.id}`}
+                      key={`${dokumen.asal}-${dokumen.sumber ?? ''}-${dokumen.id}`}
                       className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex min-w-0 items-start gap-3">
@@ -272,7 +286,6 @@ export const DocumentsPage: React.FC = () => {
                               dokumen.kategori ?? LABEL_TANPA_KATEGORI,
                               dokumen.tahun,
                               dokumen.nomor,
-                              SUMBER_LABEL[dokumen.sumber],
                             ]
                               .filter(Boolean)
                               .join(' • ')}
@@ -369,6 +382,7 @@ export const DocumentsPage: React.FC = () => {
           arsipId={previewTarget.id}
           judul={previewTarget.judul}
           password={password}
+          asal={previewTarget.asal}
           onClose={() => setPreviewTarget(null)}
         />
       ) : null}

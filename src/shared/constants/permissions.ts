@@ -39,11 +39,8 @@ export const PERMISSIONS: PermissionDefinition[] = [
   ...define('content', 'profile', ['view', 'update']),
   ...define('content', 'vision_mission', ['view', 'update']),
   ...define('content', 'curriculum', ['view', 'create', 'update', 'delete', 'publish']),
-  /*
-   * Arsip dokumen mutu bersumber dari LPM/LPPM dan hanya dapat dibaca di sini.
-   * Izin tulis (create/update/delete) sengaja tidak tersedia.
-   */
-  ...define('content', 'documents', ['view']),
+  // Tulis hanya berlaku untuk dokumen buatan prodi; dokumen pusat read-only.
+  ...define('content', 'documents', ['view', 'create', 'update', 'delete']),
   ...define('content', 'lecturers', ['view', 'create', 'update', 'delete']),
   ...define('content', 'facilities', ['view', 'create', 'update', 'delete']),
   ...define('content', 'posts', ['view', 'create', 'update', 'delete', 'publish']),

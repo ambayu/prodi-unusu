@@ -424,8 +424,11 @@ export const arsipDokumenApi = {
  */
 export type ArsipBerkasMode = 'admin' | 'publik';
 
+/** Asal berkas: arsip kiriman pusat, atau dokumen buatan prodi sendiri. */
+export type DokumenAsal = 'arsip' | 'prodi';
+
 /**
- * Mengambil berkas arsip (pratinjau atau unduhan).
+ * Mengambil berkas dokumen (pratinjau atau unduhan).
  *
  * Memakai `fetch` + `blob`, bukan URL biasa pada `<iframe>`/`<a>`, agar kata
  * sandi dikirim lewat header dan tidak pernah tercatat di URL, riwayat
@@ -441,11 +444,13 @@ async function ambilBerkasArsip(
   mode: 'preview' | 'download',
   password: string,
   sumber: ArsipBerkasMode = 'publik',
+  asal: DokumenAsal = 'arsip',
 ): Promise<Blob> {
+  const segmen = asal === 'prodi' ? 'dokumen-prodi' : 'arsip-dokumen';
   const url =
     sumber === 'admin'
-      ? `/api/v1/admin/arsip-dokumen/${id}/file${mode === 'download' ? '?download=1' : ''}`
-      : `/api/v1/public/arsip-dokumen/${id}/${mode}`;
+      ? `/api/v1/admin/${segmen}/${id}/file${mode === 'download' ? '?download=1' : ''}`
+      : `/api/v1/public/${segmen}/${id}/${mode}`;
 
   const response =
     sumber === 'admin'
@@ -471,12 +476,78 @@ async function ambilBerkasArsip(
 }
 
 /** Pratinjau PDF untuk ditampilkan di dalam halaman. */
-export const arsipPreviewApi = (id: number, password: string, sumber: ArsipBerkasMode = 'publik') =>
-  ambilBerkasArsip(id, 'preview', password, sumber);
+export const arsipPreviewApi = (
+  id: number,
+  password: string,
+  sumber: ArsipBerkasMode = 'publik',
+  asal: DokumenAsal = 'arsip',
+) => ambilBerkasArsip(id, 'preview', password, sumber, asal);
 
 /** Unduhan berkas arsip sebagai blob siap simpan. */
-export const arsipDownloadApi = (id: number, password: string, sumber: ArsipBerkasMode = 'publik') =>
-  ambilBerkasArsip(id, 'download', password, sumber);
+export const arsipDownloadApi = (
+  id: number,
+  password: string,
+  sumber: ArsipBerkasMode = 'publik',
+  asal: DokumenAsal = 'arsip',
+) => ambilBerkasArsip(id, 'download', password, sumber, asal);
+
+// ---------------------------------------------------------
+// Dokumen buatan prodi (bank dokumen / arsip surat)
+// ---------------------------------------------------------
+
+/** Dokumen milik prodi, seperti disajikan panel admin. `status`: Publish | Draft. */
+export interface DokumenProdiItem {
+  id: number;
+  judul: string;
+  nomor: string | null;
+  kategori: string;
+  deskripsi: string | null;
+  tahun: number;
+  mimeType: string | null;
+  fileSize: number | null;
+  isPublic: boolean;
+  status: 'Publish' | 'Draft';
+  updatedAt: string;
+}
+
+/** Isian formulir tambah/ubah dokumen. `file` wajib saat tambah, opsional saat ubah. */
+export interface DokumenProdiInput {
+  title: string;
+  code: string;
+  category: string;
+  year: number;
+  description: string;
+  isPublic: boolean;
+  file: File | null;
+}
+
+/** Batas ukuran berkas dokumen, sejalan dengan `config.upload.maxBytes` di server. */
+export const DOKUMEN_MAX_BYTES = 10 * 1024 * 1024;
+
+function toDokumenForm(input: DokumenProdiInput): FormData {
+  const form = new FormData();
+  form.append('title', input.title);
+  form.append('code', input.code);
+  form.append('category', input.category);
+  form.append('year', String(input.year));
+  form.append('description', input.description);
+  form.append('isPublic', String(input.isPublic));
+  if (input.file) form.append('file', input.file);
+  return form;
+}
+
+const MULTIPART = { headers: { 'Content-Type': undefined } };
+
+export const dokumenProdiApi = {
+  list: () => api.get<{ items: DokumenProdiItem[] }>('/admin/dokumen-prodi'),
+  create: (input: DokumenProdiInput) =>
+    api.post<{ item: DokumenProdiItem }>('/admin/dokumen-prodi', toDokumenForm(input), MULTIPART),
+  update: (id: number, input: DokumenProdiInput) =>
+    api.put<{ item: DokumenProdiItem }>(`/admin/dokumen-prodi/${id}`, toDokumenForm(input), MULTIPART),
+  remove: (id: number) => api.delete(`/admin/dokumen-prodi/${id}`),
+  /** Daftar dokumen Publish untuk halaman publik; berkas tetap wajib kata sandi. */
+  publicList: () => api.get<{ items: ArsipDokumenPublik[] }>('/public/dokumen-prodi'),
+};
 
 // ---------------------------------------------------------
 // Sarana & Prasarana
@@ -525,6 +596,7 @@ export const postApi = {
     api.get<Paginated<Post>>('/public/posts', { params }),
   list: (params?: { page?: number; perPage?: number; search?: string }) =>
     api.get<Paginated<Post>>('/admin/posts', { params }),
+  get: (id: number) => api.get<{ post: Post }>(`/admin/posts/${id}`),
   create: (data: Record<string, unknown>) => api.post('/admin/posts', data),
   update: (id: number, data: Record<string, unknown>) => api.put(`/admin/posts/${id}`, data),
   remove: (id: number) => api.delete(`/admin/posts/${id}`),

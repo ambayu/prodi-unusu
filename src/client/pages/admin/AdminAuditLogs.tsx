@@ -35,6 +35,7 @@ const LABEL_MODUL: Record<string, string> = {
   SETTINGS: 'Pengaturan',
   ORGANIZATION: 'Organisasi',
   DOMAIN: 'Domain',
+  DOCUMENTS: 'Bank Dokumen',
 };
 
 const NADA_AKSI: Record<string, string> = {
@@ -142,7 +143,7 @@ export const AdminAuditLogs: React.FC = () => {
               ? 'Coba kata kunci lain, atau kosongkan kolom pencarian untuk melihat seluruh riwayat.'
               : 'Setiap penambahan, perubahan, dan penghapusan data akan muncul di sini secara otomatis.'
           }
-          minWidth={640}
+          minWidth={980}
           footer={
             <p className="flex items-center gap-1.5 text-xs text-slate-500">
               <ClipboardDocumentListIcon className="h-4 w-4" aria-hidden="true" />
@@ -156,14 +157,14 @@ export const AdminAuditLogs: React.FC = () => {
             {
               key: 'waktu',
               header: 'Waktu',
-              width: 160,
+              width: 170,
               cellClassName: 'whitespace-nowrap text-slate-600',
               render: (entri) => formatWaktu(entri.createdAt),
             },
             {
               key: 'pengguna',
               header: 'Pengguna',
-              width: 160,
+              width: 200,
               cellClassName: 'font-semibold text-slate-800',
               render: (entri) =>
                 entri.user?.name ?? (
@@ -173,10 +174,10 @@ export const AdminAuditLogs: React.FC = () => {
             {
               key: 'aksi',
               header: 'Aksi',
-              width: 160,
+              width: 190,
               render: (entri) => (
                 <span
-                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold ${
+                  className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-bold ${
                     NADA_AKSI[entri.action] ?? 'border-slate-200 bg-slate-50 text-slate-700'
                   }`}
                 >
@@ -187,14 +188,14 @@ export const AdminAuditLogs: React.FC = () => {
             {
               key: 'modul',
               header: 'Modul',
-              width: 140,
+              width: 150,
               cellClassName: 'text-slate-600',
               render: (entri) => LABEL_MODUL[entri.module] ?? entri.module,
             },
             {
               key: 'objek',
               header: 'Objek',
-              /* Satu-satunya kolom tanpa lebar tetap: target bisa berupa nama panjang. */
+              /* Satu-satunya kolom tanpa lebar tetap: menyerap sisa ruang. */
               cellClassName: 'text-slate-500',
               render: (entri) =>
                 entri.targetType ? (

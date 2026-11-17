@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon, TrashIcon, PhotoIcon, ArrowUpTrayIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
@@ -11,58 +12,17 @@ import { galleryApi, type Gallery } from '../../services/contentApi';
 import { mediaApi } from '../../services/adminApi';
 import { toApiError, firstFieldError } from '../../services/api';
 
-/** Format berkas gambar yang diterima seluruh unggahan gambar di panel admin. */
-const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
-
-function toSlug(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 200);
-}
-
 /** Pengelolaan album galeri kegiatan. */
 export const AdminGalleries: React.FC = () => {
   const queryClient = useQueryClient();
   const toast = useToast();
   const { has } = usePermission();
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Gallery | null>(null);
+  const navigate = useNavigate();
   const [deleteTarget, setDeleteTarget] = useState<Gallery | null>(null);
   const [itemTarget, setItemTarget] = useState<Gallery | null>(null);
   const [itemDraft, setItemDraft] = useState({ caption: '', mediaUrl: '', mediaType: 'image' });
-  const [draft, setDraft] = useState({
-    title: '',
-    slug: '',
-    description: '',
-    category: '',
-    coverImageUrl: '',
-    eventDate: '',
-    isPublished: true,
-  });
-  const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingItemMedia, setUploadingItemMedia] = useState(false);
-
-  const handleCoverUpload = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('Pilih file gambar valid (JPG, PNG, atau WebP).');
-      return;
-    }
-    setUploadingCover(true);
-    try {
-      const res = await mediaApi.upload(file);
-      setDraft((curr) => ({ ...curr, coverImageUrl: res.data.asset.url }));
-      toast.success('Sampul galeri berhasil diunggah.');
-    } catch (err) {
-      toast.error(toApiError(err).message);
-    } finally {
-      setUploadingCover(false);
-    }
-  };
 
   const handleItemMediaUpload = async (file: File) => {
     setUploadingItemMedia(true);
@@ -86,30 +46,6 @@ export const AdminGalleries: React.FC = () => {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'galleries'] });
     void queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
   };
-
-  const saveMutation = useMutation({
-    mutationFn: () => {
-      const body = {
-        title: draft.title,
-        slug: draft.slug,
-        description: draft.description || null,
-        category: draft.category || null,
-        coverImageUrl: draft.coverImageUrl || null,
-        eventDate: draft.eventDate ? new Date(draft.eventDate).toISOString() : null,
-        isPublished: draft.isPublished,
-      };
-      return editing ? galleryApi.update(editing.id, body) : galleryApi.create(body);
-    },
-    onSuccess: () => {
-      toast.success(editing ? 'Album berhasil diperbarui.' : 'Album berhasil dibuat.');
-      setFormOpen(false);
-      invalidate();
-    },
-    onError: (error) => {
-      const apiError = toApiError(error);
-      toast.error(firstFieldError(apiError) ?? apiError.message);
-    },
-  });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => galleryApi.remove(id),
@@ -139,19 +75,7 @@ export const AdminGalleries: React.FC = () => {
     },
   });
 
-  const openCreate = () => {
-    setEditing(null);
-    setDraft({
-      title: '',
-      slug: '',
-      description: '',
-      category: '',
-      coverImageUrl: '',
-      eventDate: '',
-      isPublished: true,
-    });
-    setFormOpen(true);
-  };
+  const openCreate = () => navigate('/admin/galeri/baru');
 
   return (
     <AdminLayout
@@ -223,19 +147,7 @@ export const AdminGalleries: React.FC = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          setEditing(gallery);
-                          setDraft({
-                            title: gallery.title,
-                            slug: gallery.slug,
-                            description: gallery.description ?? '',
-                            category: gallery.category ?? '',
-                            coverImageUrl: gallery.coverImageUrl ?? '',
-                            eventDate: gallery.eventDate ? gallery.eventDate.slice(0, 10) : '',
-                            isPublished: gallery.isPublished,
-                          });
-                          setFormOpen(true);
-                        }}
+                        onClick={() => navigate(`/admin/galeri/${gallery.id}/ubah`)}
                         className="rounded border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50"
                       >
                         Ubah
@@ -258,128 +170,6 @@ export const AdminGalleries: React.FC = () => {
           ))}
         </div>
       )}
-
-      <FormModal
-        open={formOpen}
-        title={editing ? 'Ubah Album' : 'Album Galeri Baru'}
-        busy={saveMutation.isPending}
-        onClose={() => setFormOpen(false)}
-        onSubmit={(event) => {
-          event.preventDefault();
-          saveMutation.mutate();
-        }}
-      >
-        <Field label="Judul album" htmlFor="gallery-title" required>
-          <input
-            id="gallery-title"
-            className="field-input"
-            required
-            value={draft.title}
-            onChange={(event) => {
-              const title = event.target.value;
-              setDraft({ ...draft, title, slug: editing ? draft.slug : toSlug(title) });
-            }}
-          />
-        </Field>
-
-        <Field label="Slug URL" htmlFor="gallery-slug" required>
-          <input
-            id="gallery-slug"
-            className="field-input font-mono"
-            required
-            value={draft.slug}
-            onChange={(event) => setDraft({ ...draft, slug: toSlug(event.target.value) })}
-          />
-        </Field>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Kategori" htmlFor="gallery-category">
-            <input
-              id="gallery-category"
-              className="field-input"
-              placeholder="Kegiatan Mahasiswa"
-              value={draft.category}
-              onChange={(event) => setDraft({ ...draft, category: event.target.value })}
-            />
-          </Field>
-          <Field label="Tanggal kegiatan" htmlFor="gallery-date">
-            <input
-              id="gallery-date"
-              type="date"
-              className="field-input"
-              value={draft.eventDate}
-              onChange={(event) => setDraft({ ...draft, eventDate: event.target.value })}
-            />
-          </Field>
-        </div>
-
-        {/* Upload Sampul Album Galeri */}
-        <Field label="Gambar Sampul Album" htmlFor="gallery-cover" hint="Format JPG, PNG, atau WebP. Maksimal 5 MB.">
-          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-            <div className="relative flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-white shadow-2xs">
-              {draft.coverImageUrl ? (
-                <>
-                  <img
-                    src={draft.coverImageUrl}
-                    alt="Sampul Album"
-                    className="h-full w-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setDraft({ ...draft, coverImageUrl: '' })}
-                    className="absolute top-1 right-1 rounded-full bg-rose-600 p-1 text-white shadow-xs hover:bg-rose-700"
-                    title="Hapus sampul"
-                  >
-                    <XMarkIcon className="h-3 w-3" />
-                  </button>
-                </>
-              ) : (
-                <PhotoIcon className="h-8 w-8 text-slate-300" />
-              )}
-            </div>
-
-            <div className="flex-1 space-y-1.5">
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50">
-                <ArrowUpTrayIcon className="h-4 w-4 text-slate-500" />
-                <span>{uploadingCover ? 'Mengunggah...' : 'Pilih & Unggah Sampul'}</span>
-                <input
-                  id="gallery-cover"
-                  type="file"
-                  accept={IMAGE_ACCEPT}
-                  disabled={uploadingCover}
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void handleCoverUpload(file);
-                  }}
-                />
-              </label>
-              <p className="text-[10px] text-slate-400 font-mono truncate">
-                {draft.coverImageUrl || 'Belum ada foto sampul album'}
-              </p>
-            </div>
-          </div>
-        </Field>
-
-        <Field label="Deskripsi" htmlFor="gallery-description">
-          <textarea
-            id="gallery-description"
-            className="field-textarea"
-            value={draft.description}
-            onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-          />
-        </Field>
-
-        <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-          <input
-            type="checkbox"
-            checked={draft.isPublished}
-            onChange={(event) => setDraft({ ...draft, isPublished: event.target.checked })}
-            className="h-4 w-4 rounded border-slate-300 text-[#1e3a8a] focus:ring-[#1e3a8a]"
-          />
-          Tampilkan pada website publik
-        </label>
-      </FormModal>
 
       <FormModal
         open={itemTarget !== null}

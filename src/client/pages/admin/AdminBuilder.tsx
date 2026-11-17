@@ -148,11 +148,11 @@ function getWidgetOriginMeta(widgetCode: string): {
     case 'document_list':
       return {
         type: 'dynamic',
-        badge: 'Dari Arsip LPM/LPPM',
+        badge: 'Dari Bank Dokumen',
         badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
         sourceDesc: 'Menampilkan ajakan menuju halaman arsip dokumen prodi.',
         manageRoute: '/admin/dokumen',
-        manageLabel: 'Buka Arsip Dokumen',
+        manageLabel: 'Buka Bank Dokumen',
       };
     case 'gallery_grid':
       return {
@@ -843,29 +843,23 @@ export const AdminBuilder: React.FC = () => {
   const deleteNavbarMutation = useMutation({
     mutationFn: async (id: number) => {
       const pageToDelete = (pagesQuery.data ?? []).find((p) => p.id === id);
-      // Hapus di builder
-      const res = await builderApi.deletePage(id);
-      // Hapus juga menu terkait di database menu jika ada. Pencarian dilakukan
-      // pada menu tingkat atas maupun anak grup, karena menu yang sudah
-      // dipindahkan ke dalam group tidak lagi berada di daftar teratas.
+      // Menu dihapus lebih dulu (termasuk menu sistem) agar navbar landing ikut hilang;
+      // galatnya dilempar ke onError, tidak ditelan.
       if (pageToDelete) {
-        try {
-          const urlHalaman = pageUrl(pageToDelete.slug);
-          const semuaMenu = flattenMenus(menusQuery.data ?? []);
-          const matchedMenu = semuaMenu.find(
-            (m) =>
-              m.url === urlHalaman ||
-              m.url === `/${pageToDelete.slug}` ||
-              m.url === `/halaman/${pageToDelete.slug}`,
-          );
-          if (matchedMenu && !matchedMenu.isRequired) {
-            await settingsApi.deleteMenu(matchedMenu.id);
-          }
-        } catch {
-          // Lanjutkan jika menu sistem
+        const semuaMenu = flattenMenus(menusQuery.data ?? []);
+        const matchedMenu = semuaMenu.find(
+          (m) =>
+            m.url === pageUrl(pageToDelete.slug) ||
+            m.url === `/${pageToDelete.slug}` ||
+            m.url === `/halaman/${pageToDelete.slug}`,
+        );
+        if (matchedMenu) {
+          // Server menolak hapus menu wajib; nonaktifkan agar tetap hilang dari landing.
+          if (matchedMenu.isRequired) await settingsApi.updateMenu(matchedMenu.id, { isActive: false });
+          else await settingsApi.deleteMenu(matchedMenu.id);
         }
       }
-      return res;
+      return builderApi.deletePage(id);
     },
     onSuccess: () => {
       toast.success('Navbar / Halaman berhasil dihapus.');

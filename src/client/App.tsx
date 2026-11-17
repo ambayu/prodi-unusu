@@ -39,6 +39,8 @@ import { AdminDocuments } from './pages/admin/AdminDocuments';
 import { AdminLecturers } from './pages/admin/AdminLecturers';
 import { AdminFacilities } from './pages/admin/AdminFacilities';
 import { AdminPosts } from './pages/admin/AdminPosts';
+import { AdminPostForm } from './pages/admin/AdminPostForm';
+import { AdminGalleryForm } from './pages/admin/AdminGalleryForm';
 import { AdminGalleries } from './pages/admin/AdminGalleries';
 import { AdminContact } from './pages/admin/AdminContact';
 import { AdminMedia } from './pages/admin/AdminMedia';
@@ -235,6 +237,46 @@ export const App: React.FC = () => {
           <RequireAuth>
             <RequirePermission anyOf={['posts.view']}>
               <AdminPosts />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/berita/baru"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['posts.create']}>
+              <AdminPostForm />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/berita/:id/ubah"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['posts.update']}>
+              <AdminPostForm />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/galeri/baru"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['galleries.create']}>
+              <AdminGalleryForm />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/galeri/:id/ubah"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['galleries.update']}>
+              <AdminGalleryForm />
             </RequirePermission>
           </RequireAuth>
         }

@@ -6,6 +6,9 @@ import { DataTable } from '../../components/ui/DataTable';
 import { lecturerApi, type Lecturer } from '../../services/contentApi';
 import { toApiError } from '../../services/api';
 
+/** Endpoint admin ikut mengirim nama prodi homebase bila dosen berasal dari pusat. */
+type DosenBaris = Lecturer & { studyProgramName?: string | null };
+
 /**
  * Direktori Dosen Program Studi.
  *
@@ -41,7 +44,7 @@ export const AdminLecturers: React.FC = () => {
         </div>
       </div>
 
-      <DataTable<Lecturer>
+      <DataTable<DosenBaris>
         rows={lecturers}
         rowKey={(lecturer) => String(lecturer.id)}
         loading={listQuery.isLoading}
@@ -54,65 +57,58 @@ export const AdminLecturers: React.FC = () => {
             ? 'Tidak ada dosen yang cocok dengan kata kunci pencarian.'
             : 'Belum ada data dosen aktif yang terhubung dari pusat.'
         }
-        minWidth={900}
+        minWidth={1180}
         columns={[
           {
-            key: 'foto',
-            header: 'Foto',
-            width: 56,
+            key: 'nama',
+            header: 'Nama & Gelar',
+            width: 260,
             render: (lecturer) => (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                {lecturer.photoUrl ? (
-                  <img
-                    src={lecturer.photoUrl}
-                    alt={lecturer.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <UserCircleIcon className="h-6 w-6 text-slate-400" />
-                )}
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                  {lecturer.photoUrl ? (
+                    <img src={lecturer.photoUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <UserCircleIcon className="h-6 w-6 text-slate-400" aria-hidden="true" />
+                  )}
+                </div>
+                <span className="block min-w-0 text-[14px] font-extrabold leading-snug text-slate-900">
+                  {lecturer.name}
+                </span>
               </div>
             ),
           },
           {
-            key: 'nama',
-            header: 'Nama & Gelar',
+            key: 'email',
+            header: 'Email',
             width: 220,
-            render: (lecturer) => (
-              <>
-                <span className="block font-bold text-slate-900">{lecturer.name}</span>
-                <span className="block text-xs text-slate-500">{lecturer.email ?? 'Email belum diisi'}</span>
-              </>
-            ),
+            render: (lecturer) => lecturer.email ?? <span className="text-slate-400">—</span>,
           },
           {
             key: 'nidn',
             header: 'NIDN',
-            width: 120,
-            cellClassName: 'font-mono font-semibold text-slate-700',
-            render: (lecturer) => lecturer.nidn ?? '-',
+            width: 130,
+            cellClassName: 'whitespace-nowrap font-mono font-semibold text-slate-700',
+            render: (lecturer) => lecturer.nidn ?? <span className="text-slate-400">—</span>,
           },
           {
             key: 'homebase',
             header: 'Homebase / Prodi',
-            /* Satu-satunya kolom tanpa lebar tetap: nama prodi bisa panjang. */
-            render: (lecturer) => (
-              <span className="text-xs font-medium text-slate-800">
-                {(lecturer as any).studyProgramName ?? lecturer.expertise ?? '-'}
-              </span>
-            ),
+            width: 200,
+            render: (lecturer) => lecturer.studyProgramName ?? lecturer.expertise ?? <span className="text-slate-400">—</span>,
           },
           {
             key: 'jabatan',
             header: 'Jabatan Fungsional',
-            width: 170,
-            render: (lecturer) => lecturer.academicRank ?? '-',
+            width: 160,
+            render: (lecturer) => lecturer.academicRank ?? <span className="text-slate-400">—</span>,
           },
           {
             key: 'pendidikan',
             header: 'Pendidikan',
-            width: 150,
-            render: (lecturer) => lecturer.education ?? '-',
+            width: 120,
+            align: 'center',
+            render: (lecturer) => lecturer.education ?? <span className="text-slate-400">—</span>,
           },
           {
             key: 'status',

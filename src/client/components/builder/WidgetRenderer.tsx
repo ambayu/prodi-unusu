@@ -11,7 +11,7 @@ import {
   EnvelopeIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
-import { postApi, galleryApi, lecturerApi, curriculumApi, facilityApi, arsipDokumenApi, profileApi } from '../../services/contentApi';
+import { postApi, galleryApi, lecturerApi, curriculumApi, facilityApi, dokumenProdiApi, profileApi } from '../../services/contentApi';
 import { useTenant } from '../../hooks/useSite';
 import { GambarTentang } from '../ui/GambarTentang';
 
@@ -739,22 +739,20 @@ const FacilityGridWidget: React.FC<{ title?: string; limit: number; primaryColor
 
 // Sub-komponen Widget Dokumen Publik
 //
-// Arsip berasal dari LPM/LPPM dan dilindungi kata sandi prodi. Widget ini
-// tidak dapat membuka kunci sendiri (kata sandi hanya dimasukkan pada halaman
-// /dokumen), sehingga ia hanya menampilkan ajakan menuju halaman arsip.
+// Menampilkan dokumen berstatus Publish; berkas dibuka di halaman /dokumen
+// (wajib kata sandi arsip prodi).
 const DocumentListWidget: React.FC<{ title?: string; limit: number; primaryColor: string }> = ({
   title,
   limit,
   primaryColor,
 }) => {
-  const infoQuery = useQuery({
-    queryKey: ['public', 'arsip-dokumen', 'widget'],
-    queryFn: () => arsipDokumenApi.publicInfo().then((res) => res.data.meta),
+  const dokumenQuery = useQuery({
+    queryKey: ['public', 'dokumen-prodi', 'widget'],
+    queryFn: () => dokumenProdiApi.publicList().then((res) => res.data.items),
     retry: 1,
   });
 
-  const meta = infoQuery.data;
-  const arsipTersedia = meta?.passwordActive === true;
+  const terbit = (dokumenQuery.data ?? []).slice(0, limit);
 
   return (
     <section className="py-16 sm:py-20 bg-slate-50 border-t border-slate-200">
@@ -781,25 +779,27 @@ const DocumentListWidget: React.FC<{ title?: string; limit: number; primaryColor
           </Link>
         </div>
 
-        <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
-          <p className="text-xs text-slate-600">
-            {arsipTersedia
-              ? `Arsip dokumen mutu program studi tersedia dan dilindungi kata sandi. ${
-                  typeof meta?.total === 'number' ? `Terdapat ${meta.total} dokumen. ` : ''
-                }Buka halaman Dokumen dan masukkan kata sandi untuk melihat serta mengunduh berkas.`
-              : 'Arsip dokumen program studi belum dibuka oleh pengelola prodi.'}
-          </p>
-          {arsipTersedia ? (
-            <Link
-              to="/dokumen"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: primaryColor }}
-            >
-              Buka Arsip Dokumen
-              <ArrowRightIcon className="w-4 h-4" />
-            </Link>
-          ) : null}
-        </div>
+        {terbit.length > 0 ? (
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {terbit.map((d) => (
+              <li key={d.id}>
+                <Link
+                  to="/dokumen"
+                  className="block rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-slate-300"
+                >
+                  <p className="font-bold text-slate-900">{d.judul}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {[d.kategori, d.tahun, d.nomor].filter(Boolean).join(' � ')}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+            <p className="text-xs text-slate-600">Belum ada dokumen yang dipublikasikan.</p>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowDownTrayIcon, ArrowPathIcon, DocumentIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { arsipDownloadApi, arsipPreviewApi, type ArsipBerkasMode } from '../services/contentApi';
+import {
+  arsipDownloadApi,
+  arsipPreviewApi,
+  type ArsipBerkasMode,
+  type DokumenAsal,
+} from '../services/contentApi';
 
 interface DokumenPreviewModalProps {
   open: boolean;
@@ -13,11 +18,13 @@ interface DokumenPreviewModalProps {
   password?: string;
   /** Jalur pengambilan berkas: sesi admin prodi atau kata sandi publik. */
   sumber?: ArsipBerkasMode;
+  /** Dokumen kiriman pusat (`arsip`, bawaan) atau buatan prodi (`prodi`). */
+  asal?: DokumenAsal;
   onClose: () => void;
 }
 
 /**
- * Pratinjau dokumen arsip LPM/LPPM.
+ * Pratinjau dokumen (kiriman pusat maupun buatan prodi).
  *
  * Alur yang diminta: dokumen MELIHAT lebih dulu, baru dapat diunduhnya lewat
  * tombol Download. Berkas diambil sebagai blob lalu ditampilkan pada
@@ -30,6 +37,7 @@ export const DokumenPreviewModal: React.FC<DokumenPreviewModalProps> = ({
   judul,
   password = '',
   sumber = 'publik',
+  asal = 'arsip',
   onClose,
 }) => {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -48,7 +56,7 @@ export const DokumenPreviewModal: React.FC<DokumenPreviewModalProps> = ({
     setError(null);
     setBlobUrl(null);
 
-    arsipPreviewApi(arsipId, password, sumber)
+    arsipPreviewApi(arsipId, password, sumber, asal)
       .then((blob) => {
         if (dibatalkan) return;
         urlSementara = URL.createObjectURL(blob);
@@ -67,7 +75,7 @@ export const DokumenPreviewModal: React.FC<DokumenPreviewModalProps> = ({
       // Membebaskan memori blob agar tidak menumpuk saat membuka banyak dokumen.
       if (urlSementara) URL.revokeObjectURL(urlSementara);
     };
-  }, [open, arsipId, password, sumber]);
+  }, [open, arsipId, password, sumber, asal]);
 
   // Menutup dengan tombol Escape.
   useEffect(() => {
@@ -85,7 +93,7 @@ export const DokumenPreviewModal: React.FC<DokumenPreviewModalProps> = ({
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const blob = await arsipDownloadApi(arsipId, password, sumber);
+      const blob = await arsipDownloadApi(arsipId, password, sumber, asal);
       const url = URL.createObjectURL(blob);
       const tautan = document.createElement('a');
       tautan.href = url;

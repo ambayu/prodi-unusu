@@ -134,7 +134,7 @@ async function main() {
   console.log('       http://prodi.unusu.ac.id:5180/login');
   console.log('       Akun: admin / Unusu#Admin2026!  (ganti setelah dipakai)');
   console.log('  2. Login SSO ONE UNUSU memerlukan langkah tambahan:');
-  console.log('       - Portal ONE UNUSU harus hidup di http://localhost:5173');
+  console.log('       - Portal ONE UNUSU harus hidup di http://localhost:5183');
   console.log('       - Jalankan: npx tsx scripts/register-sso-client.ts');
   console.log('       - Salin client key hasilnya ke SSO_CLIENT_KEY di .env');
   console.log('');

@@ -53,7 +53,7 @@ const unlockSchema = z.object({
 const PASSWORD_HEADER = 'x-arsip-password';
 
 /** Kata sandi aktif bila prodi sudah memasangnya. Selama kosong -> fail-closed. */
-async function assertArsipPassword(studyProgramId: number, req: { header: (name: string) => string | undefined }) {
+export async function assertArsipPassword(studyProgramId: number, req: { header: (name: string) => string | undefined }) {
   const stored = await getDocumentPasswordHash(studyProgramId);
   const submitted = req.header(PASSWORD_HEADER) ?? '';
 

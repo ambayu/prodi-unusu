@@ -137,6 +137,21 @@ export const hapusDokumenPasswordSchema = z.object({
   password: z.null(),
 });
 
+/**
+ * Dokumen buatan prodi (bank dokumen / arsip surat).
+ *
+ * Dikirim sebagai multipart, jadi semua nilai tiba sebagai string.
+ * `isPublic`: "true" = Publish (tampil di halaman publik), "false" = Draft.
+ */
+export const dokumenProdiSchema = z.object({
+  title: z.string().trim().min(3, 'Judul minimal 3 karakter.').max(255),
+  code: z.string().trim().max(50).optional(),
+  category: z.string().trim().min(2, 'Kategori wajib diisi.').max(100),
+  year: z.coerce.number().int().min(1990).max(2100),
+  description: z.string().trim().max(5000).optional(),
+  isPublic: z.enum(['true', 'false']).transform((value) => value === 'true'),
+});
+
 export const createFacilitySchema = z.object({
   name: z.string().trim().min(2).max(200),
   category: z.string().trim().min(2).max(100).default('Laboratorium'),

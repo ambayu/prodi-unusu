@@ -15,6 +15,7 @@ import authRoutes from './modules/auth/auth.routes.js';
 import publicRoutes from './modules/public/public.routes.js';
 import organisasiPublikRoutes from './modules/public/organisasiPublik.routes.js';
 import arsipDokumenRoutes from './modules/admin/arsipDokumen.routes.js';
+import dokumenProdiRoutes, { publicDokumenProdiRouter } from './modules/admin/dokumenProdi.routes.js';
 import websiteRoutes from './modules/admin/website.routes.js';
 import portalRoutes from './modules/admin/portal.routes.js';
 import builderRoutes from './modules/admin/builder.routes.js';
@@ -198,6 +199,7 @@ export function createApp() {
    * endpoint adminnya dipasang pada `adminRouter` di bawah.
    */
   app.use('/api/v1', arsipDokumenRoutes);
+  app.use('/api/v1', publicDokumenProdiRouter);
 
   /*
    * Berkas RPS — endpoint PUBLIK.
@@ -228,6 +230,7 @@ export function createApp() {
   adminRouter.use(attachScopedTenant);
 
   adminRouter.use('/', arsipDokumenRoutes);
+  adminRouter.use('/', dokumenProdiRoutes);
   adminRouter.use('/', websiteRoutes);
   adminRouter.use('/', portalRoutes);
   adminRouter.use('/', builderRoutes);

@@ -5,44 +5,64 @@ import {
   ExclamationTriangleIcon,
   EyeIcon,
   KeyIcon,
-  MagnifyingGlassIcon,
   LockClosedIcon,
   LockOpenIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { DataTable } from '../../components/ui/DataTable';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Field, FormModal } from '../../components/ui/FormModal';
+import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/RowActions';
 import { DokumenPreviewModal } from '../../components/DokumenPreviewModal';
 import { useToast } from '../../components/ui/Toast';
-import { arsipDokumenApi, type ArsipDokumenItem, type ArsipSumber } from '../../services/contentApi';
+import { usePermission } from '../../hooks/useSite';
+import {
+  DOKUMEN_MAX_BYTES,
+  arsipDokumenApi,
+  dokumenProdiApi,
+  type DokumenAsal,
+  type DokumenProdiInput,
+  type DokumenProdiItem,
+} from '../../services/contentApi';
 import { toApiError, firstFieldError } from '../../services/api';
 
-/** Label sumber arsip agar terbaca manusia, bukan kode aplikasi. */
-const SUMBER_LABEL: Record<ArsipSumber, string> = {
-  lpm: 'LPM',
-  lppm: 'LPPM',
-};
-
-const SUMBER_WARNA: Record<ArsipSumber, string> = {
-  lpm: 'bg-sky-50 text-sky-700 border-sky-200',
-  lppm: 'bg-violet-50 text-violet-700 border-violet-200',
-};
-
-/**
- * Kunci untuk dokumen yang belum diklasifikasikan ke kategori mana pun.
- *
- * Memakai nilai sentinel, bukan string kosong, karena `<option value="">`
- * sudah dipakai filter "Semua kategori".
- */
+/** Kunci untuk dokumen yang belum diklasifikasikan ke kategori mana pun. */
 const TANPA_KATEGORI = '__tanpa_kategori__';
 const LABEL_TANPA_KATEGORI = 'Tanpa kategori';
 
+/** Satu baris tabel: dokumen buatan prodi atau kiriman pusat, bentuknya seragam. */
+interface BarisDokumen {
+  kunci: string;
+  id: number;
+  asal: DokumenAsal;
+  judul: string;
+  nomor: string | null;
+  kategori: string | null;
+  tahun: number | null;
+  status: string | null;
+  mimeType: string | null;
+  adaBerkas: boolean;
+  /** Terisi hanya pada dokumen buatan prodi; hanya baris ini yang dapat diubah/dihapus. */
+  milikProdi: DokumenProdiItem | null;
+}
+
+const FORM_KOSONG: DokumenProdiInput = {
+  title: '',
+  code: '',
+  category: '',
+  year: new Date().getFullYear(),
+  description: '',
+  isPublic: true,
+  file: null,
+};
+
 /**
- * Menerjemahkan `mimeType` arsip menjadi label jenis berkas singkat.
- *
- * Item arsip tidak menyertakan nama berkas, jadi ekstensi disimpulkan dari
- * jenis MIME-nya. Nilai yang tidak dikenali dibiarkan `null` agar kolom Berkas
- * menampilkan tanda hubung, bukan tebakan yang menyesatkan.
+ * Menerjemahkan `mimeType` menjadi label jenis berkas singkat. Nilai yang tidak
+ * dikenali dibiarkan `null` agar kolom Berkas menampilkan tanda hubung, bukan
+ * tebakan yang menyesatkan.
  */
 function ekstensiBerkas(mimeType: string | null): string | null {
   if (!mimeType) return null;
@@ -63,42 +83,57 @@ function formatTanggal(iso: string | null): string {
   return tanggal.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+const kunciKategori = (kategori: string | null) => (kategori?.trim() ? kategori.trim() : TANPA_KATEGORI);
+
+const WARNA_STATUS: Record<string, string> = {
+  Publish: 'bg-emerald-50 text-emerald-700',
+  Aktif: 'bg-emerald-50 text-emerald-700',
+  Draft: 'bg-amber-50 text-amber-700',
+};
+
 /**
- * Penampil arsip dokumen mutu LPM/LPPM untuk pengelola program studi.
+ * Bank dokumen / arsip surat program studi.
  *
- * Halaman ini SENGAJA hanya-baca: dokumen mutu diterbitkan dan dikelola oleh
- * LPM/LPPM, sehingga prodi tidak dapat menambah, mengubah, atau menghapusnya.
- * Satu-satunya kewenangan prodi adalah memasang kata sandi yang melindungi
- * seluruh arsipnya dari akses publik.
+ * Prodi menambah, mengubah, dan menghapus dokumennya sendiri. Dokumen kiriman
+ * pusat tampil di tabel yang sama tetapi hanya dapat dilihat. Status Publish
+ * menampilkan dokumen di halaman publik; Draft hanya terlihat di panel ini.
  */
 export const AdminDocuments: React.FC = () => {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { has } = usePermission();
+  const bolehTambah = has('documents.create');
+  const bolehUbah = has('documents.update');
+  const bolehHapus = has('documents.delete');
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [kategoriFilter, setKategoriFilter] = useState('');
-  const [previewTarget, setPreviewTarget] = useState<ArsipDokumenItem | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<BarisDokumen | null>(null);
+
+  const [formTerbuka, setFormTerbuka] = useState(false);
+  const [sedangDiubah, setSedangDiubah] = useState<DokumenProdiItem | null>(null);
+  const [form, setForm] = useState<DokumenProdiInput>(FORM_KOSONG);
+  const [galatForm, setGalatForm] = useState<string | null>(null);
+  const [targetHapus, setTargetHapus] = useState<DokumenProdiItem | null>(null);
 
   const [passwordBaru, setPasswordBaru] = useState('');
   const [passwordUlang, setPasswordUlang] = useState('');
   const [panelTerbuka, setPanelTerbuka] = useState(false);
 
-  /*
-   * Kata sandi arsip HANYA dipakai untuk melindungi akses publik, bukan admin.
-   * Pengelola prodi yang sudah login membuka berkas lewat rute admin sehingga
-   * tidak perlu mengetik kata sandi lagi.
-   */
+  const prodiQuery = useQuery({
+    queryKey: ['admin', 'dokumen-prodi'],
+    queryFn: () => dokumenProdiApi.list().then((res) => res.data.items),
+    retry: 1,
+  });
 
-  const listQuery = useQuery({
-    queryKey: ['admin', 'arsip-dokumen', search, statusFilter],
-    queryFn: () =>
-      arsipDokumenApi
-        .adminList({
-          search: search.trim() || undefined,
-          status: statusFilter || undefined,
-        })
-        .then((res) => res.data),
+  /*
+   * Dokumen kiriman pusat bersifat tambahan: bila gagal dimuat, dokumen milik
+   * prodi tetap tampil dan pengguna diberi tahu lewat catatan di bawah.
+   */
+  const pusatQuery = useQuery({
+    queryKey: ['admin', 'arsip-dokumen'],
+    queryFn: () => arsipDokumenApi.adminList().then((res) => res.data.items),
     retry: 1,
   });
 
@@ -108,15 +143,19 @@ export const AdminDocuments: React.FC = () => {
     retry: 1,
   });
 
+  const invalidasi = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'dokumen-prodi'] });
+    void queryClient.invalidateQueries({ queryKey: ['public', 'dokumen-prodi'] });
+  };
+
   const simpanPassword = useMutation({
     mutationFn: (password: string) => arsipDokumenApi.setPassword(password).then((res) => res.data),
     onSuccess: () => {
-      toast.success('Kata sandi arsip dokumen berhasil disimpan.');
+      toast.success('Kata sandi dokumen berhasil disimpan.');
       setPasswordBaru('');
       setPasswordUlang('');
       setPanelTerbuka(false);
       void queryClient.invalidateQueries({ queryKey: ['admin', 'dokumen-password'] });
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'arsip-dokumen'] });
     },
     onError: (error) => {
       const apiError = toApiError(error);
@@ -124,32 +163,77 @@ export const AdminDocuments: React.FC = () => {
     },
   });
 
-  const meta = listQuery.data?.meta;
-  const items = listQuery.data?.items ?? [];
-  const passwordAktif = passwordQuery.data?.passwordActive ?? meta?.passwordActive ?? false;
-  const errorText = listQuery.isError ? toApiError(listQuery.error).message : null;
-  const kodeBelumDipetakan = errorText?.toLowerCase().includes('kode prodi') ?? false;
+  const simpanDokumen = useMutation({
+    mutationFn: (input: DokumenProdiInput) =>
+      sedangDiubah ? dokumenProdiApi.update(sedangDiubah.id, input) : dokumenProdiApi.create(input),
+    onSuccess: () => {
+      toast.success(sedangDiubah ? 'Dokumen berhasil diperbarui.' : 'Dokumen berhasil ditambahkan.');
+      tutupForm();
+      invalidasi();
+    },
+    onError: (error) => {
+      const apiError = toApiError(error);
+      setGalatForm(firstFieldError(apiError) ?? apiError.message);
+    },
+  });
 
-  /**
-   * Daftar kategori yang benar-benar ada pada arsip prodi ini, beserta jumlah
-   * dokumennya.
-   *
-   * Sengaja dihitung di klien, bukan lewat endpoint baru: jumlah kategori
-   * LPM/LPPM sedikit dan seluruh dokumen prodi sudah terambil dalam satu
-   * permintaan. Endpoint tambahan hanya akan menambah satu perjalanan jaringan
-   * tanpa manfaat. Bila kelak arsip memakai paginasi, daftar ini harus
-   * dipindahkan ke server.
-   */
+  const hapusDokumen = useMutation({
+    mutationFn: (id: number) => dokumenProdiApi.remove(id),
+    onSuccess: () => {
+      toast.success('Dokumen berhasil dihapus.');
+      setTargetHapus(null);
+      invalidasi();
+    },
+    onError: (error) => {
+      toast.error(toApiError(error).message);
+      setTargetHapus(null);
+    },
+  });
+
+  const passwordAktif = passwordQuery.data?.passwordActive ?? false;
+
+  const semuaBaris = useMemo<BarisDokumen[]>(() => {
+    const milikProdi = (prodiQuery.data ?? []).map<BarisDokumen>((d) => ({
+      kunci: `prodi-${d.id}`,
+      id: d.id,
+      asal: 'prodi',
+      judul: d.judul,
+      nomor: d.nomor,
+      kategori: d.kategori,
+      tahun: d.tahun,
+      status: d.status,
+      mimeType: d.mimeType,
+      adaBerkas: true,
+      milikProdi: d,
+    }));
+    const kirimanPusat = (pusatQuery.data ?? []).map<BarisDokumen>((d) => ({
+      kunci: `arsip-${d.sumber}-${d.id}`,
+      id: d.id,
+      asal: 'arsip',
+      judul: d.judul,
+      nomor: d.nomor,
+      kategori: d.kategori,
+      tahun: d.tahun,
+      status: d.status,
+      mimeType: d.mimeType,
+      adaBerkas: Boolean(d.fileUrl),
+      milikProdi: null,
+    }));
+    return [...milikProdi, ...kirimanPusat];
+  }, [prodiQuery.data, pusatQuery.data]);
+
+  /** Kategori yang benar-benar ada beserta jumlahnya, urut abjad; "Tanpa kategori" terakhir. */
   const daftarKategori = useMemo(() => {
     const hitung = new Map<string, { label: string; jumlah: number }>();
-    for (const dokumen of items) {
-      const kunci = dokumen.kategori?.trim() ? dokumen.kategori.trim() : TANPA_KATEGORI;
-      const label = kunci === TANPA_KATEGORI ? LABEL_TANPA_KATEGORI : kunci;
-      const sekarang = hitung.get(kunci) ?? { label, jumlah: 0 };
+    for (const baris of semuaBaris) {
+      const kunci = kunciKategori(baris.kategori);
+      const sekarang = hitung.get(kunci) ?? {
+        label: kunci === TANPA_KATEGORI ? LABEL_TANPA_KATEGORI : kunci,
+        jumlah: 0,
+      };
       sekarang.jumlah += 1;
       hitung.set(kunci, sekarang);
     }
-    // Urut abjad; "Tanpa kategori" ditaruh paling akhir agar tidak mendominasi.
     return Array.from(hitung.entries())
       .map(([kunci, nilai]) => ({ kunci, ...nilai }))
       .sort((a, b) => {
@@ -157,47 +241,106 @@ export const AdminDocuments: React.FC = () => {
         if (b.kunci === TANPA_KATEGORI) return -1;
         return a.label.localeCompare(b.label, 'id-ID');
       });
-  }, [items]);
+  }, [semuaBaris]);
 
-  /**
-   * Dokumen yang lolos filter kategori.
-   *
-   * Penyaringan judul dan status tetap ditangani server (`search`,
-   * `statusFilter`) agar perilakunya sama dengan sumber arsip. Kategori
-   * disaring di sini karena API belum menerima parameter itu.
-   */
-  const itemsTersaring = useMemo(() => {
-    if (!kategoriFilter) return items;
-    return items.filter((dokumen) => {
-      const kunci = dokumen.kategori?.trim() ? dokumen.kategori.trim() : TANPA_KATEGORI;
-      return kunci === kategoriFilter;
+  const daftarStatus = useMemo(
+    () => Array.from(new Set(semuaBaris.map((baris) => baris.status).filter((s): s is string => Boolean(s)))).sort(),
+    [semuaBaris],
+  );
+
+  const barisTersaring = useMemo(() => {
+    const kata = search.trim().toLowerCase();
+    return semuaBaris.filter((baris) => {
+      if (kategoriFilter && kunciKategori(baris.kategori) !== kategoriFilter) return false;
+      if (statusFilter && baris.status !== statusFilter) return false;
+      if (!kata) return true;
+      return [baris.judul, baris.nomor, baris.kategori].some((teks) => teks?.toLowerCase().includes(kata));
     });
-  }, [items, kategoriFilter]);
+  }, [semuaBaris, search, statusFilter, kategoriFilter]);
 
-  /**
-   * Membuka pratinjau dokumen.
-   *
-   * Admin prodi sudah membuktikan haknya lewat login, jadi tombol ini langsung
-   * menampilkan pratinjau PDF tanpa meminta kata sandi arsip. Kata sandi tetap
-   * berlaku untuk pengunjung publik pada halaman `/dokumen`.
-   */
-  const bukaPratinjau = (dokumen: ArsipDokumenItem) => {
-    setPreviewTarget(dokumen);
+  const kategoriSaran = useMemo(
+    () => Array.from(new Set((prodiQuery.data ?? []).map((d) => d.kategori))).sort((a, b) => a.localeCompare(b, 'id-ID')),
+    [prodiQuery.data],
+  );
+
+  const bukaFormTambah = () => {
+    setSedangDiubah(null);
+    setForm(FORM_KOSONG);
+    setGalatForm(null);
+    setFormTerbuka(true);
   };
+
+  const bukaFormUbah = (dokumen: DokumenProdiItem) => {
+    setSedangDiubah(dokumen);
+    setForm({
+      title: dokumen.judul,
+      code: dokumen.nomor ?? '',
+      category: dokumen.kategori,
+      year: dokumen.tahun,
+      description: dokumen.deskripsi ?? '',
+      isPublic: dokumen.isPublic,
+      file: null,
+    });
+    setGalatForm(null);
+    setFormTerbuka(true);
+  };
+
+  function tutupForm() {
+    setFormTerbuka(false);
+    setSedangDiubah(null);
+    setGalatForm(null);
+  }
+
+  const kirimForm = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!sedangDiubah && !form.file) {
+      setGalatForm('Pilih berkas PDF terlebih dahulu.');
+      return;
+    }
+    setGalatForm(null);
+    simpanDokumen.mutate(form);
+  };
+
+  const pilihBerkas = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const berkas = event.target.files?.[0] ?? null;
+    if (berkas && berkas.type !== 'application/pdf') {
+      setGalatForm('Berkas wajib berformat PDF.');
+      event.target.value = '';
+      return;
+    }
+    if (berkas && berkas.size > DOKUMEN_MAX_BYTES) {
+      setGalatForm(`Ukuran berkas maksimal ${DOKUMEN_MAX_BYTES / 1024 / 1024} MB.`);
+      event.target.value = '';
+      return;
+    }
+    setGalatForm(null);
+    setForm((sekarang) => ({ ...sekarang, file: berkas }));
+  };
+
+  const errorProdi = prodiQuery.isError ? toApiError(prodiQuery.error).message : null;
+  const adaFilter = Boolean(search.trim() || kategoriFilter || statusFilter);
 
   return (
     <AdminLayout
-      title="Arsip Dokumen (LPM/LPPM)"
-      description="Dokumen mutu dari LPM dan LPPM yang ditujukan kepada program studi ini. Arsip hanya dapat dilihat — pengelolaan tetap di aplikasi LPM/LPPM."
+      title="Bank Dokumen"
+      description="Arsip surat dan dokumen program studi. Dokumen berstatus Publish tampil di halaman publik; Draft hanya terlihat di sini."
       actions={
-        <button
-          type="button"
-          onClick={() => setPanelTerbuka((current) => !current)}
-          className={passwordAktif ? 'btn-secondary' : 'btn-primary'}
-        >
-          {passwordAktif ? <LockClosedIcon className="h-4 w-4" /> : <KeyIcon className="h-4 w-4" />}
-          {passwordAktif ? 'Ubah Kata Sandi' : 'Pasang Kata Sandi'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {bolehTambah ? (
+            <button type="button" onClick={bukaFormTambah} className="btn-primary">
+              <PlusIcon className="h-4 w-4" />
+              Tambah Dokumen
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setPanelTerbuka((current) => !current)}
+            className="btn-secondary"
+          >
+            {passwordAktif ? <LockClosedIcon className="h-4 w-4" /> : <KeyIcon className="h-4 w-4" />}
+            {passwordAktif ? 'Ubah Kata Sandi' : 'Pasang Kata Sandi'}
+          </button>
+        </div>
       }
     >
       {/* ---------------------------------------------------------------
@@ -206,21 +349,12 @@ export const AdminDocuments: React.FC = () => {
       {!passwordQuery.isLoading && !passwordAktif ? (
         <div className="mb-4 flex items-start gap-3 rounded-[14px] border border-amber-300 bg-amber-50 px-4 py-3.5">
           <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-          {/*
-           * Isi peringatan dinaikkan dari 12px ke 14px (`text-sm`).
-           *
-           * Sebelumnya `text-xs leading-relaxed` membuat paragraf ini terasa
-           * sempit meskipun jenis hurufnya sudah lapang: 12px pada Plus Jakarta
-           * Sans hanya menghasilkan x-height sekitar 6.4px. 14px memberi 7.4px.
-           */}
-          <div className="min-w-0 text-sm text-amber-900">
+                    <div className="min-w-0 text-sm text-amber-900">
             <p className="font-bold leading-snug">
-              Arsip dokumen prodi ini belum dilindungi kata sandi untuk publik.
+              Dokumen prodi ini belum dilindungi kata sandi untuk publik.
             </p>
             <p className="mt-1.5 leading-relaxed">
-              Anda tetap dapat membuka dan mengunduh semua dokumen di halaman ini tanpa kata sandi. Kata
-              sandi hanya diperlukan pengunjung publik di halaman <span className="font-semibold">/dokumen</span>{' '}
-              untuk membuka berkas. Satu kata sandi berlaku untuk seluruh dokumen prodi ini.
+              Pengelola tetap dapat membuka dokumen tanpa kata sandi. Pengunjung publik memerlukannya untuk membuka berkas.
             </p>
             <button
               type="button"
@@ -338,9 +472,7 @@ export const AdminDocuments: React.FC = () => {
         </section>
       ) : null}
 
-      {/* ---------------------------------------------------------------
-          Filter arsip
-          --------------------------------------------------------------- */}
+      {/* Penyaring */}
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -348,6 +480,7 @@ export const AdminDocuments: React.FC = () => {
             type="search"
             className="field-input pl-9"
             placeholder="Cari judul, nomor, atau kategori dokumen"
+            aria-label="Cari dokumen"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -372,82 +505,69 @@ export const AdminDocuments: React.FC = () => {
           aria-label="Saring status dokumen"
         >
           <option value="">Semua status</option>
-          <option value="Aktif">Aktif</option>
-          <option value="Kadaluarsa">Kadaluarsa</option>
-          <option value="Draft">Draft</option>
+          {daftarStatus.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
         </select>
       </div>
 
-      {/* Peringatan sumber yang sedang tidak dapat dibaca */}
-      {meta?.sumberGagal?.length ? (
-        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800">
-          Arsip {meta.sumberGagal.map((sumber) => SUMBER_LABEL[sumber]).join(' dan ')} sedang tidak dapat
-          dibaca. Dokumen dari sumber lain tetap ditampilkan.
+      {pusatQuery.isError ? (
+        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+          Sebagian dokumen belum dapat dimuat. Dokumen yang Anda tambahkan sendiri tetap ditampilkan.
         </div>
       ) : null}
 
-      {/*
-       * Keadaan loading/galat/kosong ditangani DataTable, termasuk menampilkan
-       * keterangan footer hanya saat ada data.
-       */}
-      <DataTable<ArsipDokumenItem>
-        rows={itemsTersaring}
-        rowKey={(dokumen) => `${dokumen.sumber}-${dokumen.id}`}
-        loading={listQuery.isLoading}
-        loadingLabel="Memuat arsip dokumen LPM/LPPM"
-        error={
-          listQuery.isError
-            ? kodeBelumDipetakan
-              ? 'Kode program studi ini belum dipetakan ke arsip LPM/LPPM. Hubungi administrator universitas untuk melengkapinya.'
-              : (errorText ?? 'Arsip dokumen belum dapat dimuat.')
-            : null
-        }
-        onRetry={() => void listQuery.refetch()}
-        /*
-         * Keadaan kosong dibedakan menurut sebabnya: arsip memang kosong, atau
-         * filter kategori yang sedang aktif tidak menyisakan dokumen. Tanpa
-         * pembedaan ini pengguna akan mengira arsipnya kosong padahal hanya
-         * tersaring.
-         */
-        emptyTitle={
-          items.length > 0 && kategoriFilter ? 'Tidak ada dokumen pada kategori ini' : 'Belum ada arsip dokumen'
-        }
+      <DataTable<BarisDokumen>
+        rows={barisTersaring}
+        rowKey={(baris) => baris.kunci}
+        loading={prodiQuery.isLoading}
+        loadingLabel="Memuat dokumen"
+        error={errorProdi}
+        onRetry={() => void prodiQuery.refetch()}
+        emptyTitle={adaFilter ? 'Tidak ada dokumen yang cocok' : 'Belum ada dokumen'}
         emptyDescription={
-          items.length > 0 && kategoriFilter
-            ? 'Pilih kategori lain, atau tampilkan semua kategori untuk melihat seluruh dokumen.'
-            : 'Dokumen mutu yang ditujukan kepada program studi ini akan muncul di sini setelah diterbitkan oleh LPM atau LPPM.'
+          adaFilter
+            ? 'Ubah pencarian atau penyaring untuk melihat dokumen lain.'
+            : 'Tambahkan dokumen pertama program studi ini.'
         }
         emptyAction={
-          items.length > 0 && kategoriFilter ? (
-            <button type="button" onClick={() => setKategoriFilter('')} className="btn-secondary">
-              Tampilkan semua kategori
+          !adaFilter && bolehTambah ? (
+            <button type="button" onClick={bukaFormTambah} className="btn-primary">
+              <PlusIcon className="h-4 w-4" />
+              Tambah Dokumen
+            </button>
+          ) : adaFilter ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setKategoriFilter('');
+                setStatusFilter('');
+              }}
+              className="btn-secondary"
+            >
+              Hapus penyaring
             </button>
           ) : undefined
         }
-        minWidth={1080}
+        minWidth={1000}
         columns={[
           {
             key: 'judul',
             header: 'Judul Dokumen',
-            render: (dokumen) => (
-              /*
-               * Judul dokumen adalah isi terpenting baris ini: dibuat lebih
-               * besar dan pekat agar menjadi titik pandang. Nomor dokumen dan
-               * jenis berkas TIDAK lagi menumpang di sini — keduanya punya
-               * kolom masing-masing supaya bisa dipindai per kolom.
-               */
-              <span className="block text-[14px] font-extrabold leading-snug text-slate-900">
-                {dokumen.judul}
-              </span>
+            render: (baris) => (
+              <span className="block text-[14px] font-extrabold leading-snug text-slate-900">{baris.judul}</span>
             ),
           },
           {
             key: 'nomor',
             header: 'Nomor Dokumen',
-            width: 190,
-            render: (dokumen) =>
-              dokumen.nomor ? (
-                <span className="block break-all font-mono text-slate-700">{dokumen.nomor}</span>
+            width: 180,
+            render: (baris) =>
+              baris.nomor ? (
+                <span className="block font-mono text-slate-700">{baris.nomor}</span>
               ) : (
                 <span className="text-slate-400">—</span>
               ),
@@ -455,15 +575,10 @@ export const AdminDocuments: React.FC = () => {
           {
             key: 'berkas',
             header: 'Berkas',
-            width: 110,
+            width: 90,
             align: 'center',
-            render: (dokumen) => {
-              /*
-               * Ekstensi diambil dari `mimeType` karena item arsip tidak
-               * membawa nama berkas. Bila jenis belum diketahui, tampilkan
-               * tanda hubung alih-alih menebak.
-               */
-              const jenis = ekstensiBerkas(dokumen.mimeType);
+            render: (baris) => {
+              const jenis = ekstensiBerkas(baris.mimeType);
               return jenis ? (
                 <span className="inline-block rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs font-bold uppercase text-slate-600">
                   {jenis}
@@ -474,23 +589,10 @@ export const AdminDocuments: React.FC = () => {
             },
           },
           {
-            key: 'sumber',
-            header: 'Sumber',
-            width: 110,
-            render: (dokumen) => (
-              <span
-                className={`inline-block max-w-full truncate rounded border px-2 py-1 align-middle font-bold ${SUMBER_WARNA[dokumen.sumber]}`}
-                title={SUMBER_LABEL[dokumen.sumber]}
-              >
-                {SUMBER_LABEL[dokumen.sumber]}
-              </span>
-            ),
-          },
-          {
             key: 'kategori',
             header: 'Kategori',
-            width: 160,
-            render: (dokumen) => dokumen.kategori ?? <span className="text-slate-400">—</span>,
+            width: 150,
+            render: (baris) => baris.kategori ?? <span className="text-slate-400">—</span>,
           },
           {
             key: 'tahun',
@@ -498,58 +600,176 @@ export const AdminDocuments: React.FC = () => {
             width: 80,
             align: 'center',
             cellClassName: 'whitespace-nowrap',
-            render: (dokumen) => dokumen.tahun ?? <span className="text-slate-400">—</span>,
+            render: (baris) => baris.tahun ?? <span className="text-slate-400">—</span>,
           },
           {
             key: 'status',
             header: 'Status',
             width: 110,
-            render: (dokumen) => (
+            render: (baris) => (
               <span
                 className={`inline-block max-w-full truncate rounded px-2 py-1 align-middle font-bold ${
-                  dokumen.status === 'Aktif'
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-slate-100 text-slate-600'
+                  WARNA_STATUS[baris.status ?? ''] ?? 'bg-slate-100 text-slate-600'
                 }`}
-                title={dokumen.status ?? '—'}
               >
-                {dokumen.status ?? '—'}
+                {baris.status ?? '—'}
               </span>
             ),
           },
           {
             key: 'aksi',
             header: 'Aksi',
-            width: 180,
+            width: 150,
             align: 'right',
-            render: (dokumen) =>
-              dokumen.fileUrl ? (
-                <button
-                  type="button"
-                  onClick={() => bukaPratinjau(dokumen)}
-                  title="Pratinjau & unduh dokumen"
-                  className="inline-flex min-h-[44px] items-center gap-2 whitespace-nowrap rounded-lg bg-[#1e3a8a] px-3.5 py-2 font-bold text-white transition-colors hover:bg-[#172f6e]"
-                  aria-label={`Lihat ${dokumen.judul}`}
-                >
-                  <EyeIcon className="h-4 w-4 shrink-0" />
-                  Lihat Dokumen
-                </button>
-              ) : (
-                <span className="font-semibold text-slate-500">Berkas belum ada</span>
-              ),
+            render: (baris) => (
+              <RowActions>
+                {baris.adaBerkas ? (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewTarget(baris)}
+                    className="btn-icon-neutral"
+                    aria-label={`Lihat dokumen: ${baris.judul}`}
+                    title="Lihat dokumen"
+                  >
+                    <EyeIcon className="h-[17px] w-[17px]" aria-hidden="true" />
+                  </button>
+                ) : null}
+                {baris.milikProdi && bolehUbah ? (
+                  <EditRowButton label="Ubah dokumen" konteks={baris.judul} onClick={() => bukaFormUbah(baris.milikProdi!)} />
+                ) : null}
+                {baris.milikProdi && bolehHapus ? (
+                  <DeleteRowButton label="Hapus dokumen" konteks={baris.judul} onClick={() => setTargetHapus(baris.milikProdi!)} />
+                ) : null}
+              </RowActions>
+            ),
           },
         ]}
       />
 
-      {/* -----------------------------------------------------------------
-          Pratinjau PDF: langsung tampil tanpa meminta kata sandi arsip.
-          ----------------------------------------------------------------- */}
+      <FormModal
+        open={formTerbuka}
+        wide
+        title={sedangDiubah ? 'Ubah Dokumen' : 'Tambah Dokumen'}
+        description="Dokumen berstatus Publish tampil di halaman publik, Draft hanya terlihat oleh pengelola."
+        submitLabel={sedangDiubah ? 'Simpan Perubahan' : 'Simpan Dokumen'}
+        busy={simpanDokumen.isPending}
+        error={galatForm}
+        onSubmit={kirimForm}
+        onClose={tutupForm}
+      >
+        <Field label="Judul Dokumen" htmlFor="dok-judul" required>
+          <input
+            id="dok-judul"
+            className="field-input"
+            required
+            minLength={3}
+            maxLength={255}
+            value={form.title}
+            onChange={(event) => setForm({ ...form, title: event.target.value })}
+          />
+        </Field>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Nomor Dokumen" htmlFor="dok-nomor" hint="Opsional, misalnya nomor surat.">
+            <input
+              id="dok-nomor"
+              className="field-input"
+              maxLength={50}
+              value={form.code}
+              onChange={(event) => setForm({ ...form, code: event.target.value })}
+            />
+          </Field>
+          <Field label="Kategori" htmlFor="dok-kategori" required>
+            <input
+              id="dok-kategori"
+              className="field-input"
+              required
+              minLength={2}
+              maxLength={100}
+              list="dok-kategori-saran"
+              value={form.category}
+              onChange={(event) => setForm({ ...form, category: event.target.value })}
+            />
+            <datalist id="dok-kategori-saran">
+              {kategoriSaran.map((kategori) => (
+                <option key={kategori} value={kategori} />
+              ))}
+            </datalist>
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Tahun" htmlFor="dok-tahun" required>
+            <input
+              id="dok-tahun"
+              type="number"
+              className="field-input"
+              required
+              min={1990}
+              max={2100}
+              value={form.year}
+              onChange={(event) => setForm({ ...form, year: Number(event.target.value) })}
+            />
+          </Field>
+          <Field label="Status" htmlFor="dok-status" required>
+            <select
+              id="dok-status"
+              className="field-select"
+              value={form.isPublic ? 'publish' : 'draft'}
+              onChange={(event) => setForm({ ...form, isPublic: event.target.value === 'publish' })}
+            >
+              <option value="publish">Publish — tampil di halaman publik</option>
+              <option value="draft">Draft — hanya terlihat pengelola</option>
+            </select>
+          </Field>
+        </div>
+
+        <Field label="Deskripsi" htmlFor="dok-deskripsi" hint="Opsional.">
+          <textarea
+            id="dok-deskripsi"
+            className="field-input min-h-[96px]"
+            maxLength={5000}
+            value={form.description}
+            onChange={(event) => setForm({ ...form, description: event.target.value })}
+          />
+        </Field>
+
+        <Field
+          label="Berkas PDF"
+          htmlFor="dok-berkas"
+          required={!sedangDiubah}
+          hint={
+            sedangDiubah
+              ? 'Kosongkan bila tidak ingin mengganti berkas yang sudah ada. Maksimal 10 MB.'
+              : 'Format PDF, maksimal 10 MB.'
+          }
+        >
+          <input
+            id="dok-berkas"
+            type="file"
+            accept="application/pdf"
+            className="field-input"
+            onChange={pilihBerkas}
+          />
+        </Field>
+      </FormModal>
+
+      <ConfirmDialog
+        open={Boolean(targetHapus)}
+        title="Hapus dokumen?"
+        description={`"${targetHapus?.judul ?? ''}" beserta berkasnya akan dihapus permanen dan tidak dapat dikembalikan.`}
+        busy={hapusDokumen.isPending}
+        onConfirm={() => targetHapus && hapusDokumen.mutate(targetHapus.id)}
+        onCancel={() => setTargetHapus(null)}
+      />
+
       {previewTarget ? (
         <DokumenPreviewModal
           open
           arsipId={previewTarget.id}
           judul={previewTarget.judul}
           sumber="admin"
+          asal={previewTarget.asal}
           onClose={() => setPreviewTarget(null)}
         />
       ) : null}
