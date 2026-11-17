@@ -27,6 +27,7 @@ import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
+import { WidgetLibrary } from '../../components/builder/WidgetLibrary';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission, useTenant } from '../../hooks/useSite';
 import { useSiteStore } from '../../app/siteStore';
@@ -473,7 +474,7 @@ export const AdminBuilder: React.FC = () => {
   // State untuk Edit Label & Hapus Item / Sub Navbar
   const [editNavbarTarget, setEditNavbarTarget] = useState<{ id: number; title: string; isSystem: boolean } | null>(null);
   const [editNavbarTitle, setEditNavbarTitle] = useState('');
-  const [deleteNavbarTarget, setDeleteNavbarTarget] = useState<BuilderPage | null>(null);
+  const [deleteNavbarTarget, setDeleteNavbarTarget] = useState<{ menuId: number; title: string; isGroup: boolean } | null>(null);
   const [draggedPageId, setDraggedPageId] = useState<number | null>(null);
   const [isReorderingMenu, setIsReorderingMenu] = useState(false);
 
@@ -841,36 +842,18 @@ export const AdminBuilder: React.FC = () => {
   });
 
   const deleteNavbarMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const pageToDelete = (pagesQuery.data ?? []).find((p) => p.id === id);
-      // Menu dihapus lebih dulu (termasuk menu sistem) agar navbar landing ikut hilang;
-      // galatnya dilempar ke onError, tidak ditelan.
-      if (pageToDelete) {
-        const semuaMenu = flattenMenus(menusQuery.data ?? []);
-        const matchedMenu = semuaMenu.find(
-          (m) =>
-            m.url === pageUrl(pageToDelete.slug) ||
-            m.url === `/${pageToDelete.slug}` ||
-            m.url === `/halaman/${pageToDelete.slug}`,
-        );
-        if (matchedMenu) {
-          // Server menolak hapus menu wajib; nonaktifkan agar tetap hilang dari landing.
-          if (matchedMenu.isRequired) await settingsApi.updateMenu(matchedMenu.id, { isActive: false });
-          else await settingsApi.deleteMenu(matchedMenu.id);
-        }
-      }
-      return builderApi.deletePage(id);
+    mutationFn: async (menuId: number) => {
+      const menu = flattenMenus(menusQuery.data ?? []).find((m) => m.id === menuId);
+      // Server menolak hapus menu wajib; nonaktifkan agar tetap hilang dari landing.
+      // Halaman Builder tidak disentuh.
+      if (menu?.isRequired) await settingsApi.updateMenu(menuId, { isActive: false });
+      else await settingsApi.deleteMenu(menuId);
     },
     onSuccess: () => {
-      toast.success('Navbar / Halaman berhasil dihapus.');
+      toast.success('Item dihapus dari navbar. Halaman tetap ada di Builder.');
       setDeleteNavbarTarget(null);
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'pages'] });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'menus'] });
       void queryClient.invalidateQueries({ queryKey: ['public', 'menus'] });
-      const remaining = (pagesQuery.data ?? []).filter((p) => p.id !== deleteNavbarTarget?.id);
-      if (remaining.length > 0) {
-        setSelectedPageId(remaining[0].id);
-      }
     },
     onError: (error) => toast.error(toApiError(error).message),
   });
@@ -1446,7 +1429,8 @@ export const AdminBuilder: React.FC = () => {
                */
               const bisaKelola = (item: NavbarSidebarEntry) =>
                 (item.menuId !== null && grupLain(item).length > 0) ||
-                (item.page !== null && (has('pages.update') || has('pages.delete')));
+                (item.page !== null && has('pages.update')) ||
+                (item.menuId !== null && has('navigation.delete'));
 
               const renderItem = (item: NavbarSidebarEntry, isChild = false) => {
                 const halaman = item.page;
@@ -1557,7 +1541,7 @@ export const AdminBuilder: React.FC = () => {
                           aksi={{
                             pindah: item.menuId !== null && grupLain(item).length > 0,
                             ubah: halaman !== null && has('pages.update'),
-                            hapus: halaman !== null && has('pages.delete'),
+                            hapus: item.menuId !== null && has('navigation.delete'),
                           }}
                           grupTujuan={grupLain(item)}
                           onPindah={(kunci) => {
@@ -1574,7 +1558,7 @@ export const AdminBuilder: React.FC = () => {
                             setEditNavbarTitle(halaman.title);
                           }}
                           onHapus={() => {
-                            if (halaman) setDeleteNavbarTarget(halaman);
+                            if (item.menuId !== null) setDeleteNavbarTarget({ menuId: item.menuId, title: item.title, isGroup: false });
                           }}
                         />
                       </div>
@@ -1611,6 +1595,19 @@ export const AdminBuilder: React.FC = () => {
                           className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-[#1e3a8a] transition-colors"
                         >
                           <PencilSquareIcon className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
+                      {has('navigation.delete') && group.menuId !== null ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteNavbarTarget({ menuId: group.menuId as number, title: group.title, isGroup: true });
+                          }}
+                          title={`Hapus grup: ${group.title}`}
+                          className="rounded p-1 text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                        >
+                          <TrashIcon className="h-3.5 w-3.5" />
                         </button>
                       ) : null}
                       {has('pages.create') ? (
@@ -1757,6 +1754,24 @@ export const AdminBuilder: React.FC = () => {
                   ) : null}
                 </div>
 
+                <WidgetLibrary
+                  widgets={widgetsQuery.data ?? []}
+                  namaTampil={(w) => getWidgetDisplayName(w.code, w.name)}
+                  onPilih={
+                    has('builder.create')
+                      ? (w) => {
+                          setSectionDraft({
+                            sectionKey: w.code.replace(/_/g, '-'),
+                            title: `Seksi ${getWidgetDisplayName(w.code, w.name)}`,
+                            widgetCode: w.code,
+                            widgetTitle: '',
+                            widgetDescription: '',
+                          });
+                          setSectionFormOpen(true);
+                        }
+                      : null
+                  }
+                />
                 {page.sections.length === 0 ? (
                   <EmptyState
                     title="Halaman ini belum memiliki section"
@@ -2485,12 +2500,12 @@ export const AdminBuilder: React.FC = () => {
       {/* Konfirmasi Hapus Navbar / Halaman */}
       <ConfirmDialog
         open={deleteNavbarTarget !== null}
-        title="Hapus Navbar / Halaman"
-        description={`Menu "${deleteNavbarTarget?.title ?? ''}" beserta seluruh seksi dan widget di dalamnya akan dihapus dari navigasi dan website.`}
+        title="Hapus dari Navbar"
+        description={`Menu "${deleteNavbarTarget?.title ?? ''}" akan dihapus dari navbar website${deleteNavbarTarget?.isGroup ? ' beserta seluruh item di dalam grup' : ''}. Halaman dan isinya tetap tersimpan di Builder.`}
         confirmLabel="Hapus Menu"
         busy={deleteNavbarMutation.isPending}
         onConfirm={() => {
-          if (deleteNavbarTarget) deleteNavbarMutation.mutate(deleteNavbarTarget.id);
+          if (deleteNavbarTarget) deleteNavbarMutation.mutate(deleteNavbarTarget.menuId);
         }}
         onCancel={() => setDeleteNavbarTarget(null)}
       />
