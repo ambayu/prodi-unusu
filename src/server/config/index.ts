@@ -23,7 +23,7 @@ function optional(name: string, fallback: string): string {
 
 const nodeEnv = optional('NODE_ENV', 'development');
 const ssoBaseUrl = nodeEnv === 'development' ? optional('SSO_BASE_URL', 'http://localhost:5000') : required('SSO_BASE_URL');
-const ssoPortalUrl = nodeEnv === 'development' ? optional('SSO_PORTAL_URL', 'http://localhost:5183') : required('SSO_PORTAL_URL');
+const ssoPortalUrl = nodeEnv === 'development' ? optional('SSO_PORTAL_URL', 'http://localhost:5173') : required('SSO_PORTAL_URL');
 if (!/^https?:$/.test(new URL(ssoBaseUrl).protocol)) throw new Error('SSO_BASE_URL must use HTTP(S).');
 if (!/^https?:$/.test(new URL(ssoPortalUrl).protocol)) throw new Error('SSO_PORTAL_URL must use HTTP(S).');
 

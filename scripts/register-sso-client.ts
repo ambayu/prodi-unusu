@@ -115,7 +115,7 @@ async function main() {
     }
 
     console.log('\nLangkah berikutnya:');
-    console.log('  1. Jalankan portal ONE UNUSU di http://localhost:5183');
+    console.log('  1. Jalankan portal ONE UNUSU di http://localhost:5173');
     console.log('  2. Jalankan aplikasi ini: npm run dev');
     console.log('  3. Buka http://prodi.unusu.ac.id:5180/login lalu klik "Masuk dengan ONE UNUSU"');
     console.log('  4. Portal mengembalikan tiket ke /sso/callback, aplikasi menukarnya jadi sesi lokal');
