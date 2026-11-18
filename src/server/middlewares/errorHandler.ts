@@ -1,5 +1,6 @@
-﻿import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
+import multer from 'multer';
 import { AppError } from '../utils/errors.js';
 import { config } from '../config/index.js';
 
@@ -86,6 +87,15 @@ export function errorHandler(error: unknown, req: Request, res: Response, _next:
       code: error.code,
       ...(error.fieldErrors ? { fieldErrors: error.fieldErrors } : {}),
       ...(error.extras ?? {}),
+    });
+    return;
+  }
+
+  if (error instanceof multer.MulterError) {
+    res.status(413).json({
+      success: false,
+      message: `Ukuran data atau berkas melebihi batas ${Math.round(config.upload.maxBytes / 1024 / 1024)} MB.`,
+      code: 'FILE_TOO_LARGE',
     });
     return;
   }

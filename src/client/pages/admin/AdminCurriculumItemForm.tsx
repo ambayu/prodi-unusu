@@ -22,7 +22,6 @@ import {
 } from '../../services/contentApi';
 import { useSiteStore } from '../../app/siteStore';
 import { firstFieldError, toApiError } from '../../services/api';
-
 interface Draft {
   courseId: string;
   curriculumId: string;
@@ -34,9 +33,7 @@ interface Draft {
   description: string;
   lecturersData: LecturerAssignment[];
 }
-
 const SEMESTER_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8];
-
 const emptyDraft = (defaultCurriculumId = '', defaultCurriculumYear = ''): Draft => ({
   courseId: '',
   curriculumId: defaultCurriculumId,
@@ -46,7 +43,6 @@ const emptyDraft = (defaultCurriculumId = '', defaultCurriculumYear = ''): Draft
   description: '',
   lecturersData: [],
 });
-
 /**
  * Form penawaran mata kuliah pada kurikulum (`/admin/kurikulum/baru`).
  *
@@ -62,13 +58,11 @@ export const AdminCurriculumItemForm: React.FC = () => {
   const toast = useToast();
   const activeTenantId = useSiteStore((state) => state.activeTenantId);
   const studyProgramName = useSiteStore((state) => state.tenant?.name ?? '');
-
   const [draft, setDraft] = useState<Draft>(() => emptyDraft('', String(new Date().getFullYear())));
   const [formError, setFormError] = useState<string | null>(null);
   const [dosenSearch, setDosenSearch] = useState('');
   const [rpsFile, setRpsFile] = useState<File | null>(null);
   const [editingItem, setEditingItem] = useState<CurriculumItem | null>(null);
-
   const curriculumsQuery = useQuery({
     queryKey: ['admin', 'curriculums'],
     queryFn: async () => {
@@ -76,7 +70,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       return res.data.curriculums;
     },
   });
-
   const mastersQuery = useQuery({
     queryKey: ['admin', 'master-courses'],
     queryFn: async () => {
@@ -84,7 +77,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       return res.data.courses;
     },
   });
-
   const lecturersQuery = useQuery({
     queryKey: ['admin', 'lecturers'],
     queryFn: async () => {
@@ -92,7 +84,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       return res.data.lecturers;
     },
   });
-
   const itemsQuery = useQuery({
     queryKey: ['admin', 'curriculum-items'],
     queryFn: async () => {
@@ -100,12 +91,10 @@ export const AdminCurriculumItemForm: React.FC = () => {
       return res.data.items;
     },
   });
-
   const curriculums: Curriculum[] = useMemo(() => curriculumsQuery.data ?? [], [curriculumsQuery.data]);
   const masters: CourseMaster[] = useMemo(() => mastersQuery.data ?? [], [mastersQuery.data]);
   const dosenOptions = useMemo(() => lecturersQuery.data ?? [], [lecturersQuery.data]);
   const items = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data]);
-
   // Set default curriculum saat create (ambil kurikulum aktif atau yang pertama)
   useEffect(() => {
     if (!isEdit && curriculums.length > 0 && !draft.curriculumId) {
@@ -117,7 +106,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       }));
     }
   }, [isEdit, curriculums, draft.curriculumId]);
-
   // Load existing item jika edit
   useEffect(() => {
     if (!isEdit || !id || items.length === 0) return;
@@ -134,7 +122,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       });
     }
   }, [isEdit, id, items]);
-
   const availableMasters = useMemo(() => {
     if (isEdit) return masters;
     const used = new Set(
@@ -142,7 +129,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
     );
     return masters.filter((master) => !used.has(master.id));
   }, [masters, items, draft.curriculumId, isEdit]);
-
   const curriculumOptions = useMemo<SearchableOption[]>(
     () =>
       curriculums.map((c) => ({
@@ -152,7 +138,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       })),
     [curriculums],
   );
-
   const courseOptions = useMemo<SearchableOption[]>(
     () =>
       availableMasters.map((m) => ({
@@ -162,14 +147,11 @@ export const AdminCurriculumItemForm: React.FC = () => {
       })),
     [availableMasters],
   );
-
   const semesterOptions = useMemo<SearchableOption[]>(
     () => SEMESTER_NUMBERS.map((n) => ({ value: String(n), label: `Semester ${n}` })),
     [],
   );
-
   const selectedMaster = masters.find((m) => String(m.id) === draft.courseId);
-
   const filteredDosen = useMemo(() => {
     const keyword = dosenSearch.trim().toLowerCase();
     if (!keyword) return dosenOptions.slice(0, 30);
@@ -177,7 +159,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       .filter((d) => d.name.toLowerCase().includes(keyword) || (d.nidn ?? '').toLowerCase().includes(keyword))
       .slice(0, 30);
   }, [dosenOptions, dosenSearch]);
-
   const removeRpsMutation = useMutation({
     mutationFn: (rpsId: number) => curriculumRpsApi.remove(rpsId),
     onSuccess: (_data, rpsId) => {
@@ -192,7 +173,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       toast.error(apiErr.message ?? 'Gagal menghapus RPS.');
     },
   });
-
   const saveMutation = useMutation({
     mutationFn: async () => {
       /*
@@ -211,7 +191,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
           lecturersData: draft.lecturersData,
         })
       ).data;
-
       if (rpsFile) {
         await curriculumRpsApi.upload(item.id, rpsFile);
       }
@@ -231,7 +210,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       setFormError(firstFieldError(apiErr) ?? apiErr.message ?? 'Gagal menyimpan penawaran.');
     },
   });
-
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError(null);
@@ -260,7 +238,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
     }
     saveMutation.mutate();
   };
-
   const pageTitle = isEdit ? 'Ubah Mata Kuliah pada Kurikulum' : 'Tambah Kurikulum';
   const pageDescription = isEdit
     ? 'Perbarui data mata kuliah pada kurikulum: semester, SKS, dosen pengampu, atau berkas RPS.'
@@ -269,7 +246,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       : masters.length === 0
         ? 'Belum ada mata kuliah. Tambahkan dulu lewat menu Mata Kuliah, lalu kembali ke halaman ini.'
         : 'Pilih mata kuliah dari menu Mata Kuliah, lalu tentukan semester, tahun, dan bobotnya.';
-
   const sections: FormSection[] = [
     {
       id: 'section-mata-kuliah',
@@ -303,7 +279,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
               />
             </Field>
           </div>
-
           {selectedMaster ? (
             <div className="sm:col-span-2 grid grid-cols-1 gap-4 rounded-[12px] border border-slate-200 bg-slate-50 px-4 py-3 sm:grid-cols-2">
               <div>
@@ -316,7 +291,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
               </div>
             </div>
           ) : null}
-
           <Field label="Semester" htmlFor="item-semester" required hint="Semester ke-1 sampai ke-8 pada kurikulum ini.">
             <SearchableSelect
               id="item-semester"
@@ -328,7 +302,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
               searchPlaceholder="Cari semester..."
             />
           </Field>
-
           {curriculums.length > 1 ? (
             <Field label="Kurikulum" htmlFor="item-curriculum" hint="Kurikulum tempat mata kuliah ini ditawarkan.">
               <SearchableSelect
@@ -393,7 +366,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
               required
             />
           </Field>
-
           <div className="sm:col-span-2">
             <Field label="Keterangan" htmlFor="item-description" hint="Tuliskan catatan, status Wajib/Pilihan, atau capaian kompetensi.">
               <textarea
@@ -423,7 +395,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
             <p className="mb-2 text-[11px] text-slate-500">
               Dosen terpilih akan tercatat sebagai pengampu mata kuliah ini (sumber: ONE UNUSU API Hub).
             </p>
-
             {draft.lecturersData.length > 0 ? (
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {draft.lecturersData.map((lecturer) => (
@@ -449,7 +420,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
                 ))}
               </div>
             ) : null}
-
             <input
               id="dosen-search"
               type="search"
@@ -458,7 +428,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
               value={dosenSearch}
               onChange={(e) => setDosenSearch(e.target.value)}
             />
-
             {lecturersQuery.isLoading ? (
               <p className="mt-2 text-[11px] text-slate-500">Memuat daftar dosen...</p>
             ) : (
@@ -510,7 +479,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
               </div>
             )}
           </div>
-
           {/* RPS Upload */}
           <div className="border-t border-slate-100 pt-4">
             <label htmlFor="rps-file" className="mb-1 block text-xs font-bold text-slate-700">
@@ -519,7 +487,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
             <p className="mb-2 text-[11px] text-slate-500">
               Opsional. Format PDF, maksimal 10 MB. Berkas dapat diunduh publik di halaman Kurikulum.
             </p>
-
             {editingItem && editingItem.rpsDocuments.length > 0 ? (
               <ul className="mb-3 space-y-1">
                 {editingItem.rpsDocuments.map((rps) => (
@@ -532,7 +499,14 @@ export const AdminCurriculumItemForm: React.FC = () => {
                     </a>
                     <button
                       type="button"
-                      onClick={() => removeRpsMutation.mutate(rps.id)}
+                      onClick={() =>
+                        void toast.confirm(`RPS "${rps.title}" akan dihapus permanen beserta berkasnya.`, {
+                          title: 'Hapus berkas RPS',
+                          confirmLabel: 'Hapus RPS',
+                        }).then((setuju) => {
+                          if (setuju) removeRpsMutation.mutate(rps.id);
+                        })
+                      }
                       disabled={removeRpsMutation.isPending}
                       className="shrink-0 rounded border border-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
                     >
@@ -542,7 +516,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
                 ))}
               </ul>
             ) : null}
-
             <input
               id="rps-file"
               type="file"
@@ -558,7 +531,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
       ),
     },
   ];
-
   return (
     <AdminLayout
       title={pageTitle}
@@ -584,5 +556,4 @@ export const AdminCurriculumItemForm: React.FC = () => {
     </AdminLayout>
   );
 };
-
 export default AdminCurriculumItemForm;

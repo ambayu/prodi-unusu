@@ -69,23 +69,28 @@ export function buildCurriculumSummary(curriculums: CurriculumWithSemesters): Cu
   let totalRps = 0;
 
   for (const curriculum of curriculums) {
-    totalSemesters += curriculum.semesters.length;
+    // Semester yang benar-benar terisi: dari penawaran baru maupun data warisan.
+    const semesterNumbers = new Set<number>();
 
     // Penawaran baru (ADR-006).
     for (const item of curriculum.items) {
       totalCourses += 1;
       totalCredits += item.credits;
-      totalRps += item.rpsDocuments.length;
+      if (item.rpsDocuments.length > 0) totalRps += 1;
+      if (item.semesterNumber) semesterNumbers.add(item.semesterNumber);
     }
 
     // Data warisan dari skema lama.
     for (const semester of curriculum.semesters) {
+      if (semester.courses.length > 0) semesterNumbers.add(semester.semesterNumber);
       for (const course of semester.courses) {
         totalCourses += 1;
         totalCredits += course.credits;
-        totalRps += course.rpsDocuments.length;
+        if (course.rpsDocuments.length > 0) totalRps += 1;
       }
     }
+
+    totalSemesters += semesterNumbers.size;
   }
 
   return { totalSemesters, totalCourses, totalCredits, totalRps };

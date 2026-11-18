@@ -643,6 +643,7 @@ export interface Facility {
 
 export const facilityApi = {
   public: () => api.get<{ facilities: Facility[] }>('/public/facilities'),
+  publicDetail: (id: number | string) => api.get<{ success: boolean; facility: Facility }>(`/public/facilities/${id}`),
   list: () => api.get<{ facilities: Facility[] }>('/admin/facilities'),
   create: (data: Partial<Facility>) => api.post('/admin/facilities', data),
   update: (id: number, data: Partial<Facility>) => api.put(`/admin/facilities/${id}`, data),

@@ -1,4 +1,4 @@
-import { Router, type Response } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -42,6 +42,30 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.pdf`);
   },
 });
+
+/**
+ * Membungkus unggahan multer agar galat bawaannya menjadi pesan yang dapat dibaca.
+ *
+ * Tanpa ini pengguna hanya menerima "File too large" mentah, tanpa tahu batas
+ * ukurannya, dan berkas setengah tertulis milik multer tertinggal di disk.
+ */
+function unggahBerkas() {
+  const handler = upload.single('file');
+  return (req: Request, res: Response, next: NextFunction) => {
+    handler(req, res, (error?: unknown) => {
+      if (!(error instanceof multer.MulterError)) {
+        next(error);
+        return;
+      }
+      if (req.file) fs.rm(req.file.path, { force: true }, () => undefined);
+      next(
+        AppError.unprocessable(
+          `Ukuran berkas RPS melebihi ${Math.round(config.upload.rpsMaxBytes / 1024 / 1024)} MB.`,
+        ),
+      );
+    });
+  };
+}
 
 const upload = multer({
   storage,
@@ -158,7 +182,7 @@ router.get(
 router.post(
   '/curriculum-items/:itemId/rps',
   requirePermission('curriculum.update'),
-  upload.single('file'),
+  unggahBerkas(),
   asyncHandler(async (req, res) => {
     const studyProgramId = scopedTenantId(req);
     const itemId = Number(req.params.itemId);
@@ -233,7 +257,7 @@ router.delete(
 router.post(
   '/courses/:courseId/rps',
   requirePermission('curriculum.update'),
-  upload.single('file'),
+  unggahBerkas(),
   asyncHandler(async (req, res) => {
     const studyProgramId = scopedTenantId(req);
     const courseId = Number(req.params.courseId);

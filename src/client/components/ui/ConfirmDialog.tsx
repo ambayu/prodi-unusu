@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useNotifier } from './Notifier';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -8,16 +8,18 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   tone?: 'danger' | 'primary';
+  /** Aksi sedang berjalan; modal menampilkan keadaan tunggu. */
   busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 /**
- * Dialog konfirmasi untuk aksi destruktif.
+ * Jembatan untuk pemanggil lama yang mengatur sendiri state target konfirmasi.
  *
- * Menggantikan `confirm()` bawaan browser: dapat digayakan, dapat menampilkan
- * keadaan sedang diproses, dan tidak memblokir seluruh halaman.
+ * Dialognya kini dirender oleh `NotifierProvider` supaya seluruh aplikasi
+ * memakai satu modal yang sama. Pemanggil baru sebaiknya memakai
+ * `useNotifier().confirmAction()` langsung.
  */
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   open,
@@ -26,95 +28,33 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   confirmLabel = 'Hapus',
   cancelLabel = 'Batal',
   tone = 'danger',
-  busy = false,
   onConfirm,
   onCancel,
 }) => {
-  const confirmRef = useRef<HTMLButtonElement>(null);
-  const onCancelRef = useRef(onCancel);
-  onCancelRef.current = onCancel;
-  const busyRef = useRef(busy);
-  busyRef.current = busy;
+  const notifier = useNotifier();
+  const jalanRef = useRef(onConfirm);
+  jalanRef.current = onConfirm;
+  const batalRef = useRef(onCancel);
+  batalRef.current = onCancel;
+  const sudahTampilRef = useRef(false);
 
-  /**
-   * Hanya bergantung pada `open`. Bila `busy`/`onCancel` ikut masuk deps, efek
-   * berjalan ulang setiap render dan memindahkan fokus kembali ke tombol
-   * konfirmasi — perilaku yang sama dengan bug "input lompat-lompat" di
-   * FormModal.
-   */
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      sudahTampilRef.current = false;
+      return;
+    }
+    if (sudahTampilRef.current) return;
+    sudahTampilRef.current = true;
 
-    confirmRef.current?.focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !busyRef.current) onCancelRef.current();
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    void notifier
+      .confirmAction(description, { title, confirmLabel, cancelLabel, tone }, () => jalanRef.current())
+      .then((setuju) => {
+        /* Batal: pemanggil wajib mereset targetnya agar dialog tidak muncul lagi. */
+        if (!setuju) batalRef.current();
+      });
   }, [open]);
 
-  if (!open) return null;
-
-  const confirmStyle =
-    tone === 'danger'
-      ? 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-300'
-      : 'bg-[#1e3a8a] hover:bg-[#172f6e] focus:ring-blue-300';
-
-  return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-        onClick={() => {
-          if (!busy) onCancel();
-        }}
-        aria-hidden="true"
-      />
-
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-title"
-        className="relative w-full max-w-md rounded-[16px] border border-[#CBD5E1] bg-white p-6 shadow-xl"
-      >
-        <div className="flex items-start gap-4">
-          <div
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
-              tone === 'danger' ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-[#1e3a8a]'
-            }`}
-          >
-            <ExclamationTriangleIcon className="h-6 w-6" />
-          </div>
-
-          <div className="flex-1">
-            <h2 id="confirm-title" className="text-base font-bold text-slate-900">
-              {title}
-            </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{description}</p>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            ref={confirmRef}
-            type="button"
-            onClick={onConfirm}
-            disabled={busy}
-            className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors focus:outline-none focus:ring-2 disabled:opacity-60 ${confirmStyle}`}
-          >
-            {busy ? 'Memproses...' : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 };
+
+export default ConfirmDialog;

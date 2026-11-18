@@ -24,6 +24,7 @@ import { ProfilePage } from './pages/public/ProfilePage';
 import { VisionMissionPage } from './pages/public/VisionMissionPage';
 import { FacultyProgramsPage } from './pages/public/FacultyProgramsPage';
 import { FacilitiesPage } from './pages/public/FacilitiesPage';
+import { FacilityDetailPage } from './pages/public/FacilityDetailPage';
 import { PostsPage } from './pages/public/PostsPage';
 import { GalleriesPage } from './pages/public/GalleriesPage';
 import { DynamicCustomPage } from './pages/public/DynamicCustomPage';
@@ -724,7 +725,9 @@ function prodiRouteElements() {
       <Route path="/dosen" element={wrap(<LecturersPage />)} />
       <Route path="/dosen/:id" element={wrap(<LecturerDetailPage />)} />
       <Route path="/sarana-prasarana" element={wrap(<FacilitiesPage />)} />
+      <Route path="/sarana-prasarana/:id" element={wrap(<FacilityDetailPage />)} />
       <Route path="/sarpras" element={wrap(<FacilitiesPage />)} />
+      <Route path="/sarpras/:id" element={wrap(<FacilityDetailPage />)} />
       <Route path="/berita" element={wrap(<PostsPage />)} />
       <Route path="/galeri" element={wrap(<GalleriesPage />)} />
       <Route path="/kontak" element={wrap(<ContactPage />)} />

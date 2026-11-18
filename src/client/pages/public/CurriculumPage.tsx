@@ -1,30 +1,22 @@
 ﻿import React, { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { MagnifyingGlassIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
+import { FunnelIcon, MagnifyingGlassIcon, DocumentArrowDownIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { Field, FormModal } from '../../components/ui/FormModal';
 import { DokumenPreviewModal } from '../../components/DokumenPreviewModal';
-/** Label lengkap untuk dropdown filter di atas. */
-function formatSemesterFilter(smt: string | number | null | undefined): string {
-  if (smt === null || smt === undefined || smt === '') return '-';
-  const str = String(smt).trim();
-  if (/^\d+$/.test(str)) return `Semester ${str}`;
-  return str.replace(/-/g, ' ');
-}
 
 /**
- * Label ringkas untuk kolom tabel agar muat presisi.
- * Contoh: "Semester-1-2026" -> "Semester 1", atau "1" -> "Semester 1".
+ * Label lengkap untuk judul satuan semester, mis. "Semester-1-2026" → "Semester 1".
+ * Nilai numerik dari `semester_number` sudah tampil rapi tanpa perlu diubah.
  */
-function formatSemesterTable(smt: string | number | null | undefined): string {
-  if (smt === null || smt === undefined || smt === '') return '-';
+function formatSemesterLabel(smt: string | number | null | undefined): string {
+  if (smt === null || smt === undefined || smt === '') return 'Tanpa Semester';
   const str = String(smt).trim();
   if (/^\d+$/.test(str)) return `Semester ${str}`;
-  // Jika "Semester-1-2026" atau "Semester 1 2026", ambil "Semester 1"
   const match = str.match(/^Semester[- ](\d+)/i);
   if (match) return `Semester ${match[1]}`;
-  return str;
+  return str.replace(/-/g, ' ');
 }
 
 import { useSeo } from '../../hooks/useSeo';
@@ -43,6 +35,24 @@ type BarisMataKuliah = {
   semesterNumber: number | string | null;
 };
 
+/** Kelompok mata kuliah untuk satu semester beserta angka ringkasnya. */
+type KelompokSemester = {
+  /** `null` untuk mata kuliah tanpa semester. */
+  number: number | null;
+  courses: BarisMataKuliah[];
+  totalCredits: number;
+  totalRps: number;
+};
+
+const SEMESTER_RANGE = [1, 2, 3, 4, 5, 6, 7, 8];
+
+/** Angka semester bila nilainya murni angka; selain itu `null`. */
+function asSemesterNumber(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const num = Number(value);
+  return Number.isInteger(num) && num > 0 ? num : null;
+}
+
 /**
  * Halaman publik kurikulum.
  *
@@ -54,7 +64,7 @@ export const CurriculumPage: React.FC = () => {
   useSeo({ tenant, title: 'Kurikulum', description: 'Struktur kurikulum program studi beserta mata kuliah, SKS, dan dokumen RPS.' });
 
   const [search, setSearch] = useState('');
-  const [semesterFilter, setSemesterFilter] = useState<string | 'all'>('all');
+  const [semesterFilter, setSemesterFilter] = useState<number | 'all'>('all');
 
   /*
    * RPS dilindungi kata sandi prodi yang sama dengan arsip dokumen. Kata sandi
@@ -73,10 +83,8 @@ export const CurriculumPage: React.FC = () => {
     queryFn: () => curriculumApi.public().then((res) => res.data),
   });
 
-  const summary = curriculumQuery.data?.summary;
   const curriculums = curriculumQuery.data?.curriculums ?? [];
   const activeCurriculum = curriculums[0] ?? null;
-
   const courses = useMemo(() => {
     if (!activeCurriculum) return [];
 
@@ -89,8 +97,8 @@ export const CurriculumPage: React.FC = () => {
      * publik selama migrasi belum tuntas.
      */
     const fromItems = (activeCurriculum.items ?? []).map((item) => {
-      // Semester kalender dipakai lebih dulu; bila kosong, jatuh ke posisi
-      // warisan agar pengelompokan tetap punya angka.
+      // Semester pilihan admin didahulukan; kalau kosong, jatuh ke posisi
+      // warisan, lalu ke nama semester kalender untuk data lama.
       const legacyPosition = activeCurriculum.semesters.find((semester) =>
         semester.courses.some((course) => course.id === item.id),
       )?.semesterNumber;
@@ -102,7 +110,7 @@ export const CurriculumPage: React.FC = () => {
         credits: item.credits,
         description: item.description,
         rpsDocuments: item.rpsDocuments,
-        semesterNumber: legacyPosition ?? item.academicSemester?.name ?? null,
+        semesterNumber: item.semesterNumber ?? legacyPosition ?? item.academicSemester?.name ?? null,
       };
     });
 
@@ -124,48 +132,77 @@ export const CurriculumPage: React.FC = () => {
     return [...fromItems, ...fromLegacy];
   }, [activeCurriculum]);
 
-  /**
-   * Pilihan filter semester: memprioritaskan seluruh master semester dari database
-   * (Semester-1-2026 s/d Semester-8-2026), lalu digabung dengan semester dari courses jika ada.
+
+  /*
+   * Pengelompokan per semester menjadi bangunan utama halaman: satu kartu
+   * ringkas per semester di atas, satu tabel per semester di bawahnya.
    */
-  const semesterOptions = useMemo(() => {
-    const list: string[] = [];
-    const set = new Set<string>();
-
-    if (curriculumQuery.data?.masterSemesters?.length) {
-      for (const ms of curriculumQuery.data.masterSemesters) {
-        if (!set.has(ms.name)) {
-          set.add(ms.name);
-          list.push(ms.name);
-        }
-      }
-    }
-
-    for (const course of courses) {
-      if (course.semesterNumber !== null && course.semesterNumber !== undefined) {
-        const val = String(course.semesterNumber);
-        if (!set.has(val)) {
-          set.add(val);
-          list.push(val);
-        }
-      }
-    }
-
-    return list.sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
-  }, [curriculumQuery.data?.masterSemesters, courses]);
-
-  const filtered = useMemo(() => {
+  const kelompok = useMemo<KelompokSemester[]>(() => {
     const keyword = search.trim().toLowerCase();
-    return courses.filter((course) => {
-      const matchSemester =
-        semesterFilter === 'all' || String(course.semesterNumber) === String(semesterFilter);
-      const matchKeyword =
-        keyword === '' ||
-        course.name.toLowerCase().includes(keyword) ||
-        course.code.toLowerCase().includes(keyword);
-      return matchSemester && matchKeyword;
+    const cocok = (course: BarisMataKuliah) =>
+      keyword === '' ||
+      course.name.toLowerCase().includes(keyword) ||
+      course.code.toLowerCase().includes(keyword);
+
+    const map = new Map<number | null, BarisMataKuliah[]>();
+    for (const course of courses) {
+      const number = asSemesterNumber(course.semesterNumber);
+      const list = map.get(number) ?? [];
+      list.push(course);
+      map.set(number, list);
+    }
+
+    const numbers = [...map.keys()]
+      .filter((n): n is number => n !== null)
+      .sort((a, b) => a - b);
+    const urutan: (number | null)[] = map.has(null) ? [...numbers, null] : numbers;
+
+    return urutan.map((number) => {
+      const isi = (map.get(number) ?? []).filter(cocok);
+      return {
+        number,
+        courses: isi,
+        totalCredits: isi.reduce((acc, course) => acc + course.credits, 0),
+        totalRps: isi.filter((course) => course.rpsDocuments.length > 0).length,
+      };
     });
-  }, [courses, search, semesterFilter]);
+  }, [courses, search]);
+
+  /** Kelompok yang ditampilkan: semua, atau satu semester yang dipilih. */
+  const kelompokTampil = useMemo(
+    () =>
+      semesterFilter === 'all'
+        ? kelompok.filter((g) => g.courses.length > 0)
+        : kelompok.filter((g) => g.number === semesterFilter),
+    [kelompok, semesterFilter],
+  );
+
+  /*
+   * Kartu ringkasan semester: selalu menampilkan Semester 1 s/d 8 ditambah
+   * "Semua". Angka per kartu dihitung dari seluruh mata kuliah semester itu,
+   * bukan dari hasil pencarian, agar indikator tidak berubah saat mengetik.
+   */
+  const kartuSemester = useMemo(() => {
+    const perNomor = new Map<number, { mk: number; sks: number }>();
+    for (const course of courses) {
+      const number = asSemesterNumber(course.semesterNumber);
+      if (number === null) continue;
+      const isi = perNomor.get(number) ?? { mk: 0, sks: 0 };
+      isi.mk += 1;
+      isi.sks += course.credits;
+      perNomor.set(number, isi);
+    }
+
+    const nomor = [...new Set([...SEMESTER_RANGE, ...perNomor.keys()])].sort((a, b) => a - b);
+    return nomor.map((number) => ({
+      number,
+      mk: perNomor.get(number)?.mk ?? 0,
+      sks: perNomor.get(number)?.sks ?? 0,
+    }));
+  }, [courses]);
+
+  const totalMk = courses.length;
+  const totalSks = courses.reduce((acc, course) => acc + course.credits, 0);
 
   /*
    * Verifikasi kata sandi cukup sekali per halaman: setelah benar, kata sandi
@@ -220,48 +257,28 @@ export const CurriculumPage: React.FC = () => {
       header: 'Kode MK',
       width: 140,
       cellClassName: 'font-medium text-slate-700',
-      render: (course) => course.code,
+      render: (course) => (
+        <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700">
+          {course.code}
+        </span>
+      ),
     },
     {
-      /*
-       * Lebar nama dibatasi, bukan dibiarkan menyerap seluruh sisa tabel.
-       * Judul mata kuliah memang paling panjang, tetapi bila dibiarkan melebar
-       * sampai tepi kanan barisnya jadi terlalu jauh untuk dipindai mata dan
-       * kolom lain terdorong jauh ke kanan.
-       */
       key: 'nama',
       header: 'Nama Mata Kuliah',
-      width: 340,
-      cellClassName: 'font-medium text-slate-800',
+      cellClassName: 'font-semibold text-slate-800',
       render: (course) => course.name,
     },
     {
       key: 'sks',
       header: 'SKS',
-      width: 64,
+      width: 72,
       align: 'center',
-      cellClassName: 'whitespace-nowrap text-slate-700',
-      render: (course) => course.credits,
-    },
-    {
-      key: 'semester',
-      header: 'Smt',
-      width: 120,
-      align: 'center',
-      cellClassName: 'whitespace-nowrap',
-      render: (course) => {
-        const ringkas = formatSemesterTable(course.semesterNumber);
-        const lengkap = formatSemesterFilter(course.semesterNumber);
-        if (ringkas === '-') return <span className="text-slate-400">—</span>;
-        return (
-          <span
-            className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
-            title={lengkap}
-          >
-            {ringkas}
-          </span>
-        );
-      },
+      render: (course) => (
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-50 text-xs font-bold text-[#1e3a8a]">
+          {course.credits}
+        </span>
+      ),
     },
     {
       key: 'keterangan',
@@ -308,7 +325,18 @@ export const CurriculumPage: React.FC = () => {
          * Keadaan memuat/galat/kosong ditangani DataTable. Header ringkasan dan
          * penyaring hanya tampil bila kurikulum sudah dimuat dan tersedia.
          */}
-        {!curriculumQuery.isLoading && !curriculumQuery.isError && !activeCurriculum ? (
+        {curriculumQuery.isLoading || curriculumQuery.isError ? (
+          <DataTable<BarisMataKuliah>
+            rows={[]}
+            rowKey={(course) => String(course.id)}
+            columns={columns}
+            loading={curriculumQuery.isLoading}
+            loadingLabel="Memuat kurikulum"
+            loadingRows={4}
+            error={curriculumQuery.isError ? toApiError(curriculumQuery.error).message : null}
+            onRetry={() => void curriculumQuery.refetch()}
+          />
+        ) : !activeCurriculum ? (
           <DataTable<BarisMataKuliah>
             rows={[]}
             rowKey={(course) => String(course.id)}
@@ -318,80 +346,136 @@ export const CurriculumPage: React.FC = () => {
           />
         ) : (
           <>
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
-                {activeCurriculum?.name ?? 'Kurikulum Program Studi'}
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Tahun kurikulum {activeCurriculum?.year ?? '—'}
-                {activeCurriculum?.description ? ` • ${activeCurriculum.description}` : ''}
-              </p>
-
-              <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {[
-                  { label: 'Semester', value: summary?.totalSemesters ?? 0 },
-                  { label: 'Mata Kuliah', value: summary?.totalCourses ?? 0 },
-                  { label: 'Total SKS', value: summary?.totalCredits ?? 0 },
-                  { label: 'RPS Tersedia', value: summary?.totalRps ?? 0 },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-xl bg-slate-50 px-4 py-3">
-                    <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{item.label}</dt>
-                    <dd className="mt-0.5 text-xl font-extrabold text-[#1e3a8a]">{item.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <div className="relative flex-1">
-                <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari nama atau kode mata kuliah"
-                  aria-label="Cari mata kuliah"
-                  className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
+            {/* Panel penyaring: pilih semester (kartu) atau cari mata kuliah. */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <p className="flex items-center gap-2 text-xs font-semibold text-slate-500 lg:pt-2">
+                  <FunnelIcon className="h-4 w-4" />
+                  Pilih semester atau cari mata kuliah
+                </p>
+                <div className="relative lg:w-80">
+                  <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Cari kode atau nama MK..."
+                    aria-label="Cari kode atau nama mata kuliah"
+                    className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
               </div>
 
-              <select
-                value={semesterFilter}
-                onChange={(event) => setSemesterFilter(event.target.value)}
-                aria-label="Saring berdasarkan semester"
-                className="rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 shadow-2xs hover:border-slate-400 focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer transition-colors"
-              >
-                <option value="all">Semua semester</option>
-                {semesterOptions.map((semester) => (
-                  <option key={semester} value={semester}>
-                    {formatSemesterFilter(semester)}
-                  </option>
+              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4 xl:grid-cols-9">
+                <button
+                  type="button"
+                  onClick={() => setSemesterFilter('all')}
+                  aria-pressed={semesterFilter === 'all'}
+                  className={`rounded-xl border px-3.5 py-3 text-left transition-colors ${
+                    semesterFilter === 'all'
+                      ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white'
+                      : 'border-slate-200 bg-white hover:border-[#1e3a8a]/40'
+                  }`}
+                >
+                  <span className="block text-sm font-bold">Semua</span>
+                  <span className={`mt-0.5 block text-[11px] ${semesterFilter === 'all' ? 'text-blue-100' : 'text-slate-500'}`}>
+                    {totalMk} MK · {totalSks} SKS
+                  </span>
+                  <span
+                    className={`mt-2 block h-1 rounded-full ${
+                      semesterFilter === 'all' ? 'bg-amber-400' : 'bg-[#1e3a8a]/20'
+                    }`}
+                  />
+                </button>
+
+                {kartuSemester.map((kartu) => {
+                  const aktif = semesterFilter === kartu.number;
+                  return (
+                    <button
+                      key={kartu.number}
+                      type="button"
+                      onClick={() => setSemesterFilter(kartu.number)}
+                      aria-pressed={aktif}
+                      className={`rounded-xl border px-3.5 py-3 text-left transition-colors ${
+                        aktif
+                          ? 'border-[#1e3a8a] bg-[#e8eefb]'
+                          : 'border-slate-200 bg-white hover:border-[#1e3a8a]/40'
+                      }`}
+                    >
+                      <span className="block text-sm font-bold text-slate-800">Semester {kartu.number}</span>
+                      <span className="mt-0.5 block text-[11px] text-slate-500">
+                        {kartu.mk} MK · {kartu.sks} SKS
+                      </span>
+                      <span
+                        className={`mt-2 block h-1 rounded-full ${aktif ? 'bg-[#1e3a8a]' : 'bg-[#1e3a8a]/20'}`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {kelompokTampil.length === 0 ? (
+              <div className="mt-6">
+                <DataTable<BarisMataKuliah>
+                  rows={[]}
+                  rowKey={(course) => String(course.id)}
+                  columns={columns}
+                  loading={curriculumQuery.isLoading}
+                  loadingLabel="Memuat kurikulum"
+                  emptyTitle="Tidak ada mata kuliah yang cocok"
+                  emptyDescription="Ubah kata kunci pencarian atau pilih semester lain."
+                />
+              </div>
+            ) : (
+              <div className="mt-6 space-y-6">
+                {kelompokTampil.map((grup) => (
+                  <section
+                    key={grup.number ?? 'tanpa-semester'}
+                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                    aria-label={grup.number ? `Semester ${grup.number}` : 'Tanpa semester'}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/80 px-5 py-4">
+                      <div className="flex items-center gap-3.5">
+                        <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-[#1e3a8a] text-white">
+                          <span className="text-[9px] font-bold uppercase leading-none tracking-wide text-blue-200">
+                            SMT
+                          </span>
+                          <span className="text-lg font-extrabold leading-none">{grup.number ?? '—'}</span>
+                        </div>
+                        <div>
+                          <h3 className="text-base font-extrabold text-slate-900">
+                            {formatSemesterLabel(grup.number)}
+                          </h3>
+                          <p className="text-xs text-slate-500">{grup.courses.length} mata kuliah</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-[#1e3a8a]">
+                          {grup.totalCredits} SKS
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                          <DocumentTextIcon className="h-3.5 w-3.5 shrink-0" />
+                          {grup.totalRps} RPS
+                        </span>
+                      </div>
+                    </div>
+
+                    <DataTable<BarisMataKuliah>
+                      rows={grup.courses}
+                      rowKey={(course) => String(course.id)}
+                      columns={columns}
+                      minWidth={860}
+                    />
+                  </section>
                 ))}
-              </select>
-            </div>
+              </div>
+            )}
 
-            <div className="mt-4">
-              <DataTable<BarisMataKuliah>
-                rows={filtered}
-                rowKey={(course) => String(course.id)}
-                loading={curriculumQuery.isLoading}
-                loadingLabel="Memuat kurikulum"
-                loadingRows={4}
-                error={curriculumQuery.isError ? toApiError(curriculumQuery.error).message : null}
-                onRetry={() => void curriculumQuery.refetch()}
-                emptyTitle={activeCurriculum ? 'Tidak ada mata kuliah yang cocok' : 'Kurikulum belum tersedia'}
-                emptyDescription={
-                  activeCurriculum
-                    ? 'Tidak ada mata kuliah yang cocok dengan pencarian Anda.'
-                    : 'Program studi belum mempublikasikan data kurikulum. Silakan hubungi admin prodi atau periksa kembali nanti.'
-                }
-                minWidth={980}
-                columns={columns}
-              />
-            </div>
-
-            <p className="mt-3 text-[11px] text-slate-500">
-              Menampilkan {filtered.length} dari {courses.length} mata kuliah.
+            <p className="mt-4 text-[11px] text-slate-500">
+              Menampilkan {kelompokTampil.reduce((acc, grup) => acc + grup.courses.length, 0)} dari {courses.length} mata kuliah
+              {activeCurriculum ? ` pada ${activeCurriculum.name} (${activeCurriculum.year})` : ''}.
             </p>
           </>
         )}

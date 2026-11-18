@@ -532,6 +532,49 @@ router.get(
   }),
 );
 
+/**
+ * GET /api/v1/public/facilities/:id
+ * Detail sarana prasarana publik berdasarkan ID lokal atau ID dari UNUSU Sarpras Hub.
+ */
+router.get(
+  '/facilities/:id',
+  requireTenant,
+  asyncHandler(async (req, res) => {
+    const rawId = req.params.id;
+    const numId = Number(rawId);
+    const isProdi = req.tenant!.tenantType !== 'faculty';
+    const studyProgramId = isProdi ? req.tenant!.id : -1;
+
+    // 1. Cari di fasilitas lokal terlebih dahulu
+    if (Number.isInteger(numId)) {
+      const local = await prisma.facility.findFirst({
+        where: { id: numId, studyProgramId },
+      });
+      if (local) {
+        return res.json({ success: true, facility: local });
+      }
+    }
+
+    // 2. Jika tidak ada di lokal dan tenant adalah prodi, cari di sarpras hub
+    if (isProdi && req.tenant!.code) {
+      try {
+        const sarprasHub = await getSarprasByProdiCode(req.tenant!.code);
+        const item = sarprasHub.find((f) => String(f.id) === String(rawId));
+        if (item) {
+          return res.json({ success: true, facility: item });
+        }
+      } catch {
+        // abaikan galat eksternal
+      }
+    }
+
+    res.status(404).json({
+      success: false,
+      message: 'Fasilitas sarana dan prasarana tidak ditemukan.',
+    });
+  }),
+);
+
 /** GET /api/v1/public/posts: berita yang sudah terbit, dengan pagination. */
 router.get(
   '/posts',
@@ -1061,6 +1104,7 @@ router.get(
           name: it.course.name,
           credits: it.credits,
           description: it.description,
+          semesterNumber: it.semesterNumber ?? null,
           academicSemester: it.academicSemester
             ? {
                 id: it.academicSemester.id,
@@ -1090,6 +1134,7 @@ router.get(
             name: legacy.name,
             credits: legacy.credits,
             description: legacy.description,
+            semesterNumber: sem.semesterNumber,
             academicSemester: legacy.academicSemester
               ? {
                   id: legacy.academicSemester.id,
