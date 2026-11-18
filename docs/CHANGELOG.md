@@ -1,5 +1,11 @@
 ﻿# Changelog
 
+## Unreleased
+
+- LMS: tambah pembuatan kelas `Utama` secara idempoten dari seluruh penawaran kurikulum aktif; dosen pertama pada penawaran kurikulum dipakai sebagai pengampu awal bila tersedia.
+- LMS: kandidat plotting peserta kini diambil dari API ONE UNUSU dengan peran `MAHASISWA`; peserta tetap dipilih dan disimpan per kelas sebelum sinkronisasi ke LMS.
+- LMS: perbaiki validasi parameter ID pada ubah, hapus, dan plotting peserta kelas.
+
 Semua perubahan penting dicatat di sini. Format tanggal: YYYY-MM-DD.
 
 ## 2026-11-18 — Gambar Visi & Misi mengikuti Profil

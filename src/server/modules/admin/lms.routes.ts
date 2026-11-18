@@ -7,6 +7,7 @@ import { scopedTenantId } from '../../middlewares/tenantScope.js';
 import { AppError } from '../../utils/errors.js';
 import { recordAudit } from '../../services/auditService.js';
 import { idParamSchema } from '../../../shared/schemas/common.js';
+import { config } from '../../config/index.js';
 
 const router = Router();
 
@@ -46,6 +47,52 @@ const studentsSchema = z.object({
     )
     .max(500),
 });
+
+const generateClassroomsSchema = z.object({
+  semesterNumber: z.coerce.number().int().positive().max(20).optional(),
+});
+
+type OneUnusuStudent = {
+  nim?: string | null;
+  username?: string | null;
+  nama?: string | null;
+  role?: string | null;
+  isActive?: boolean;
+};
+
+async function fetchOneUnusuStudents(): Promise<Array<{ nim: string; name: string }>> {
+  if (!config.sso.apiKey) {
+    throw AppError.badGateway('ONE_UNUSU_API_KEY belum dikonfigurasi di server.', 'SSO_API_KEY_MISSING');
+  }
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${config.sso.baseUrl.replace(/\/$/, '')}/api/v2/website/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.sso.apiKey}`,
+      },
+      body: JSON.stringify({ role: 'MAHASISWA' }),
+    });
+  } catch {
+    throw AppError.badGateway('Gagal menghubungi portal ONE UNUSU.', 'UPSTREAM_UNREACHABLE');
+  }
+
+  const payload = (await upstream.json().catch(() => null)) as { status?: boolean; data?: OneUnusuStudent[]; message?: string } | null;
+  if (!upstream.ok || !payload?.status || !Array.isArray(payload.data)) {
+    throw AppError.badGateway(payload?.message || 'ONE UNUSU mengembalikan respon gagal.', 'UPSTREAM_ERROR');
+  }
+
+  const students = new Map<string, string>();
+  for (const user of payload.data) {
+    if (user.isActive === false || user.role?.toUpperCase() !== 'MAHASISWA') continue;
+    const nim = (user.nim || user.username || '').trim();
+    const name = user.nama?.trim() || nim;
+    if (nim) students.set(nim, name);
+  }
+  return [...students.entries()].map(([nim, name]) => ({ nim, name })).sort((a, b) => a.name.localeCompare(b.name, 'id'));
+}
 
 type ClassroomInput = z.infer<typeof classroomSchema>;
 
@@ -108,6 +155,49 @@ router.get(
           .map((kelas) => ({ id: kelas.id, group: kelas.group })),
       })),
     });
+  }),
+);
+
+/** POST /api/v1/admin/lms/classrooms/generate: buat kelas Utama dari penawaran kurikulum aktif. */
+router.post(
+  '/lms/classrooms/generate',
+  requirePermission('curriculum.update'),
+  validate({ body: generateClassroomsSchema }),
+  asyncHandler(async (req, res) => {
+    const tenantId = scopedTenantId(req);
+    const { semesterNumber } = getBody<z.infer<typeof generateClassroomsSchema>>(req);
+    const items = await prisma.curriculumItem.findMany({
+      where: {
+        curriculum: { studyProgramId: tenantId, isActive: true },
+        ...(semesterNumber ? { semesterNumber } : {}),
+      },
+      select: { id: true, lecturersData: true },
+    });
+
+    const existing = await prisma.lmsClassroom.findMany({
+      where: { curriculumItemId: { in: items.map((item) => item.id) }, group: 'Utama' },
+      select: { curriculumItemId: true },
+    });
+    const existingItemIds = new Set(existing.map((item) => item.curriculumItemId));
+    const candidates = items.filter((item) => !existingItemIds.has(item.id));
+
+    if (candidates.length > 0) {
+      await prisma.lmsClassroom.createMany({
+        data: candidates.map((item) => {
+          const lecturers = Array.isArray(item.lecturersData) ? item.lecturersData : [];
+          const firstLecturer = lecturers[0] as { nidn?: unknown; name?: unknown } | undefined;
+          return {
+            curriculumItemId: item.id,
+            group: 'Utama',
+            lecturerNidn: typeof firstLecturer?.nidn === 'string' ? firstLecturer.nidn : null,
+            lecturerName: typeof firstLecturer?.name === 'string' ? firstLecturer.name : null,
+          };
+        }),
+      });
+    }
+
+    await recordAudit({ req, action: 'CREATE', module: 'CURRICULUM', targetType: 'lms_classroom' });
+    res.json({ success: true, created: candidates.length, skipped: existing.length });
   }),
 );
 
@@ -423,25 +513,12 @@ router.post(
   }),
 );
 
-/** GET /api/v1/admin/lms/students: kandidat peserta untuk formulir plotting.
- *
- * Data induk mahasiswa milik SIAKAD, bukan Portal Prodi. Yang tersedia di sini
- * adalah mahasiswa yang SUDAH pernah di-plot ke kelas mana pun pada prodi ini,
- * supaya administrator dapat memakai ulang daftar yang sama tanpa mengetik
- * ulang NIM satu per satu.
- */
+/** GET /api/v1/admin/lms/students: kandidat mahasiswa aktif dari ONE UNUSU. */
 router.get(
   '/lms/students',
   requirePermission('curriculum.view'),
-  asyncHandler(async (req, res) => {
-    const tenantId = scopedTenantId(req);
-    const students = await prisma.lmsClassroomStudent.findMany({
-      where: { classroom: { curriculumItem: { curriculum: { studyProgramId: tenantId } } } },
-      distinct: ['nim'],
-      orderBy: { name: 'asc' },
-      select: { nim: true, name: true },
-    });
-
+  asyncHandler(async (_req, res) => {
+    const students = await fetchOneUnusuStudents();
     res.json({ success: true, students });
   }),
 );

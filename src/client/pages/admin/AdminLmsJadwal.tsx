@@ -8,6 +8,7 @@ import {
   UserGroupIcon,
   AcademicCapIcon,
   ArrowUpTrayIcon,
+  ArrowPathIcon,
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -164,6 +165,16 @@ export const AdminLmsJadwal: React.FC = () => {
     },
   });
 
+  const generateMutation = useMutation({
+    mutationFn: () => lmsAdminApi.generateClassrooms(),
+    onSuccess: (res) => {
+      toast.success(`${res.data.created} kelas dibuat. ${res.data.skipped} kelas yang sudah ada dilewati.`);
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'lms-classrooms'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'lms-courses'] });
+    },
+    onError: (error) => toast.error(toApiError(error).message),
+  });
+
   const removeMutation = useMutation({
     mutationFn: (id: number) => lmsAdminApi.removeClassroom(id),
     onSuccess: () => {
@@ -210,6 +221,15 @@ export const AdminLmsJadwal: React.FC = () => {
       actions={
         canEdit && courses.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+              className="btn-secondary"
+            >
+              <ArrowPathIcon className="h-4 w-4" />
+              {generateMutation.isPending ? 'Membuat kelas...' : 'Buat Kelas dari Kurikulum'}
+            </button>
             <button
               type="button"
               onClick={() => {

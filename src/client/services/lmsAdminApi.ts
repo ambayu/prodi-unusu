@@ -70,6 +70,10 @@ export const lmsAdminApi = {
   updateClassroom: (id: number, data: Partial<LmsClassroomInput>) =>
     api.put<{ success: boolean; classroom: LmsClassroom }>(`/admin/lms/classrooms/${id}`, data),
   removeClassroom: (id: number) => api.delete(`/admin/lms/classrooms/${id}`),
+  generateClassrooms: (semesterNumber?: number) =>
+    api.post<{ success: boolean; created: number; skipped: number }>('/admin/lms/classrooms/generate',
+      semesterNumber ? { semesterNumber } : {},
+    ),
   students: (classroomId: number) =>
     api.get<{ success: boolean; students: LmsStudentRow[] }>(`/admin/lms/classrooms/${classroomId}/students`),
   saveStudents: (classroomId: number, students: LmsStudentRow[]) =>
