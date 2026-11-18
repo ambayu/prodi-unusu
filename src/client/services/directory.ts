@@ -43,10 +43,11 @@ export interface PortalNews {
   publishedAt: string | null;
   views: number;
   category: { name: string; slug: string } | null;
-  studyProgramId: number;
-  studyProgramCode: string;
-  studyProgramName: string;
-  facultyName: string;
+  studyProgramId: number | null;
+  studyProgramCode: string | null;
+  studyProgramName: string | null;
+  facultyId?: number | null;
+  facultyName: string | null;
   prodiHostname: string | null;
   url: string | null;
 }

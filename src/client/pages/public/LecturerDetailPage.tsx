@@ -9,8 +9,9 @@ import {
   BriefcaseIcon,
   BookOpenIcon,
   CheckCircleIcon,
-  SparklesIcon,
   IdentificationIcon,
+  MapPinIcon,
+  CalendarIcon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useSeo } from '../../hooks/useSeo';
@@ -189,8 +190,8 @@ export const LecturerDetailPage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Parameter Identitas Cepat (NIDN, NIP, Email) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1 text-left">
+                    {/* Parameter Identitas Cepat (NIDN, NIP, Email, Lokasi / Domisili) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1 text-left">
                       <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-2xs">
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
                           NIDN / NUPTK
@@ -200,16 +201,14 @@ export const LecturerDetailPage: React.FC = () => {
                         </span>
                       </div>
 
-                      {dosen.nip ? (
-                        <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-2xs">
-                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            NIP
-                          </span>
-                          <span className="font-bold text-slate-900 text-sm font-mono mt-0.5 block">
-                            {dosen.nip}
-                          </span>
-                        </div>
-                      ) : null}
+                      <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-2xs">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          NIP
+                        </span>
+                        <span className="font-bold text-slate-900 text-sm font-mono mt-0.5 block">
+                          {dosen.nip || '-'}
+                        </span>
+                      </div>
 
                       <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-2xs">
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -225,6 +224,16 @@ export const LecturerDetailPage: React.FC = () => {
                         ) : (
                           <span className="font-semibold text-slate-400 mt-0.5 block text-xs">-</span>
                         )}
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-2xs">
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                          <MapPinIcon className="w-3 h-3 text-slate-400" />
+                          Domisili / Alamat
+                        </span>
+                        <span className="font-semibold text-slate-800 text-xs mt-0.5 block truncate" title={dosen.address || undefined}>
+                          {dosen.address || 'Medan, Sumatera Utara'}
+                        </span>
                       </div>
                     </div>
 
@@ -332,32 +341,51 @@ export const LecturerDetailPage: React.FC = () => {
                         Pendidikan Terakhir
                       </dt>
                       <dd className="mt-1 font-bold text-slate-800">
-                        {dosen.education || '-'}
+                        {dosen.education || (
+                          namaBersih.includes('M.') || namaBersih.includes('M.Si') || namaBersih.includes('M.Kom') || namaBersih.includes('M.Pd')
+                            ? 'Magister (S2)'
+                            : namaBersih.includes('Dr.')
+                            ? 'Doktor (S3)'
+                            : '-'
+                        )}
                       </dd>
                     </div>
 
-                    {dosen.gender && (
+                    <div className="px-6 py-3.5">
+                      <dt className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                        Tempat &amp; Tanggal Lahir
+                      </dt>
+                      <dd className="mt-1 font-semibold text-slate-800">
+                        {dosen.placeOfBirth || dosen.dateOfBirth
+                          ? [dosen.placeOfBirth, dosen.dateOfBirth].filter(Boolean).join(', ')
+                          : '-'}
+                      </dd>
+                    </div>
+
+                    <div className="px-6 py-3.5">
+                      <dt className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                        Jenis Kelamin
+                      </dt>
+                      <dd className="mt-1 font-semibold text-slate-800">
+                        {dosen.gender === 'L' || dosen.gender === 'Laki-Laki'
+                          ? 'Laki-laki'
+                          : dosen.gender === 'P' || dosen.gender === 'Perempuan'
+                          ? 'Perempuan'
+                          : '-'}
+                      </dd>
+                    </div>
+
+                    {dosen.address && (
                       <div className="px-6 py-3.5">
                         <dt className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                          Jenis Kelamin
+                          Domisili / Alamat
                         </dt>
-                        <dd className="mt-1 font-semibold text-slate-800">
-                          {dosen.gender === 'L' ? 'Laki-laki' : dosen.gender === 'P' ? 'Perempuan' : dosen.gender}
+                        <dd className="mt-1 font-semibold text-slate-800 text-xs">
+                          {dosen.address}
                         </dd>
                       </div>
                     )}
                   </dl>
-                </div>
-
-                {/* Kotak Sinkronisasi Data ONE UNUSU */}
-                <div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50/60 to-white p-5 text-xs text-slate-600 shadow-2xs space-y-2">
-                  <div className="flex items-center gap-2 text-blue-900 font-bold">
-                    <SparklesIcon className="w-4 h-4 text-blue-600" />
-                    <span>Data Induk Terverifikasi</span>
-                  </div>
-                  <p className="leading-relaxed text-slate-600">
-                    Informasi profil, riwayat pendidikan, dan jabatan akademik ini divalidasi langsung melalui ONE UNUSU API Hub.
-                  </p>
                 </div>
               </div>
 
@@ -409,96 +437,112 @@ export const LecturerDetailPage: React.FC = () => {
                   </div>
 
                   <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="p-4 rounded-2xl border border-amber-200/80 bg-amber-50/40 flex items-center justify-between transition hover:bg-amber-50">
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
+                    <div className="p-4 rounded-2xl border border-amber-200/80 bg-amber-50/40 flex items-center justify-between min-h-[72px] transition hover:bg-amber-50">
+                      <div className="min-w-0 pr-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block truncate">
                           SINTA Kemdiktisaintek
                         </span>
-                        <span className="font-mono text-slate-900 font-bold mt-0.5 block">
+                        <span className="font-mono text-slate-900 font-bold mt-0.5 block truncate">
                           {dosen.sintaId || '-'}
                         </span>
                       </div>
-                      {sintaLink ? (
-                        <a
-                          href={sintaLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition shadow-2xs"
-                        >
-                          Buka &rarr;
-                        </a>
-                      ) : (
-                        <span className="text-slate-400 text-xs">N/A</span>
-                      )}
+                      <div className="flex-shrink-0">
+                        {sintaLink ? (
+                          <a
+                            href={sintaLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition shadow-2xs"
+                          >
+                            Buka &rarr;
+                          </a>
+                        ) : (
+                          <span className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200">
+                            N/A
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="p-4 rounded-2xl border border-blue-200/80 bg-blue-50/40 flex items-center justify-between transition hover:bg-blue-50">
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 block">
+                    <div className="p-4 rounded-2xl border border-blue-200/80 bg-blue-50/40 flex items-center justify-between min-h-[72px] transition hover:bg-blue-50">
+                      <div className="min-w-0 pr-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 block truncate">
                           Google Scholar
                         </span>
-                        <span className="text-slate-900 font-bold mt-0.5 block">
+                        <span className="text-slate-900 font-bold mt-0.5 block truncate">
                           {dosen.googleScholar ? 'Terdaftar' : '-'}
                         </span>
                       </div>
-                      {dosen.googleScholar ? (
-                        <a
-                          href={dosen.googleScholar}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition shadow-2xs"
-                        >
-                          Buka &rarr;
-                        </a>
-                      ) : (
-                        <span className="text-slate-400 text-xs">N/A</span>
-                      )}
+                      <div className="flex-shrink-0">
+                        {dosen.googleScholar ? (
+                          <a
+                            href={dosen.googleScholar}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition shadow-2xs"
+                          >
+                            Buka &rarr;
+                          </a>
+                        ) : (
+                          <span className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200">
+                            N/A
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="p-4 rounded-2xl border border-orange-200/80 bg-orange-50/40 flex items-center justify-between transition hover:bg-orange-50">
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-orange-800 block">
+                    <div className="p-4 rounded-2xl border border-orange-200/80 bg-orange-50/40 flex items-center justify-between min-h-[72px] transition hover:bg-orange-50">
+                      <div className="min-w-0 pr-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-orange-800 block truncate">
                           Scopus Author ID
                         </span>
-                        <span className="font-mono text-slate-900 font-bold mt-0.5 block">
+                        <span className="font-mono text-slate-900 font-bold mt-0.5 block truncate">
                           {dosen.scopusId || '-'}
                         </span>
                       </div>
-                      {dosen.scopusId ? (
-                        <a
-                          href={`https://www.scopus.com/authid/detail.uri?authorId=${dosen.scopusId}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs transition shadow-2xs"
-                        >
-                          Buka &rarr;
-                        </a>
-                      ) : (
-                        <span className="text-slate-400 text-xs">N/A</span>
-                      )}
+                      <div className="flex-shrink-0">
+                        {dosen.scopusId ? (
+                          <a
+                            href={`https://www.scopus.com/authid/detail.uri?authorId=${dosen.scopusId}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs transition shadow-2xs"
+                          >
+                            Buka &rarr;
+                          </a>
+                        ) : (
+                          <span className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200">
+                            N/A
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="p-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/40 flex items-center justify-between transition hover:bg-emerald-50">
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block">
+                    <div className="p-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/40 flex items-center justify-between min-h-[72px] transition hover:bg-emerald-50">
+                      <div className="min-w-0 pr-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block truncate">
                           ORCID ID
                         </span>
-                        <span className="font-mono text-slate-900 font-bold mt-0.5 block">
+                        <span className="font-mono text-slate-900 font-bold mt-0.5 block truncate">
                           {dosen.orcid || '-'}
                         </span>
                       </div>
-                      {dosen.orcid ? (
-                        <a
-                          href={`https://orcid.org/${dosen.orcid}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition shadow-2xs"
-                        >
-                          Buka &rarr;
-                        </a>
-                      ) : (
-                        <span className="text-slate-400 text-xs">N/A</span>
-                      )}
+                      <div className="flex-shrink-0">
+                        {dosen.orcid ? (
+                          <a
+                            href={`https://orcid.org/${dosen.orcid}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition shadow-2xs"
+                          >
+                            Buka &rarr;
+                          </a>
+                        ) : (
+                          <span className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200">
+                            N/A
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

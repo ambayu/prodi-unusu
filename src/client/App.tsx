@@ -26,6 +26,7 @@ import { FacultyProgramsPage } from './pages/public/FacultyProgramsPage';
 import { FacilitiesPage } from './pages/public/FacilitiesPage';
 import { FacilityDetailPage } from './pages/public/FacilityDetailPage';
 import { PostsPage } from './pages/public/PostsPage';
+import { PostDetailPage } from './pages/public/PostDetailPage';
 import { GalleriesPage } from './pages/public/GalleriesPage';
 import { DynamicCustomPage } from './pages/public/DynamicCustomPage';
 
@@ -729,6 +730,7 @@ function prodiRouteElements() {
       <Route path="/sarpras" element={wrap(<FacilitiesPage />)} />
       <Route path="/sarpras/:id" element={wrap(<FacilityDetailPage />)} />
       <Route path="/berita" element={wrap(<PostsPage />)} />
+      <Route path="/berita/:slug" element={wrap(<PostDetailPage />)} />
       <Route path="/galeri" element={wrap(<GalleriesPage />)} />
       <Route path="/kontak" element={wrap(<ContactPage />)} />
       <Route path="/halaman/:slug" element={wrap(<DynamicCustomPage />)} />

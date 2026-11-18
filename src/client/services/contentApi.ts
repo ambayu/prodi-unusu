@@ -370,6 +370,9 @@ export interface PublicLecturer extends Omit<Lecturer, 'isActive' | 'sortOrder' 
   googleScholar?: string | null;
   scopusId?: string | null;
   orcid?: string | null;
+  placeOfBirth?: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
 }
 
 /** Satu kelompok dosen pada website fakultas, yaitu dosen milik satu prodi. */
@@ -672,6 +675,8 @@ export interface Post {
 export const postApi = {
   publicList: (params?: { page?: number; perPage?: number; search?: string }) =>
     api.get<Paginated<Post>>('/public/posts', { params }),
+  publicDetail: (slug: string) =>
+    api.get<{ success: boolean; post: Post }>('/public/posts/' + encodeURIComponent(slug)),
   list: (params?: { page?: number; perPage?: number; search?: string }) =>
     api.get<Paginated<Post>>('/admin/posts', { params }),
   get: (id: number) => api.get<{ post: Post }>(`/admin/posts/${id}`),

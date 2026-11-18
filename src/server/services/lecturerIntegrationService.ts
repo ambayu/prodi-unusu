@@ -19,6 +19,9 @@ export interface InterServiceLecturer {
   scopusId?: string | null;
   orcid?: string | null;
   bio?: string | null;
+  placeOfBirth?: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
   photoUrl: string | null;
   isActive: boolean;
 }

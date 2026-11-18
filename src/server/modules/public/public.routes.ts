@@ -476,6 +476,9 @@ router.get(
             scopusId: dosen.scopusId ?? null,
             orcid: dosen.orcid ?? null,
             bio: dosen.bio ?? null,
+            placeOfBirth: dosen.placeOfBirth ?? null,
+            dateOfBirth: dosen.dateOfBirth ?? null,
+            address: dosen.address ?? null,
             photoUrl: dosen.photoUrl,
             isActive: dosen.isActive,
           },
@@ -876,13 +879,30 @@ router.get(
             },
           },
         },
+        faculty: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            domains: {
+              where: { isActive: true },
+              orderBy: { isPrimary: 'desc' },
+              select: { hostname: true },
+            },
+          },
+        },
       },
     });
 
     res.json({
       success: true,
       items: posts.map((post) => {
-        const hostname = post.studyProgram?.domains[0]?.hostname ?? null;
+        const isFaculty = !post.studyProgram && Boolean(post.faculty);
+        const targetHostname =
+          post.studyProgram?.domains[0]?.hostname ?? post.faculty?.domains[0]?.hostname ?? null;
+        const targetCode = post.studyProgram?.code ?? post.faculty?.code ?? null;
+        const targetName = post.studyProgram?.name ?? post.faculty?.name ?? null;
+
         return {
           id: post.id,
           title: post.title,
@@ -893,12 +913,13 @@ router.get(
           views: post.views,
           category: post.category,
           studyProgramId: post.studyProgram?.id ?? null,
-          studyProgramCode: post.studyProgram?.code ?? null,
-          studyProgramName: post.studyProgram?.name ?? null,
-          facultyName: post.studyProgram?.faculty.name ?? null,
-          prodiHostname: hostname,
-          // Tautan absolut ke domain prodi asal agar tidak bergantung konteks host.
-          url: hostname ? `https://${hostname}/berita/${post.slug}` : null,
+          studyProgramCode: targetCode,
+          studyProgramName: targetName,
+          facultyId: post.faculty?.id ?? null,
+          facultyName: post.studyProgram?.faculty.name ?? (isFaculty ? post.faculty?.name : null),
+          prodiHostname: targetHostname,
+          // Tautan absolut ke domain prodi atau fakultas asal agar langsung membuka detail beritanya.
+          url: targetHostname ? `https://${targetHostname}/berita/${post.slug}` : null,
         };
       }),
     });

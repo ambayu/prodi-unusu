@@ -1,4 +1,5 @@
 ﻿import React from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarDaysIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -39,16 +40,17 @@ export const PostsPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {(postsQuery.data?.items ?? []).map((post) => (
-              <article
+              <Link
                 key={post.id}
-                className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                to={`/berita/${post.slug}`}
+                className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-md"
               >
                 {post.thumbnailUrl ? (
                   <img
                     src={post.thumbnailUrl}
                     alt={`Ilustrasi berita ${post.title}`}
                     loading="lazy"
-                    className="h-44 w-full object-cover"
+                    className="h-44 w-full object-cover transition duration-300 group-hover:scale-105"
                   />
                 ) : null}
 
@@ -59,7 +61,7 @@ export const PostsPage: React.FC = () => {
                     </span>
                   ) : null}
 
-                  <h2 className="mt-2 text-sm font-bold leading-snug text-slate-900">{post.title}</h2>
+                  <h2 className="mt-2 text-sm font-bold leading-snug text-slate-900 transition group-hover:text-emerald-700">{post.title}</h2>
 
                   {post.excerpt ? (
                     <p className="mt-1.5 line-clamp-3 flex-1 text-xs leading-relaxed text-slate-600">{post.excerpt}</p>
@@ -78,7 +80,7 @@ export const PostsPage: React.FC = () => {
                     </span>
                   </div>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         )}
