@@ -52,6 +52,38 @@ export async function resolveScopedTenantId(req: Request): Promise<number> {
   }
 
   if (user.tenantIds.length === 0) {
+    // Admin Fakultas tidak punya studyProgramId langsung — cari semua prodi
+    // di bawah fakultas yang ditugaskan, lalu pakai prodi pertama sebagai tenant.
+    if (user.facultyTenantIds && user.facultyTenantIds.length > 0) {
+      if (requested && Number.isInteger(requested) && requested > 0) {
+        const belongs = await prisma.studyProgram.count({
+          where: { id: requested, facultyId: { in: user.facultyTenantIds } },
+        });
+        if (belongs === 0) {
+          throw AppError.forbidden(
+            'Anda tidak berwenang mengelola program studi tersebut.',
+            'TENANT_SCOPE_DENIED',
+          );
+        }
+        return requested;
+      }
+
+      const firstProdi = await prisma.studyProgram.findFirst({
+        where: { facultyId: { in: user.facultyTenantIds }, status: 'active' },
+        orderBy: { id: 'asc' },
+        select: { id: true },
+      });
+
+      if (!firstProdi) {
+        throw AppError.forbidden(
+          'Belum ada program studi aktif di fakultas Anda.',
+          'NO_TENANT_ASSIGNMENT',
+        );
+      }
+
+      return firstProdi.id;
+    }
+
     throw AppError.forbidden(
       'Akun Anda belum ditugaskan ke program studi mana pun.',
       'NO_TENANT_ASSIGNMENT',
@@ -59,6 +91,20 @@ export async function resolveScopedTenantId(req: Request): Promise<number> {
   }
 
   if (requested && !user.tenantIds.includes(requested)) {
+    // Admin Fakultas: validasi prodi masuk dalam fakultas yang ditugaskan
+    if (user.facultyTenantIds && user.facultyTenantIds.length > 0) {
+      const belongs = await prisma.studyProgram.count({
+        where: { id: requested, facultyId: { in: user.facultyTenantIds } },
+      });
+      if (belongs === 0) {
+        throw AppError.forbidden(
+          'Anda tidak berwenang mengelola program studi tersebut.',
+          'TENANT_SCOPE_DENIED',
+        );
+      }
+      return requested;
+    }
+
     throw AppError.forbidden(
       'Anda tidak berwenang mengelola program studi tersebut.',
       'TENANT_SCOPE_DENIED',
