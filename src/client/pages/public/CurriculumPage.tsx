@@ -1,8 +1,10 @@
-﻿import React, { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+﻿import React, { useCallback, useMemo, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { MagnifyingGlassIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+import { Field, FormModal } from '../../components/ui/FormModal';
+import { DokumenPreviewModal } from '../../components/DokumenPreviewModal';
 /** Label lengkap untuk dropdown filter di atas. */
 function formatSemesterFilter(smt: string | number | null | undefined): string {
   if (smt === null || smt === undefined || smt === '') return '-';
@@ -27,7 +29,7 @@ function formatSemesterTable(smt: string | number | null | undefined): string {
 
 import { useSeo } from '../../hooks/useSeo';
 import { useTenant } from '../../hooks/useSite';
-import { curriculumApi, type CurriculumRpsRow } from '../../services/contentApi';
+import { arsipDokumenApi, curriculumApi, rpsBerkasApi, type CurriculumRpsRow } from '../../services/contentApi';
 import { toApiError } from '../../services/api';
 
 /** Satu baris mata kuliah pada tabel kurikulum. */
@@ -53,6 +55,18 @@ export const CurriculumPage: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [semesterFilter, setSemesterFilter] = useState<string | 'all'>('all');
+
+  /*
+   * RPS dilindungi kata sandi prodi yang sama dengan arsip dokumen. Kata sandi
+   * hanya hidup di memori halaman: tidak ditulis ke penyimpanan peramban dan
+   * hilang begitu halaman ditutup.
+   */
+  const [password, setPassword] = useState('');
+  /** RPS yang sedang diminta dibuka, memicu dialog kata sandi. */
+  const [rpsDiminta, setRpsDiminta] = useState<CurriculumRpsRow | null>(null);
+  const [passwordInput, setPasswordInput] = useState('');
+  /** RPS yang pratinjaunya sedang terbuka. */
+  const [rpsDibuka, setRpsDibuka] = useState<CurriculumRpsRow | null>(null);
 
   const curriculumQuery = useQuery({
     queryKey: ['public', 'curriculum'],
@@ -154,6 +168,49 @@ export const CurriculumPage: React.FC = () => {
   }, [courses, search, semesterFilter]);
 
   /*
+   * Verifikasi kata sandi cukup sekali per halaman: setelah benar, kata sandi
+   * disimpan di state dan dipakai ulang untuk setiap RPS. Server tidak
+   * menerbitkan tiket sesi, sehingga kata sandi dapat dipakai kapan saja.
+   */
+  const unlockMutation = useMutation({
+    mutationFn: (sandi: string) => arsipDokumenApi.unlock(sandi).then((res) => res.data),
+    onSuccess: (_data, sandi) => {
+      setPassword(sandi);
+      setPasswordInput('');
+      // RPS yang tadi diminta langsung dibuka setelah kata sandi benar.
+      if (rpsDiminta) {
+        setRpsDibuka(rpsDiminta);
+        setRpsDiminta(null);
+      }
+    },
+  });
+
+  const galatUnlock = unlockMutation.isError ? toApiError(unlockMutation.error).message : null;
+
+  /** Menekan "Lihat RPS": kata sandi diminta sekali, lalu diingat untuk halaman ini. */
+  const mintaBukaRps = (rps: CurriculumRpsRow) => {
+    if (password) {
+      setRpsDibuka(rps);
+      return;
+    }
+    setRpsDiminta(rps);
+    setPasswordInput('');
+    unlockMutation.reset();
+  };
+
+  const tutupDialogRps = () => {
+    setRpsDiminta(null);
+    setPasswordInput('');
+    unlockMutation.reset();
+  };
+
+  /* Pratinjau dan unduhan memakai berkas yang sama, sehingga mode diabaikan. */
+  const ambilBerkasRps = useCallback(
+    () => rpsBerkasApi(rpsDibuka?.fileUrl ?? '', password),
+    [rpsDibuka, password],
+  );
+
+  /*
    * Kolom tabel mata kuliah didefinisikan sebagai data agar lebar kolom tetap
    * dan kolom "Nama MK" saja yang melebar mengikuti panjang nama.
    */
@@ -224,15 +281,14 @@ export const CurriculumPage: React.FC = () => {
       align: 'right',
       render: (course) =>
         course.rpsDocuments && course.rpsDocuments.length > 0 ? (
-          <a
-            href={course.rpsDocuments[0].fileUrl}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={() => mintaBukaRps(course.rpsDocuments[0])}
             className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-[#1e3a8a]/20 px-2 py-1 text-xs font-bold text-[#1e3a8a] transition-colors hover:bg-[#e8eefb]"
           >
             <DocumentArrowDownIcon className="h-3.5 w-3.5 shrink-0" />
             Lihat RPS
-          </a>
+          </button>
         ) : (
           <span className="text-xs text-slate-400">Belum tersedia</span>
         ),
@@ -340,6 +396,60 @@ export const CurriculumPage: React.FC = () => {
           </>
         )}
       </section>
+
+      {/* -----------------------------------------------------------------
+          Dialog kata sandi: muncul saat menekan "Lihat RPS".
+          Memakai FormModal bersama agar fokus awal, tombol Escape, dan
+          pasangan tombol Batal/Simpan konsisten dengan formulir lain.
+          ----------------------------------------------------------------- */}
+      <FormModal
+        open={Boolean(rpsDiminta)}
+        title="RPS dilindungi kata sandi"
+        description="Masukkan kata sandi program studi untuk melihat dokumen RPS."
+        submitLabel="Buka RPS"
+        busy={unlockMutation.isPending}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!passwordInput) return;
+          unlockMutation.mutate(passwordInput);
+        }}
+        onClose={tutupDialogRps}
+      >
+        <Field label="Kata sandi dokumen" htmlFor="rps-password" required>
+          <input
+            id="rps-password"
+            type="password"
+            className="field-input"
+            autoComplete="current-password"
+            value={passwordInput}
+            onChange={(event) => setPasswordInput(event.target.value)}
+            placeholder="Masukkan kata sandi"
+          />
+        </Field>
+
+        {galatUnlock ? (
+          <p
+            role="alert"
+            className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-700"
+          >
+            {galatUnlock}
+          </p>
+        ) : null}
+
+        <p className="text-[11px] leading-relaxed text-slate-500">
+          Kata sandi diperoleh dari pengelola program studi.
+        </p>
+      </FormModal>
+
+      {rpsDibuka ? (
+        <DokumenPreviewModal
+          open
+          judul={rpsDibuka.title}
+          password={password}
+          ambilBerkas={ambilBerkasRps}
+          onClose={() => setRpsDibuka(null)}
+        />
+      ) : null}
     </>
   );
 };

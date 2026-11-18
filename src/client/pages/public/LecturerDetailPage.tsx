@@ -7,6 +7,8 @@ import {
   ArrowLeftIcon,
   ArrowTopRightOnSquareIcon,
   BuildingLibraryIcon,
+  UserIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useSeo } from '../../hooks/useSeo';
@@ -166,26 +168,40 @@ export const LecturerDetailPage: React.FC = () => {
 
             {/* Rincian Tabular & Riset */}
             <div className="p-6 sm:p-10 space-y-8">
+              {/* Biografi / Deskripsi Singkat Dosen (dari ONE UNUSU) */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                    <UserIcon className="h-4 w-4" />
+                  </div>
+                  <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-800">
+                    Deskripsi / Biografi Singkat
+                  </h2>
+                </div>
+                {dosen.bio ? (
+                  <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-white p-6 text-sm text-slate-700 leading-relaxed whitespace-pre-line shadow-xs">
+                    {dosen.bio}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center text-xs text-slate-400 italic">
+                    Belum ada biografi atau deskripsi singkat yang ditambahkan untuk dosen ini di portal ONE UNUSU.
+                  </div>
+                )}
+              </div>
+
               {/* Bidang Keahlian */}
               {dosen.expertise && (
                 <div>
-                  <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">
-                    Bidang Keahlian & Fokus Riset
-                  </h2>
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-5 text-sm text-slate-800 leading-relaxed font-medium">
-                    {dosen.expertise}
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700">
+                      <SparklesIcon className="h-4 w-4" />
+                    </div>
+                    <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-800">
+                      Bidang Keahlian & Fokus Riset
+                    </h2>
                   </div>
-                </div>
-              )}
-
-              {/* Biografi / Profil Ringkas */}
-              {dosen.bio && (
-                <div>
-                  <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">
-                    Biografi & Profil Akademik
-                  </h2>
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-5 text-sm text-slate-700 leading-relaxed whitespace-pre-line">
-                    {dosen.bio}
+                  <div className="rounded-2xl border border-slate-200/80 bg-white p-6 text-sm text-slate-800 leading-relaxed font-medium shadow-xs">
+                    {dosen.expertise}
                   </div>
                 </div>
               )}

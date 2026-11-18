@@ -9,7 +9,8 @@ import {
 
 interface DokumenPreviewModalProps {
   open: boolean;
-  arsipId: number;
+  /** Diabaikan bila `ambilBerkas` diisi (dipakai RPS yang punya jalur sendiri). */
+  arsipId?: number;
   judul: string;
   /**
    * Kata sandi arsip prodi; dikirim lewat header, tidak pernah di URL.
@@ -20,6 +21,8 @@ interface DokumenPreviewModalProps {
   sumber?: ArsipBerkasMode;
   /** Dokumen kiriman pusat (`arsip`, bawaan) atau buatan prodi (`prodi`). */
   asal?: DokumenAsal;
+  /** Pengambil berkas pengganti untuk dokumen yang bukan arsip, seperti RPS. */
+  ambilBerkas?: (mode: 'preview' | 'download') => Promise<Blob>;
   onClose: () => void;
 }
 
@@ -33,11 +36,12 @@ interface DokumenPreviewModalProps {
  */
 export const DokumenPreviewModal: React.FC<DokumenPreviewModalProps> = ({
   open,
-  arsipId,
+  arsipId = 0,
   judul,
   password = '',
   sumber = 'publik',
   asal = 'arsip',
+  ambilBerkas,
   onClose,
 }) => {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -56,7 +60,11 @@ export const DokumenPreviewModal: React.FC<DokumenPreviewModalProps> = ({
     setError(null);
     setBlobUrl(null);
 
-    arsipPreviewApi(arsipId, password, sumber, asal)
+    const muatPratinjau = ambilBerkas
+      ? ambilBerkas('preview')
+      : arsipPreviewApi(arsipId, password, sumber, asal);
+
+    muatPratinjau
       .then((blob) => {
         if (dibatalkan) return;
         urlSementara = URL.createObjectURL(blob);
@@ -75,7 +83,7 @@ export const DokumenPreviewModal: React.FC<DokumenPreviewModalProps> = ({
       // Membebaskan memori blob agar tidak menumpuk saat membuka banyak dokumen.
       if (urlSementara) URL.revokeObjectURL(urlSementara);
     };
-  }, [open, arsipId, password, sumber, asal]);
+  }, [open, arsipId, password, sumber, asal, ambilBerkas]);
 
   // Menutup dengan tombol Escape.
   useEffect(() => {
@@ -93,7 +101,9 @@ export const DokumenPreviewModal: React.FC<DokumenPreviewModalProps> = ({
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const blob = await arsipDownloadApi(arsipId, password, sumber, asal);
+      const blob = ambilBerkas
+        ? await ambilBerkas('download')
+        : await arsipDownloadApi(arsipId, password, sumber, asal);
       const url = URL.createObjectURL(blob);
       const tautan = document.createElement('a');
       tautan.href = url;

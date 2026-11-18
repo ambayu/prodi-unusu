@@ -14,12 +14,14 @@ import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import {
+  adminRpsFileUrl,
   curriculumApi,
   curriculumItemApi,
   academicSemesterApi,
   type Curriculum,
   type CurriculumItem,
 } from '../../services/contentApi';
+import { useSiteStore } from '../../app/siteStore';
 import { toApiError } from '../../services/api';
 
 /**
@@ -36,6 +38,7 @@ export const AdminCurriculum: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const { has } = usePermission();
+  const activeTenantId = useSiteStore((state) => state.activeTenantId);
 
   const [search, setSearch] = useState('');
   const [semesterFilter, setSemesterFilter] = useState<string>('ALL');
@@ -277,7 +280,7 @@ export const AdminCurriculum: React.FC = () => {
                   const rps = item.rpsDocuments ?? [];
                   return rps.length > 0 ? (
                     <a
-                      href={rps[0].fileUrl}
+                      href={adminRpsFileUrl(rps[0].fileUrl, activeTenantId)}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"

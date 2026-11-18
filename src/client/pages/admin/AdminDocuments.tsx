@@ -351,10 +351,10 @@ export const AdminDocuments: React.FC = () => {
           <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                     <div className="min-w-0 text-sm text-amber-900">
             <p className="font-bold leading-snug">
-              Dokumen prodi ini belum dilindungi kata sandi untuk publik.
+              Dokumen dan RPS prodi ini belum dilindungi kata sandi untuk publik.
             </p>
             <p className="mt-1.5 leading-relaxed">
-              Pengelola tetap dapat membuka dokumen tanpa kata sandi. Pengunjung publik memerlukannya untuk membuka berkas.
+              Pengelola tetap dapat membuka dokumen tanpa kata sandi. Pengunjung publik memerlukannya untuk membuka berkas dokumen maupun RPS.
             </p>
             <button
               type="button"
@@ -378,8 +378,8 @@ export const AdminDocuments: React.FC = () => {
                 Kunci Dokumen Prodi
               </h2>
               <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                Satu kata sandi berlaku untuk seluruh dokumen prodi ini. Kata sandi ini melindungi berkas
-                dari pengunjung publik; Anda sebagai pengelola tetap dapat membuka dokumen tanpa
+                Satu kata sandi berlaku untuk seluruh dokumen dan RPS prodi ini. Kata sandi ini melindungi
+                berkas dari pengunjung publik; Anda sebagai pengelola tetap dapat membuka dokumen tanpa
                 memasukkannya. Kata sandi tidak pernah disimpan sebagai teks biasa.
               </p>
             </div>

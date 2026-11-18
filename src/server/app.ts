@@ -205,14 +205,12 @@ export function createApp() {
    * Berkas RPS — endpoint PUBLIK.
    *
    * Dipasang SEBELUM `adminRouter` karena halaman kurikulum publik menautkan
-   * berkas RPS langsung. Bila dilewatkan `adminRouter`, pengunjung tanpa sesi
-   * akan menerima 401 sehingga tautan RPS publik selalu gagal. Perlindungannya
-   * adalah nama berkas acak yang tidak dapat ditebak, dan handler hanya
-   * menyajikan berkas berakhiran `.pdf` yang cocok dengan pola nama itu.
-   *
-   * Rute tulis RPS tetap berada di `rpsRoutes` pada `adminRouter` di bawah.
+   * berkas RPS tanpa sesi login. Berkasnya dilindungi kata sandi prodi
+   * (`x-arsip-password`), bukan oleh nama berkas yang acak. Rute tulis RPS dan
+   * pratinjau dari panel admin tetap berada di `rpsRoutes` pada `adminRouter`
+   * di bawah, sehingga pengelola prodi tidak perlu mengetik ulang kata sandinya.
    */
-  app.use('/api/v1/admin', publicRpsFileRouter);
+  app.use('/api/v1', publicRpsFileRouter);
 
   // Admin: seluruh endpoint mewajibkan sesi, CSRF, dan permission.
   const adminRouter = express.Router();

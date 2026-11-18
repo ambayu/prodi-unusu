@@ -8,6 +8,7 @@ import { Field } from '../../components/ui/FormModal';
 import { SearchableSelect, type SearchableOption } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import {
+  adminRpsFileUrl,
   courseMasterApi,
   curriculumApi,
   curriculumItemApi,
@@ -20,6 +21,7 @@ import {
   type CurriculumItem,
   type LecturerAssignment,
 } from '../../services/contentApi';
+import { useSiteStore } from '../../app/siteStore';
 import { firstFieldError, toApiError } from '../../services/api';
 
 interface Draft {
@@ -46,6 +48,7 @@ export const AdminCurriculumItemForm: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const activeTenantId = useSiteStore((state) => state.activeTenantId);
 
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [formError, setFormError] = useState<string | null>(null);
@@ -445,7 +448,7 @@ export const AdminCurriculumItemForm: React.FC = () => {
                     key={rps.id}
                     className="flex items-center justify-between gap-2 rounded-[8px] border border-slate-200 bg-slate-50 px-3 py-2 text-[11px]"
                   >
-                    <a href={rps.fileUrl} target="_blank" rel="noreferrer" className="truncate text-[#1e3a8a] font-semibold hover:underline">
+                    <a href={adminRpsFileUrl(rps.fileUrl, activeTenantId)} target="_blank" rel="noreferrer" className="truncate text-[#1e3a8a] font-semibold hover:underline">
                       {rps.title}
                     </a>
                     <button

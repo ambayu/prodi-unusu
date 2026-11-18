@@ -268,6 +268,48 @@ export const curriculumRpsApi = {
 /** Batas ukuran berkas RPS, sejalan dengan `config.upload.rpsMaxBytes` di server. */
 export const RPS_MAX_BYTES = 10 * 1024 * 1024;
 
+/**
+ * Mengambil berkas RPS publik sebagai blob.
+ *
+ * Kata sandi prodi dikirim lewat header `x-arsip-password` — sama seperti arsip
+ * dokumen — sehingga tidak pernah tercatat di URL, riwayat peramban, maupun log
+ * akses. `fileUrl` dari API berisi jalur admin; yang dipakai di sini hanya nama
+ * berkasnya, karena jalur publiknya berbeda.
+ */
+export async function rpsBerkasApi(fileUrl: string, password: string): Promise<Blob> {
+  const filename = fileUrl.split('/').pop() ?? '';
+  const response = await fetch(`/api/v1/public/rps/file/${encodeURIComponent(filename)}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { 'X-Arsip-Password': password },
+  });
+
+  if (!response.ok) {
+    let pesan = 'Berkas RPS tidak dapat dibuka.';
+    try {
+      const payload = (await response.json()) as { message?: string };
+      if (payload?.message) pesan = payload.message;
+    } catch {
+      // Respons bukan JSON (mis. HTML galat proxy): pakai pesan umum.
+    }
+    throw new Error(pesan);
+  }
+
+  return response.blob();
+}
+
+/**
+ * URL pratinjau RPS untuk panel admin.
+ *
+ * Tautan `<a href>` tidak melewati interceptor axios, sehingga tenant aktif
+ * tidak ikut terkirim sebagai header `X-Tenant-Id`. `tenantId` di query membuat
+ * server tetap tahu berkas milik prodi mana ketika memeriksa kepemilikan; bila
+ * kosong, server jatuh ke tenant pertama pengguna.
+ */
+export function adminRpsFileUrl(fileUrl: string, tenantId: number | null): string {
+  return tenantId ? `${fileUrl}?tenantId=${tenantId}` : fileUrl;
+}
+
 // ---------------------------------------------------------
 // Dosen
 // ---------------------------------------------------------

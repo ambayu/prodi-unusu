@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Response } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -8,6 +8,8 @@ import { config } from '../../config/index.js';
 import { asyncHandler, getParams, validate } from '../../utils/validation.js';
 import { requirePermission } from '../../middlewares/auth.js';
 import { scopedTenantId } from '../../middlewares/tenantScope.js';
+import { requireTenant } from '../../middlewares/tenantResolver.js';
+import { assertArsipPassword } from './arsipDokumen.routes.js';
 import { AppError } from '../../utils/errors.js';
 import { recordAudit } from '../../services/auditService.js';
 import { findCourseInTenant, findCurriculumItemInTenant } from '../../services/curriculumService.js';
@@ -25,9 +27,8 @@ const router = Router();
  *
  * Berkas ditulis ke `uploads/rps` yang **tidak** dilayani `express.static`
  * secara direktori, melainkan lewat rute unduh terautentikasi di bawah ini.
- * RPS boleh dilihat publik karena tujuannya dibaca mahasiswa, tetapi tetap
- * disajikan lewat rute yang mencatat bahwa berkas itu memang milik mata kuliah
- * pada program studi yang sah.
+ * RPS ditujukan untuk dibaca mahasiswa, tetapi isinya dilindungi kata sandi
+ * program studi — sama seperti arsip dokumen.
  */
 const RPS_DIR_SUFFIX = 'rps';
 
@@ -65,30 +66,84 @@ function removeRpsFile(fileUrl: string) {
 }
 
 /**
+ * Pola nama berkas RPS yang sah: timestamp + 16 karakter hex + `.pdf`.
+ *
+ * Nama dari klien tidak pernah dipakai, sehingga pola inilah satu-satunya
+ * bentuk nama yang boleh menyentuh disk.
+ */
+const RPS_FILENAME_PATTERN = /^[0-9]+-[a-f0-9]{16}\.pdf$/;
+
+/**
+ * Mengirim berkas RPS milik satu program studi.
+ *
+ * Berkas hanya dilayani bila barisnya memang tercatat milik prodi tersebut,
+ * baik pada penawaran (`curriculum_rps`) maupun data warisan (`rps_documents`).
+ * Berkas asing yang namanya sah dijawab 404 agar keberadaannya di disk tidak
+ * dapat dipetakan dari luar.
+ */
+async function kirimBerkasRps(res: Response, filename: string, studyProgramId: number) {
+  if (!RPS_FILENAME_PATTERN.test(filename)) {
+    throw AppError.notFound('Berkas RPS tidak ditemukan.');
+  }
+
+  const fileUrl = `/api/v1/admin/rps/file/${filename}`;
+  const [penawaran, warisan] = await Promise.all([
+    prisma.curriculumRps.findFirst({
+      where: { fileUrl, curriculumItem: { curriculum: { studyProgramId } } },
+      select: { id: true },
+    }),
+    prisma.rpsDocument.findFirst({
+      where: { fileUrl, course: { semester: { curriculum: { studyProgramId } } } },
+      select: { id: true },
+    }),
+  ]);
+  if (!penawaran && !warisan) {
+    throw AppError.notFound('Berkas RPS tidak ditemukan.');
+  }
+
+  const target = path.join(process.cwd(), config.upload.dir, RPS_DIR_SUFFIX, filename);
+  if (!fs.existsSync(target)) {
+    throw AppError.notFound('Berkas RPS tidak ditemukan.');
+  }
+
+  res.type('application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+  res.sendFile(target);
+}
+
+/**
  * Router PUBLIK berkas RPS.
  *
- * Dipasang langsung pada `app` sebelum `adminRouter`, sehingga tidak melewati
- * middleware `authenticate`. Yang menjaga berkas adalah nama acak 16 karakter
- * hex ditambah timestamp, dan validasi regex sebelum menyentuh disk.
+ * Halaman kurikulum publik menautkan berkas RPS milik prodi, sehingga
+ * permintaan datang tanpa sesi login. Yang menjaga berkas bukan lagi
+ * kerahasiaan nama acaknya, melainkan kata sandi prodi pada header
+ * `x-arsip-password` — satu kata sandi per prodi, dan prodi yang belum
+ * memasangnya tertutup untuk semua orang (fail-closed).
  */
 export const publicRpsFileRouter = Router();
 
 publicRpsFileRouter.get(
-  '/rps/file/:filename',
+  '/public/rps/file/:filename',
+  requireTenant,
   asyncHandler(async (req, res) => {
-    const filename = path.basename(String(req.params.filename));
-    if (!/^[0-9]+-[a-f0-9]{16}\.pdf$/.test(filename)) {
-      throw AppError.notFound('Berkas RPS tidak ditemukan.');
-    }
+    const studyProgramId = req.tenant!.id;
+    await assertArsipPassword(studyProgramId, req);
+    await kirimBerkasRps(res, path.basename(String(req.params.filename)), studyProgramId);
+  }),
+);
 
-    const target = path.join(process.cwd(), config.upload.dir, RPS_DIR_SUFFIX, filename);
-    if (!fs.existsSync(target)) {
-      throw AppError.notFound('Berkas RPS tidak ditemukan.');
-    }
-
-    res.type('application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
-    res.sendFile(target);
+/**
+ * GET /api/v1/admin/rps/file/:filename
+ *
+ * Pratinjau berkas RPS dari panel admin. Hak membuka sudah dibuktikan sesi
+ * login prodi, sehingga kata sandi tidak perlu diketik ulang; ini tidak
+ * melemahkan perlindungan publik karena rute ini tetap tertutup bagi pengunjung.
+ */
+router.get(
+  '/rps/file/:filename',
+  requirePermission('curriculum.view'),
+  asyncHandler(async (req, res) => {
+    await kirimBerkasRps(res, path.basename(String(req.params.filename)), scopedTenantId(req));
   }),
 );
 
