@@ -54,7 +54,7 @@ router.get(
           ...(role ? { role } : {}),
           ...(fakultas ? { fakultas } : {}),
           ...(prodi ? { prodi } : {}),
-          limit: 30,
+          limit: search || role || fakultas || prodi ? 50 : 200,
         }),
       });
     } catch {
