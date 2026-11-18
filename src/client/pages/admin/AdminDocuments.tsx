@@ -557,14 +557,14 @@ export const AdminDocuments: React.FC = () => {
           {
             key: 'judul',
             header: 'Judul Dokumen',
-            cellClassName: 'text-xs font-semibold text-slate-900',
+            cellClassName: 'font-medium text-slate-700',
             render: (baris) => baris.judul,
           },
           {
             key: 'nomor',
             header: 'Nomor Dokumen',
             width: 180,
-            cellClassName: 'font-mono text-xs text-slate-700',
+            cellClassName: 'font-medium text-slate-700',
             render: (baris) =>
               baris.nomor ?? <span className="italic text-slate-400">—</span>,
           },
@@ -576,7 +576,7 @@ export const AdminDocuments: React.FC = () => {
             render: (baris) => {
               const jenis = ekstensiBerkas(baris.mimeType);
               return jenis ? (
-                <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-semibold uppercase text-slate-600">
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium uppercase text-slate-600">
                   {jenis}
                 </span>
               ) : (
@@ -588,7 +588,6 @@ export const AdminDocuments: React.FC = () => {
             key: 'kategori',
             header: 'Kategori',
             width: 150,
-            cellClassName: 'text-xs text-slate-700',
             render: (baris) => baris.kategori ?? <span className="italic text-slate-400">—</span>,
           },
           {
@@ -596,7 +595,6 @@ export const AdminDocuments: React.FC = () => {
             header: 'Tahun',
             width: 80,
             align: 'center',
-            cellClassName: 'text-xs text-slate-700',
             render: (baris) => baris.tahun ?? <span className="italic text-slate-400">—</span>,
           },
           {
@@ -605,7 +603,7 @@ export const AdminDocuments: React.FC = () => {
             width: 110,
             render: (baris) => (
               <span
-                className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+                className={`rounded-md px-2 py-0.5 text-xs font-medium ${
                   WARNA_STATUS[baris.status ?? ''] ?? 'bg-slate-100 text-slate-600'
                 }`}
               >

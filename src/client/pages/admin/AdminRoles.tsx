@@ -126,15 +126,12 @@ export const AdminRoles: React.FC = () => {
       key: 'nama',
       header: 'Nama Peran & Kode',
       render: (role) => {
-        const isProdiRole = role.code.startsWith('ADMIN_PRODI');
         return (
           <div className="flex items-center gap-2.5">
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] ${
                 role.code === 'SUPER_ADMIN'
                   ? 'bg-rose-50 text-rose-700'
-                  : isProdiRole
-                  ? 'bg-emerald-50 text-emerald-800'
                   : 'bg-blue-50 text-[#1e3a8a]'
               }`}
             >
@@ -261,7 +258,7 @@ export const AdminRoles: React.FC = () => {
         wide
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Kode Peran" htmlFor="role-code" required hint="Huruf kapital dan garis bawah, misal: ADMIN_PRODI_TIF">
+          <Field label="Kode Peran" htmlFor="role-code" required hint="Huruf kapital dan garis bawah, misal: ADMIN_FAKULTAS">
             <input
               id="role-code"
               className="field-input font-mono"

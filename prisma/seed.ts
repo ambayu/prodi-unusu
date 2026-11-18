@@ -26,7 +26,6 @@ import { seedProdiContents } from './seed-prodi-content.js';
 import { seedFacultyContents } from './seed-faculty-content.js';
 import { seedAcademicSemesters } from './seed-academic-semesters.js';
 import { seedPageBuilderAndThemes } from './seed-page-builder.js';
-import { seedProdiRoles } from './seed-prodi-roles.js';
 
 const prisma = new PrismaClient();
 
@@ -444,16 +443,13 @@ async function main() {
   await seedSuperAdmin();
   await seedSystemSettings();
 
-  console.log('9. Peran khusus 14 program studi');
-  await seedProdiRoles();
-
-  console.log('10. Konten profil, visi misi, kontak, & dosen 14 prodi');
+  console.log('9. Konten profil, visi misi, kontak, & dosen 14 prodi');
   await seedProdiContents();
 
-  console.log('11. Konten profil, visi misi, kontak, menu, & domain 6 fakultas');
+  console.log('10. Konten profil, visi misi, kontak, menu, & domain 6 fakultas');
   await seedFacultyContents();
 
-  console.log('12. Tema visual, halaman beranda, & page builder 14 prodi');
+  console.log('11. Tema visual, halaman beranda, & page builder 14 prodi');
   await seedPageBuilderAndThemes();
 
   const durationMs = Date.now() - startedAt;

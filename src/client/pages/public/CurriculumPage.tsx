@@ -162,7 +162,7 @@ export const CurriculumPage: React.FC = () => {
       key: 'kode',
       header: 'Kode MK',
       width: 140,
-      cellClassName: 'font-mono text-slate-600',
+      cellClassName: 'font-medium text-slate-700',
       render: (course) => course.code,
     },
     {
@@ -198,7 +198,7 @@ export const CurriculumPage: React.FC = () => {
         if (ringkas === '-') return <span className="text-slate-400">—</span>;
         return (
           <span
-            className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700"
+            className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
             title={lengkap}
           >
             {ringkas}

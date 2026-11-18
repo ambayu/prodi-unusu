@@ -112,7 +112,7 @@ const AksiDropdown: React.FC<{
   }
 
   if (items.length === 0) {
-    return <span className="text-[11px] italic text-slate-400">—</span>;
+    return <span className="text-xs italic text-slate-400">—</span>;
   }
 
   return (
@@ -352,34 +352,41 @@ export const AdminUsers: React.FC = () => {
           onRetry={() => void usersQuery.refetch()}
           emptyTitle="Belum ada akun terdaftar"
           emptyDescription="Akun muncul di sini setelah pengguna masuk minimal satu kali melalui SSO ONE UNUSU. Setelah itu Anda dapat memberikan akses Admin Utama atau Admin Prodi."
-          minWidth={1440}
+          minWidth={1140}
           columns={
             [
               {
                 key: 'username',
                 header: 'NIDN / NIM',
-                width: 150,
-                cellClassName: 'font-mono text-xs font-semibold text-slate-800 whitespace-nowrap',
+                width: 125,
+                cellClassName: 'text-xs font-medium text-slate-700 whitespace-nowrap',
                 render: (user) => user.username,
               },
               {
                 key: 'nama',
                 header: 'Nama Lengkap',
-                width: 180,
-                cellClassName: 'text-xs font-semibold text-slate-900',
-                render: (user) => user.name,
+                width: 150,
+                cellClassName: 'text-xs font-medium text-slate-700',
+                render: (user) => (
+                  <span className="block truncate" title={user.name}>{user.name}</span>
+                ),
               },
               {
                 key: 'email',
                 header: 'Email',
-                width: 200,
-                cellClassName: 'font-mono text-xs text-slate-600 whitespace-nowrap',
-                render: (user) => user.email || <span className="italic text-slate-400">—</span>,
+                width: 175,
+                cellClassName: 'text-xs font-medium text-slate-700',
+                render: (user) =>
+                  user.email ? (
+                    <span className="block truncate" title={user.email}>{user.email}</span>
+                  ) : (
+                    <span className="italic text-slate-400">—</span>
+                  ),
               },
               {
                 key: 'peran-sso',
                 header: 'Peran SSO',
-                width: 160,
+                width: 115,
                 render: (user) => {
                   const daftarPeran = bacaJson<string[]>(user.ssoRoles, []);
                   const peranSso =
@@ -389,7 +396,7 @@ export const AdminUsers: React.FC = () => {
                       {peranSso.map((kode) => (
                         <span
                           key={kode}
-                          className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700"
+                          className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
                         >
                           {labelPeranSso(kode)}
                         </span>
@@ -403,10 +410,10 @@ export const AdminUsers: React.FC = () => {
               {
                 key: 'peran-aplikasi',
                 header: 'Peran Aplikasi',
-                width: 200,
+                width: 150,
                 render: (user) =>
                   user.userRoles.length === 0 ? (
-                    <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 whitespace-nowrap">
+                    <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 whitespace-nowrap">
                       Menunggu peran
                     </span>
                   ) : (
@@ -415,7 +422,7 @@ export const AdminUsers: React.FC = () => {
                         <span
                           key={assignment.id}
                           title={assignment.role.name}
-                          className="inline-flex max-w-[160px] items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-[#1e3a8a]"
+                          className="inline-flex max-w-[120px] items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-[#1e3a8a]"
                         >
                           <span className="truncate">{assignment.role.name}</span>
                           {has('users.assign_role') ? (
@@ -438,7 +445,7 @@ export const AdminUsers: React.FC = () => {
               {
                 key: 'cakupan',
                 header: 'Cakupan',
-                width: 170,
+                width: 135,
                 render: (user) =>
                   user.userRoles.length === 0 ? (
                     <span className="text-xs italic text-slate-400">—</span>
@@ -454,7 +461,7 @@ export const AdminUsers: React.FC = () => {
                           <span
                             key={assignment.id}
                             title={label}
-                            className="max-w-[150px] truncate rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600"
+                            className="max-w-[105px] truncate rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
                           >
                             {label}
                           </span>
@@ -469,7 +476,7 @@ export const AdminUsers: React.FC = () => {
                 width: 100,
                 render: (user) => (
                   <span
-                    className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+                    className={`rounded-md px-2 py-0.5 text-xs font-medium ${
                       user.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
                     }`}
                   >
@@ -481,7 +488,7 @@ export const AdminUsers: React.FC = () => {
                 key: 'login-terakhir',
                 header: 'Login Terakhir',
                 width: 130,
-                cellClassName: 'text-xs text-slate-500',
+                cellClassName: 'text-xs font-medium text-slate-700',
                 render: (user) =>
                   user.lastLoginAt
                     ? new Date(user.lastLoginAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })

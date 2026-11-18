@@ -158,14 +158,14 @@ export const AdminAuditLogs: React.FC = () => {
               key: 'waktu',
               header: 'Waktu',
               width: 170,
-              cellClassName: 'text-xs text-slate-500 whitespace-nowrap',
+              cellClassName: 'text-xs font-medium text-slate-700 whitespace-nowrap',
               render: (entri) => formatWaktu(entri.createdAt),
             },
             {
               key: 'pengguna',
               header: 'Pengguna',
               width: 200,
-              cellClassName: 'text-xs font-semibold text-slate-800',
+              cellClassName: 'text-xs font-medium text-slate-700',
               render: (entri) =>
                 entri.user?.name ?? (
                   <span className="font-normal italic text-slate-400">Sistem</span>
@@ -177,7 +177,7 @@ export const AdminAuditLogs: React.FC = () => {
               width: 190,
               render: (entri) => (
                 <span
-                  className={`rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${
+                  className={`rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap ${
                     NADA_AKSI[entri.action] ?? 'bg-slate-100 text-slate-700'
                   }`}
                 >
@@ -189,17 +189,17 @@ export const AdminAuditLogs: React.FC = () => {
               key: 'modul',
               header: 'Modul',
               width: 150,
-              cellClassName: 'text-xs text-slate-600',
+              cellClassName: 'text-xs font-medium text-slate-700',
               render: (entri) => LABEL_MODUL[entri.module] ?? entri.module,
             },
             {
               key: 'objek',
               header: 'Objek',
-              cellClassName: 'text-xs text-slate-500',
+              cellClassName: 'text-xs font-medium text-slate-700',
               render: (entri) =>
                 entri.targetType ? (
                   <>
-                    <span className="font-semibold text-slate-700">{entri.targetType}</span>
+                    <span>{entri.targetType}</span>
                     {entri.targetId ? ` #${entri.targetId}` : ''}
                   </>
                 ) : (

@@ -133,13 +133,13 @@ export const AdminAcademicSemesters: React.FC = () => {
             key: 'kode',
             header: 'Kode Semester',
             width: 128,
-            cellClassName: 'font-mono text-xs font-semibold text-slate-700',
+            cellClassName: 'text-xs font-medium text-slate-700',
             render: (sem) => sem.code,
           },
           {
             key: 'nama',
             header: 'Nama Semester',
-            cellClassName: 'text-xs font-semibold text-slate-900',
+            cellClassName: 'text-xs font-medium text-slate-700',
             render: (sem) => sem.name,
           },
           {
@@ -164,7 +164,7 @@ export const AdminAcademicSemesters: React.FC = () => {
             render: (sem) => (
               <span
                 className={[
-                  'rounded-md px-2 py-0.5 text-xs font-semibold',
+                  'rounded-md px-2 py-0.5 text-xs font-medium',
                   sem.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500',
                 ].join(' ')}
               >

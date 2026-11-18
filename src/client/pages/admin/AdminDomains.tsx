@@ -89,7 +89,7 @@ export const AdminDomains: React.FC = () => {
     {
       key: 'hostname',
       header: 'Hostname',
-      cellClassName: 'font-mono text-xs font-semibold text-[#1e3a8a]',
+      cellClassName: 'font-medium text-[#1e3a8a]',
       render: (domain) => domain.hostname,
     },
     {
@@ -119,7 +119,7 @@ export const AdminDomains: React.FC = () => {
       width: 100,
       render: (domain) =>
         domain.isPrimary ? (
-          <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-[#1e3a8a]">
+          <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-[#1e3a8a]">
             Utama
           </span>
         ) : (
@@ -135,7 +135,7 @@ export const AdminDomains: React.FC = () => {
           type="button"
           onClick={() => toggleMutation.mutate({ id: domain.id, isActive: !domain.isActive })}
           disabled={!has('domain.update') || toggleMutation.isPending}
-          className={`rounded-md px-2 py-0.5 text-xs font-semibold disabled:cursor-not-allowed ${
+          className={`rounded-md px-2 py-0.5 text-xs font-medium disabled:cursor-not-allowed ${
             domain.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
           }`}
         >
@@ -184,7 +184,6 @@ export const AdminDomains: React.FC = () => {
       key: 'modul',
       header: 'Modul',
       width: 130,
-      cellClassName: 'font-mono',
       render: (log) => log.module,
     },
     {
@@ -196,7 +195,6 @@ export const AdminDomains: React.FC = () => {
     {
       key: 'prodi',
       header: 'Prodi',
-      cellClassName: 'text-slate-500',
       render: (log) => log.studyProgram?.name ?? '-',
     },
   ];

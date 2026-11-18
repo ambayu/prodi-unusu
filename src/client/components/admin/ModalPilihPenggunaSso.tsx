@@ -222,7 +222,7 @@ export const ModalPilihPenggunaSso: React.FC<ModalPilihPenggunaSsoProps> = ({
       key: 'username',
       header: 'NIDN / NIM',
       width: 140,
-      cellClassName: 'font-mono text-xs text-slate-700',
+      cellClassName: 'font-medium text-slate-700',
       render: (u) => u.username,
     },
     {

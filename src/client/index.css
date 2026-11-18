@@ -100,13 +100,12 @@
   /*
    * Tabel bersama.
    *
-   * Isi naik dari 12px ke 13px dan header dari 10px ke 12px. Pada 10px huruf
-   * kapital renggang terasa sangat kecil dan sulit dibaca, terutama di layar
-   * beresolusi tinggi. Header tetap kapital (bukan tebal berlebih) karena
-   * fungsinya label, sementara isi memakai warna lebih gelap agar terbaca.
+   * Tipografi isi sel ditetapkan pada `tbody td` (satu sumber untuk semua
+   * tabel), header memakai 12px kapital agar terbaca sebagai label, bukan
+   * sebagai isi.
    */
   .table-base {
-    @apply w-full border-collapse text-left text-[13px];
+    @apply w-full border-collapse text-left text-xs;
   }
 
   .table-base thead th {
@@ -117,13 +116,11 @@
   }
 
   .table-base tbody td {
-    @apply border-b border-slate-100 px-4 py-3.5 align-middle text-[13px] text-slate-800;
     /*
-     * Isi sel tidak boleh menembus batas kolomnya. `overflow-wrap: anywhere`
-     * mengizinkan pemutusan kata di mana pun, termasuk pada teks tanpa spasi
-     * seperti kode mata kuliah, nomor dokumen, atau tautan panjang. Tanpa ini,
-     * teks tersebut meluber dan menimpa kolom sebelahnya saat kolom sempit.
+     * Satu sumber tipografi isi sel: ukuran, bobot, dan keluarga huruf yang
+     * sama untuk seluruh tabel. Halaman tidak perlu menimpanya per kolom.
      */
+    @apply border-b border-slate-100 px-4 py-3.5 align-middle text-xs font-medium text-slate-700;
     overflow-wrap: anywhere;
     word-break: break-word;
   }

@@ -170,13 +170,13 @@ export const AdminCourses: React.FC = () => {
                 key: 'kode',
                 header: 'Kode',
                 width: 128,
-                cellClassName: 'font-mono text-xs font-semibold text-slate-700',
+                cellClassName: 'text-xs font-medium text-slate-700',
                 render: (course) => course.code,
               },
               {
                 key: 'nama',
                 header: 'Nama Mata Kuliah',
-                cellClassName: 'text-xs font-semibold text-slate-800',
+                cellClassName: 'text-xs font-medium text-slate-700',
                 render: (course) => course.name,
               },
               {
