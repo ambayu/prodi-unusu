@@ -1,4 +1,5 @@
 ﻿import React, { useMemo, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   AcademicCapIcon,
@@ -6,6 +7,7 @@ import {
   MagnifyingGlassIcon,
   UserCircleIcon,
   ArrowTopRightOnSquareIcon,
+  BuildingLibraryIcon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useSeo } from '../../hooks/useSeo';
@@ -16,16 +18,14 @@ import { toApiError } from '../../services/api';
 
 /**
  * Kartu satu dosen.
- *
- * Foto ditampilkan besar (papan atas kartu) agar wajah dosen benar-benar
- * terlihat, bukan ikon kecil di samping teks. Bila foto belum tersedia,
- * ditampilkan inisial nama di atas gradien warna tema — bukan gambar rusak.
  */
-const LecturerCard: React.FC<{ dosen: PublicLecturer; primary: string; accent: string }> = ({
-  dosen,
-  primary,
-  accent,
-}) => {
+const LecturerCard: React.FC<{
+  dosen: PublicLecturer;
+  primary: string;
+  accent: string;
+}> = ({ dosen, primary, accent }) => {
+  const navigate = useNavigate();
+
   /** Inisial maksimal dua huruf dari nama, untuk pengganti foto. */
   const inisial = useMemo(() => {
     const bagian = dosen.name
@@ -38,8 +38,17 @@ const LecturerCard: React.FC<{ dosen: PublicLecturer; primary: string; accent: s
     return (awal + akhir).toUpperCase();
   }, [dosen.name]);
 
+  const sintaLink =
+    dosen.sintaUrl ||
+    (dosen.sintaId ? `https://sinta.kemdiktisaintek.go.id/authors/profile/${dosen.sintaId}` : null);
+
+  const identifier = dosen.id || dosen.nidn;
+
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl">
+    <article
+      onClick={() => navigate(`/dosen/${identifier}`)}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl cursor-pointer"
+    >
       {/* Foto besar */}
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-100">
         {dosen.photoUrl ? (
@@ -72,10 +81,12 @@ const LecturerCard: React.FC<{ dosen: PublicLecturer; primary: string; accent: s
       </div>
 
       <div className="flex flex-1 flex-col p-5">
-        <h3 className="text-sm font-extrabold leading-snug text-slate-900">{dosen.name}</h3>
+        <h3 className="text-sm font-extrabold leading-snug text-slate-900 group-hover:text-blue-700 transition">
+          {dosen.name}
+        </h3>
 
         {dosen.expertise ? (
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{dosen.expertise}</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-slate-600 line-clamp-2">{dosen.expertise}</p>
         ) : null}
 
         <div className="mt-3 space-y-1 text-[11px] text-slate-500">
@@ -87,16 +98,36 @@ const LecturerCard: React.FC<{ dosen: PublicLecturer; primary: string; accent: s
           {dosen.education ? <p className="truncate">{dosen.education}</p> : null}
         </div>
 
-        {dosen.email ? (
-          <a
-            href={`mailto:${dosen.email}`}
-            className="mt-auto inline-flex items-center gap-1.5 pt-4 text-[11px] font-bold hover:underline"
-            style={{ color: primary }}
-          >
-            <EnvelopeIcon className="h-3.5 w-3.5" />
-            <span className="truncate">{dosen.email}</span>
-          </a>
-        ) : null}
+        {/* Tautan Profil Singkat (Email & SINTA) */}
+        <div className="mt-auto pt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
+          {dosen.email ? (
+            <a
+              href={`mailto:${dosen.email}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold hover:underline"
+              style={{ color: primary }}
+            >
+              <EnvelopeIcon className="h-3.5 w-3.5" />
+              <span className="truncate max-w-[110px]">{dosen.email}</span>
+            </a>
+          ) : (
+            <span className="text-[11px] text-slate-400">Lihat profil &rarr;</span>
+          )}
+
+          {sintaLink ? (
+            <a
+              href={sintaLink}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-[10px] font-black text-amber-800 border border-amber-200 hover:bg-amber-100 transition"
+              title="Profil SINTA"
+            >
+              <span>SINTA</span>
+              <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+            </a>
+          ) : null}
+        </div>
       </div>
     </article>
   );
@@ -207,10 +238,6 @@ export const LecturersPage: React.FC = () => {
             ) : isFaculty && data?.grouped ? (
               /*
                * Tampilan FAKULTAS: satu blok per program studi.
-               *
-               * Setiap blok memiliki kepala berisi kode prodi, nama, jumlah
-               * dosen, dan tautan ke website prodi — sehingga pengunjung tahu
-               * dosen yang dibaca berasal dari prodi mana.
                */
               <div className="mt-10 space-y-14">
                 {kelompok.map((grup) => (
@@ -269,7 +296,12 @@ export const LecturersPage: React.FC = () => {
               /* Tampilan PROGRAM STUDI: satu daftar datar. */
               <div className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
                 {semuaDosen.filter(cocok).map((dosen) => (
-                  <LecturerCard key={dosen.id} dosen={dosen} primary={primary} accent={accent} />
+                  <LecturerCard
+                    key={dosen.id}
+                    dosen={dosen}
+                    primary={primary}
+                    accent={accent}
+                  />
                 ))}
               </div>
             )}

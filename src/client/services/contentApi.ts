@@ -300,6 +300,11 @@ export interface PublicLecturer extends Omit<Lecturer, 'isActive' | 'sortOrder' 
   sortOrder?: number;
   studyProgramName?: string | null;
   facultyName?: string | null;
+  sintaId?: string | null;
+  sintaUrl?: string | null;
+  googleScholar?: string | null;
+  scopusId?: string | null;
+  orcid?: string | null;
 }
 
 /** Satu kelompok dosen pada website fakultas, yaitu dosen milik satu prodi. */
@@ -327,6 +332,8 @@ export interface PublicLecturersResponse {
 
 export const lecturerApi = {
   public: () => api.get<PublicLecturersResponse>('/public/lecturers'),
+  publicDetail: (id: number | string) =>
+    api.get<{ success: boolean; lecturer: PublicLecturer }>(`/public/lecturers/${id}`),
   list: (params?: { search?: string }) => api.get<{ lecturers: Lecturer[]; allLecturers?: Lecturer[] }>('/admin/lecturers', { params }),
   all: () => api.get<{ lecturers: Lecturer[] }>('/admin/lecturers/all'),
 };

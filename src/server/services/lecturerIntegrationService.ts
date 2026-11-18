@@ -10,6 +10,13 @@ export interface InterServiceLecturer {
   facultyName: string | null;
   academicRank: string | null;
   education: string | null;
+  expertise?: string | null;
+  sintaId?: string | null;
+  sintaUrl?: string | null;
+  googleScholar?: string | null;
+  scopusId?: string | null;
+  orcid?: string | null;
+  bio?: string | null;
   photoUrl: string | null;
   isActive: boolean;
 }

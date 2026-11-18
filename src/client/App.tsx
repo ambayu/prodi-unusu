@@ -18,6 +18,7 @@ import { FacultyLandingPage } from './modules/prodi-website/pages/FacultyLanding
 import { CurriculumPage } from './pages/public/CurriculumPage';
 import { DocumentsPage } from './pages/public/DocumentsPage';
 import { LecturersPage } from './pages/public/LecturersPage';
+import { LecturerDetailPage } from './pages/public/LecturerDetailPage';
 import { ContactPage } from './pages/public/ContactPage';
 import { ProfilePage } from './pages/public/ProfilePage';
 import { VisionMissionPage } from './pages/public/VisionMissionPage';
@@ -719,6 +720,7 @@ function prodiRouteElements() {
       <Route path="/kurikulum" element={wrap(<CurriculumPage />)} />
       <Route path="/dokumen" element={wrap(<DocumentsPage />)} />
       <Route path="/dosen" element={wrap(<LecturersPage />)} />
+      <Route path="/dosen/:id" element={wrap(<LecturerDetailPage />)} />
       <Route path="/sarana-prasarana" element={wrap(<FacilitiesPage />)} />
       <Route path="/sarpras" element={wrap(<FacilitiesPage />)} />
       <Route path="/berita" element={wrap(<PostsPage />)} />

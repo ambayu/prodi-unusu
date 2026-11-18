@@ -343,6 +343,13 @@ router.get(
               email: dosen.email,
               academicRank: dosen.academicRank,
               education: dosen.education,
+              expertise: dosen.expertise ?? null,
+              sintaId: dosen.sintaId ?? null,
+              sintaUrl: dosen.sintaUrl ?? null,
+              googleScholar: dosen.googleScholar ?? null,
+              scopusId: dosen.scopusId ?? null,
+              orcid: dosen.orcid ?? null,
+              bio: dosen.bio ?? null,
               photoUrl: dosen.photoUrl,
               studyProgramName: prodi.name,
               facultyName: tenant.name,
@@ -431,6 +438,67 @@ router.get(
       });
       res.json({ success: true, grouped: false, lecturers });
     }
+  }),
+);
+
+/**
+ * GET /api/v1/public/lecturers/:id
+ * Detail satu dosen publik berdasarkan ID (atau NIDN).
+ */
+router.get(
+  '/lecturers/:id',
+  asyncHandler(async (req, res) => {
+    const rawId = req.params.id;
+    const numId = Number(rawId);
+
+    try {
+      const allLecturers = await fetchLecturersFromApiHub();
+      const dosen = allLecturers.find((d) => (Number.isInteger(numId) && d.id === numId) || d.nidn === rawId);
+
+      if (dosen) {
+        return res.json({
+          success: true,
+          lecturer: {
+            id: dosen.id,
+            name: dosen.name,
+            nidn: dosen.nidn,
+            email: dosen.email,
+            studyProgramName: dosen.studyProgramName,
+            facultyName: dosen.facultyName,
+            academicRank: dosen.academicRank,
+            education: dosen.education,
+            expertise: dosen.expertise ?? null,
+            sintaId: dosen.sintaId ?? null,
+            sintaUrl: dosen.sintaUrl ?? null,
+            googleScholar: dosen.googleScholar ?? null,
+            scopusId: dosen.scopusId ?? null,
+            orcid: dosen.orcid ?? null,
+            bio: dosen.bio ?? null,
+            photoUrl: dosen.photoUrl,
+            isActive: dosen.isActive,
+          },
+        });
+      }
+    } catch {
+      // lanjut ke pencarian lokal jika API Hub gagal
+    }
+
+    if (Number.isInteger(numId)) {
+      const local = await prisma.lecturer.findUnique({
+        where: { id: numId },
+      });
+      if (local && local.isActive) {
+        return res.json({
+          success: true,
+          lecturer: local,
+        });
+      }
+    }
+
+    res.status(404).json({
+      success: false,
+      message: 'Dosen tidak ditemukan.',
+    });
   }),
 );
 
