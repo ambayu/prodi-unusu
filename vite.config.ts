@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
     },
   },
   build: {
+    emptyOutDir: false,
     // Memecah vendor agar halaman publik tidak mengunduh seluruh kode admin
     // sekaligus. Tanpa ini satu bundel melewati 1 MB dan memperlambat muat awal
     // (docs/PRD.md bagian 14 Performance).
