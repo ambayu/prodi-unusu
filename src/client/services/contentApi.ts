@@ -645,7 +645,7 @@ export const dokumenProdiApi = {
 // ---------------------------------------------------------
 
 export interface Facility {
-  id: number | string;
+  id: number;
   name: string;
   category: string;
   location: string | null;

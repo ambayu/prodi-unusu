@@ -326,8 +326,8 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
             <div className="hidden sm:flex items-center">
               <Link
                 to="/kontak"
-                className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-slate-950 font-extrabold text-xs shadow-md transition-all active:scale-95 hover:brightness-105"
-                style={{ backgroundColor: accentColor }}
+                className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-white px-5 text-[13px] font-bold shadow-sm ring-1 ring-black/5 transition-all hover:shadow-md active:scale-[0.98]"
+                style={{ color: primaryColor }}
               >
                 {labelHubungi}
               </Link>
@@ -418,8 +418,8 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
               <Link
                 to="/kontak"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl text-slate-950 font-extrabold text-xs shadow-md"
-                style={{ backgroundColor: accentColor }}
+                className="flex min-h-[44px] w-full items-center justify-center rounded-full bg-white px-5 text-[13px] font-bold shadow-sm ring-1 ring-black/5 active:scale-[0.98]"
+                style={{ color: primaryColor }}
               >
                 {labelHubungi}
               </Link>

@@ -6,6 +6,7 @@ interface SeoOptions {
   title?: string;
   description?: string;
   path?: string;
+  image?: string;
 }
 
 /**
@@ -16,7 +17,7 @@ interface SeoOptions {
  * (docs/PRD.md bagian 14 SEO). Canonical memakai hostname yang sedang dibuka
  * agar setiap domain dihitung sebagai alamat resmi halamannya sendiri.
  */
-export function useSeo({ tenant, title, description, path }: SeoOptions) {
+export function useSeo({ tenant, title, description, path, image }: SeoOptions) {
   useEffect(() => {
     const siteTitle = tenant?.websiteSetting.seoTitle ?? tenant?.websiteSetting.siteTitle ?? 'Portal Prodi UNUSU';
     const fullTitle = title ? `${title} • ${siteTitle}` : siteTitle;
@@ -50,8 +51,13 @@ export function useSeo({ tenant, title, description, path }: SeoOptions) {
     const origin = window.location.origin;
     setMeta('property', 'og:url', `${origin}${path ?? window.location.pathname}`);
 
-    if (tenant?.websiteSetting.seoImageUrl) {
-      setMeta('property', 'og:image', `${origin}${tenant.websiteSetting.seoImageUrl}`);
+    const imageUrl = image ?? tenant?.websiteSetting.seoImageUrl;
+    if (imageUrl) {
+      const fullImageUrl = imageUrl.startsWith('http://') || imageUrl.startsWith('https://')
+        ? imageUrl
+        : `${origin}${imageUrl}`;
+      setMeta('property', 'og:image', fullImageUrl);
+      setMeta('name', 'twitter:image', fullImageUrl);
     }
     if (tenant?.websiteSetting.seoKeywords) {
       setMeta('name', 'keywords', tenant.websiteSetting.seoKeywords);
