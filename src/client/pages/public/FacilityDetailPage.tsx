@@ -54,17 +54,6 @@ export const FacilityDetailPage: React.FC = () => {
 
       {/* Main Container dengan Margin Standar Publik */}
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
-        {/* Navigasi Balik Halus */}
-        <div>
-          <Link
-            to="/sarana-prasarana"
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-700 transition"
-          >
-            <ArrowLeftIcon className="w-3.5 h-3.5" />
-            <span>Kembali ke Daftar Sarana & Prasarana</span>
-          </Link>
-        </div>
-
         {isLoading ? (
           <div className="bg-white rounded-3xl border border-slate-200/80 p-16 shadow-xs">
             <LoadingState label="Memuat informasi fasilitas..." rows={4} />

@@ -680,14 +680,6 @@ const FacilityGridWidget: React.FC<{ title?: string; limit: number; primaryColor
               {title || 'Sarana & Prasarana Pembelajaran'}
             </h2>
           </div>
-          <Link
-            to="/sarana-prasarana"
-            className="inline-flex items-center gap-2 text-xs font-bold transition-all hover:gap-3"
-            style={{ color: primaryColor }}
-          >
-            <span>Lihat Semua Fasilitas</span>
-            <ArrowRightIcon className="w-4 h-4" />
-          </Link>
         </div>
 
         {facilities.length === 0 ? (
