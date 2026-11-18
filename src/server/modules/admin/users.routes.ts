@@ -52,9 +52,9 @@ router.get(
         body: JSON.stringify({
           ...(search.length >= 2 ? { search: search.slice(0, 100) } : {}),
           ...(role ? { role } : {}),
+          excludeRole: 'MAHASISWA',
           ...(fakultas ? { fakultas } : {}),
           ...(prodi ? { prodi } : {}),
-          limit: search || role || fakultas || prodi ? 50 : 200,
         }),
       });
     } catch {
