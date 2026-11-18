@@ -330,19 +330,21 @@ export const AdminUsers: React.FC = () => {
           onRetry={() => void usersQuery.refetch()}
           emptyTitle="Belum ada akun terdaftar"
           emptyDescription="Akun muncul di sini setelah pengguna masuk minimal satu kali melalui SSO ONE UNUSU. Setelah itu Anda dapat memberikan akses Admin Utama atau Admin Prodi."
-          minWidth={1080}
+          minWidth={1280}
           columns={
             [
               {
                 key: 'username',
                 header: 'NIDN / NIM',
-                width: 140,
-                cellClassName: 'font-mono text-xs font-semibold text-slate-800',
+                width: 130,
+                cellClassName: 'font-mono text-xs font-semibold text-slate-800 whitespace-nowrap',
                 render: (user) => user.username,
               },
               {
                 key: 'nama',
                 header: 'Nama Lengkap',
+                width: 200,
+                cellClassName: 'break-words',
                 render: (user) => (
                   <span className="font-bold text-slate-900">{user.name}</span>
                 ),
@@ -350,8 +352,8 @@ export const AdminUsers: React.FC = () => {
               {
                 key: 'email',
                 header: 'Email',
-                width: 220,
-                cellClassName: 'font-mono text-xs text-slate-600',
+                width: 200,
+                cellClassName: 'font-mono text-xs text-slate-600 break-all',
                 render: (user) => user.email || '—',
               },
               {
