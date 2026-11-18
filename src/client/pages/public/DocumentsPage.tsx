@@ -1,6 +1,8 @@
 ﻿import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
   DocumentTextIcon,
   EyeIcon,
   FolderIcon,
@@ -48,6 +50,8 @@ export const DocumentsPage: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [kategori, setKategori] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 10;
 
   /*
    * Kata sandi hanya hidup di memori halaman: tidak ditulis ke localStorage
@@ -134,6 +138,15 @@ export const DocumentsPage: React.FC = () => {
     });
   }, [items, search, kategori]);
 
+  const totalRows = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedItems = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, safePage, pageSize]);
+
   /**
    * Menekan "Lihat Dokumen".
    *
@@ -193,7 +206,10 @@ export const DocumentsPage: React.FC = () => {
                   <li>
                     <button
                       type="button"
-                      onClick={() => setKategori('all')}
+                      onClick={() => {
+                        setKategori('all');
+                        setCurrentPage(1);
+                      }}
                       className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold transition-colors ${
                         kategori === 'all'
                           ? 'bg-[#e8eefb] text-[#1e3a8a]'
@@ -211,7 +227,10 @@ export const DocumentsPage: React.FC = () => {
                     <li key={kat.kunci}>
                       <button
                         type="button"
-                        onClick={() => setKategori(kat.kunci)}
+                        onClick={() => {
+                          setKategori(kat.kunci);
+                          setCurrentPage(1);
+                        }}
                         className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold transition-colors ${
                           kategori === kat.kunci
                             ? 'bg-[#e8eefb] text-[#1e3a8a]'
@@ -240,7 +259,10 @@ export const DocumentsPage: React.FC = () => {
                 <input
                   type="search"
                   value={search}
-                  onChange={(event) => setSearch(event.target.value)}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Cari judul, nomor, atau kategori dokumen"
                   aria-label="Cari dokumen"
                   className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100"
@@ -260,7 +282,7 @@ export const DocumentsPage: React.FC = () => {
                     />
                   </li>
                 ) : (
-                  filtered.map((dokumen) => (
+                  paginatedItems.map((dokumen) => (
                     <li
                       key={`${dokumen.asal}-${dokumen.sumber ?? ''}-${dokumen.id}`}
                       className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between"
@@ -302,20 +324,92 @@ export const DocumentsPage: React.FC = () => {
                 )}
               </ul>
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] text-slate-500">
-                  Menampilkan {filtered.length} dari {items.length} dokumen.
-                </p>
-                {password ? (
-                  <button
-                    type="button"
-                    onClick={() => setPassword('')}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 transition-colors hover:text-slate-800"
-                  >
-                    <LockClosedIcon className="h-3.5 w-3.5" />
-                    Lupakan kata sandi
-                  </button>
-                ) : null}
+              {/* Kontrol Pagination & Ringkasan */}
+              <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  {totalRows > 0 ? (
+                    <span>
+                      Menampilkan{' '}
+                      <span className="font-bold text-slate-800">
+                        {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, totalRows)}
+                      </span>{' '}
+                      dari <span className="font-bold text-slate-800">{totalRows}</span> dokumen
+                    </span>
+                  ) : (
+                    <span>0 dokumen</span>
+                  )}
+                  {password ? (
+                    <button
+                      type="button"
+                      onClick={() => setPassword('')}
+                      className="ml-2 inline-flex items-center gap-1 font-bold text-slate-500 transition-colors hover:text-slate-800"
+                    >
+                      <LockClosedIcon className="h-3.5 w-3.5" />
+                      Lupakan kata sandi
+                    </button>
+                  ) : null}
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1 self-center sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={safePage <= 1}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                      aria-label="Halaman sebelumnya"
+                    >
+                      <ChevronLeftIcon className="h-4 w-4" />
+                    </button>
+
+                    <div className="flex items-center gap-1 px-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                        .reduce<Array<number | string>>((acc, p, idx, arr) => {
+                          if (idx > 0 && p - (arr[idx - 1] as number) > 1) {
+                            acc.push('...');
+                          }
+                          acc.push(p);
+                          return acc;
+                        }, [])
+                        .map((item, idx) => {
+                          if (typeof item === 'string') {
+                            return (
+                              <span key={`dots-${idx}`} className="px-1 text-xs text-slate-400">
+                                ...
+                              </span>
+                            );
+                          }
+                          const active = item === safePage;
+                          return (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => setCurrentPage(item)}
+                              className={`inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-xs font-bold transition-colors ${
+                                active
+                                  ? 'bg-[#1e3a8a] text-white shadow-xs'
+                                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                              }`}
+                              aria-current={active ? 'page' : undefined}
+                            >
+                              {item}
+                            </button>
+                          );
+                        })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={safePage >= totalPages}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                      aria-label="Halaman berikutnya"
+                    >
+                      <ChevronRightIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
