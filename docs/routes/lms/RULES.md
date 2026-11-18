@@ -7,9 +7,9 @@
 
 ## Pembuatan kelas
 
-- `POST /api/v1/admin/lms/classrooms/generate` membuat satu kelas grup `Utama` untuk setiap penawaran pada kurikulum aktif tenant.
-- Operasi idempoten: kelas `Utama` yang sudah ada tidak ditimpa dan tidak dibuat ulang.
-- Bila `lecturers_data` pada penawaran kurikulum memiliki lebih dari satu dosen, hanya dosen pertama dipasang sebagai pengampu awal. Jadwal, ruang, dan dosen dapat dilengkapi dari halaman Jadwal & Kelas LMS.
+- Kelas dibuat hanya saat ada penawaran nyata yang akan dijalankan. Administrator mengatur jadwal, ruang, dosen pengampu, peserta, dan rombel pada halaman Jadwal & Kelas LMS.
+- Kelas paralel untuk mata kuliah yang sama disebut **rombel**. Tombol penambahannya menggunakan label "Tambah Rombel", bukan "Tambah Kelas".
+- Antarmuka tidak menyediakan generate seluruh kurikulum atau sinkronisasi massal; keduanya dapat membuat kelas kosong dan memindahkan detail teknis ke administrator.
 
 ## Peserta
 

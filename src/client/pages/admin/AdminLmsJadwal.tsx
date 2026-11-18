@@ -7,10 +7,6 @@ import {
   MapPinIcon,
   UserGroupIcon,
   AcademicCapIcon,
-  ArrowUpTrayIcon,
-  ArrowPathIcon,
-  CheckCircleIcon,
-  XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -23,8 +19,6 @@ import { lecturerApi } from '../../services/contentApi';
 import {
   lmsAdminApi,
   type LmsClassroom,
-  type LmsStudentRow,
-  type LmsSyncRow,
 } from '../../services/lmsAdminApi';
 
 /**
@@ -165,16 +159,6 @@ export const AdminLmsJadwal: React.FC = () => {
     },
   });
 
-  const generateMutation = useMutation({
-    mutationFn: () => lmsAdminApi.generateClassrooms(),
-    onSuccess: (res) => {
-      toast.success(`${res.data.created} kelas dibuat. ${res.data.skipped} kelas yang sudah ada dilewati.`);
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'lms-classrooms'] });
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'lms-courses'] });
-    },
-    onError: (error) => toast.error(toApiError(error).message),
-  });
-
   const removeMutation = useMutation({
     mutationFn: (id: number) => lmsAdminApi.removeClassroom(id),
     onSuccess: () => {
@@ -184,27 +168,6 @@ export const AdminLmsJadwal: React.FC = () => {
       void queryClient.invalidateQueries({ queryKey: ['admin', 'lms-courses'] });
     },
     onError: (error) => toast.error(toApiError(error).message),
-  });
-
-  // Hasil sinkron disimpan agar kelas yang gagal (mis. kode MK belum ada di LMS)
-  // dapat ditampilkan satu per satu, bukan hilang bersama toast.
-  const [syncRows, setSyncRows] = useState<LmsSyncRow[] | null>(null);
-
-  const syncMutation = useMutation({
-    mutationFn: () => lmsAdminApi.sinkron(),
-    onSuccess: (res) => {
-      const gagal = res.data.hasil.filter((row) => row.status === 'gagal');
-      setSyncRows(res.data.hasil);
-      if (gagal.length === 0) {
-        toast.success(res.data.message);
-      } else {
-        toast.error(`${gagal.length} kelas gagal disinkronkan. Lihat rincian di bawah.`);
-      }
-    },
-    onError: (error) => {
-      setSyncRows(null);
-      toast.error(toApiError(error).message);
-    },
   });
 
   const loading = classroomsQuery.isLoading || coursesQuery.isLoading;
@@ -221,72 +184,15 @@ export const AdminLmsJadwal: React.FC = () => {
       actions={
         canEdit && courses.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => generateMutation.mutate()}
-              disabled={generateMutation.isPending}
-              className="btn-secondary"
-            >
-              <ArrowPathIcon className="h-4 w-4" />
-              {generateMutation.isPending ? 'Membuat kelas...' : 'Buat Kelas dari Kurikulum'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSyncRows(null);
-                syncMutation.mutate();
-              }}
-              disabled={syncMutation.isPending || classrooms.length === 0}
-              className="btn-secondary"
-            >
-              <ArrowUpTrayIcon className="h-4 w-4" />
-              {syncMutation.isPending ? 'Menyinkronkan...' : 'Sinkronkan ke LMS'}
-            </button>
             <button type="button" onClick={() => openCreate()} className="btn-primary">
               <PlusIcon className="h-4 w-4" />
-              Buka Kelas Baru
+              Tambah Rombel
             </button>
           </div>
         ) : null
       }
     >
       <div className="space-y-5">
-        {syncRows && syncRows.length > 0 ? (
-          <section className="card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                Hasil Sinkronisasi
-              </h2>
-              <button
-                type="button"
-                onClick={() => setSyncRows(null)}
-                className="text-xs font-semibold text-slate-500 hover:text-slate-800"
-              >
-                Tutup
-              </button>
-            </div>
-            <ul className="mt-3 space-y-1.5 text-xs">
-              {syncRows.map((row) => (
-                <li key={row.prodiClassId} className="flex flex-wrap items-center gap-2">
-                  {row.status === 'tersinkron' ? (
-                    <CheckCircleIcon className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                  ) : (
-                    <XCircleIcon className="h-3.5 w-3.5 shrink-0 text-rose-600" />
-                  )}
-                  <span className="font-mono font-semibold text-slate-800">{row.kodeMk}</span>
-                  <span className={row.status === 'tersinkron' ? 'text-emerald-700' : 'text-rose-700'}>
-                    {row.status === 'tersinkron'
-                      ? `tersinkron${row.pesertaBaru ? ` · ${row.pesertaBaru} peserta baru` : ''}${
-                          row.dosenTerhubung === false ? ' · dosen belum terhubung' : ''
-                        }`
-                      : row.alasan}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
         {loading ? (
           <div className="card p-6 text-sm text-slate-500">Memuat kelas LMS...</div>
         ) : errorMessage ? (
@@ -303,7 +209,7 @@ export const AdminLmsJadwal: React.FC = () => {
           <div className="card p-8 text-center space-y-2">
             <p className="font-semibold text-slate-800">Belum ada kelas LMS</p>
             <p className="text-sm text-slate-500">
-              Buka kelas baru untuk menetapkan jadwal, ruang, dan dosen pengampu.
+              Tambahkan rombel untuk mata kuliah yang ditawarkan, lalu tetapkan jadwal, ruang, dan dosen pengampunya.
             </p>
           </div>
         ) : (
@@ -324,7 +230,7 @@ export const AdminLmsJadwal: React.FC = () => {
                     className="btn-secondary"
                   >
                     <PlusIcon className="h-4 w-4" />
-                    Tambah Kelas
+                    Tambah Rombel
                   </button>
                 ) : null}
               </header>
