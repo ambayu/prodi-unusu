@@ -56,18 +56,26 @@ const LecturerCard: React.FC<{
             src={dosen.photoUrl}
             alt={`Foto ${dosen.name}`}
             loading="lazy"
+            onError={(e) => {
+              // Jika gambar gagal dimuat (network error/cache), fallback ke inisial
+              e.currentTarget.style.display = 'none';
+              const fallbackEl = e.currentTarget.nextElementSibling as HTMLElement | null;
+              if (fallbackEl) {
+                fallbackEl.classList.remove('hidden');
+                fallbackEl.style.display = 'flex';
+              }
+            }}
             className="h-full w-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
           />
-        ) : (
-          <div
-            className="flex h-full w-full items-center justify-center"
-            style={{
-              backgroundImage: `linear-gradient(150deg, ${primary} 0%, ${primary}cc 55%, ${accent}aa 100%)`,
-            }}
-          >
-            <span className="text-5xl font-black tracking-tight text-white/95">{inisial}</span>
-          </div>
-        )}
+        ) : null}
+        <div
+          className={`h-full w-full items-center justify-center ${dosen.photoUrl ? 'hidden' : 'flex'}`}
+          style={{
+            backgroundImage: `linear-gradient(150deg, ${primary} 0%, ${primary}cc 55%, ${accent}aa 100%)`,
+          }}
+        >
+          <span className="text-5xl font-black tracking-tight text-white/95">{inisial}</span>
+        </div>
 
         {/* Pita jabatan akademik menempel di bawah foto */}
         {dosen.academicRank ? (
