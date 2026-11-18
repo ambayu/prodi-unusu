@@ -116,7 +116,7 @@ const AksiDropdown: React.FC<{
       {terbuka ? (
         <div
           role="menu"
-          className="absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 z-50 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
         >
           {items.map((item) => {
             const Icon = item.icon;

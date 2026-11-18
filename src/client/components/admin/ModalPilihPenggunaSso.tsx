@@ -54,6 +54,7 @@ export const ModalPilihPenggunaSso: React.FC<ModalPilihPenggunaSsoProps> = ({
 
   const [opsiFakultas, setOpsiFakultas] = useState<string[]>([]);
   const [opsiProdi, setOpsiProdi] = useState<string[]>([]);
+  const [opsiPeran, setOpsiPeran] = useState<string[]>([]);
 
   const [terpilih, setTerpilih] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -82,8 +83,12 @@ export const ModalPilihPenggunaSso: React.FC<ModalPilihPenggunaSsoProps> = ({
         const prodi = Array.from(
           new Set(data.map((u) => (u.prodi ?? '').trim()).filter(Boolean)),
         ).sort((a, b) => a.localeCompare(b, 'id'));
+        const peran = Array.from(
+          new Set(data.map((u) => (u.role ?? '').trim().toUpperCase()).filter(Boolean)),
+        ).sort((a, b) => (LABEL_PERAN[a] ?? a).localeCompare(LABEL_PERAN[b] ?? b, 'id'));
         setOpsiFakultas(fakultas);
         setOpsiProdi(prodi);
+        setOpsiPeran(peran);
       }
     } catch (err: unknown) {
       if (nomor !== permintaanTerakhir.current) return;
@@ -102,6 +107,7 @@ export const ModalPilihPenggunaSso: React.FC<ModalPilihPenggunaSsoProps> = ({
       setFilterPeran('');
       setFilterFakultas('');
       setFilterProdi('');
+      setOpsiPeran([]);
       return;
     }
     void muat({});
@@ -306,11 +312,9 @@ export const ModalPilihPenggunaSso: React.FC<ModalPilihPenggunaSsoProps> = ({
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
             >
               <option value="">Semua Peran SSO</option>
-              <option value="DOSEN">Dosen</option>
-              <option value="MAHASISWA">Mahasiswa</option>
-              <option value="TENDIK">Tenaga Kependidikan</option>
-              <option value="ADMIN_SSO">Admin SSO</option>
-              <option value="SUPERADMIN">Super Admin</option>
+              {opsiPeran.map((kode) => (
+                <option key={kode} value={kode}>{LABEL_PERAN[kode] ?? kode}</option>
+              ))}
             </select>
 
             <select

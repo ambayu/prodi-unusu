@@ -130,7 +130,7 @@ export function DataTable<T>({
   return (
     <div className={className}>
       <div className="overflow-x-auto rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs">
-        <table className="table-base w-full" style={{ minWidth, tableLayout: 'fixed' }}>
+        <table className="table-base w-full" style={{ minWidth }}>
           <colgroup>
             {showRowNumber ? <col style={{ width: '56px' }} /> : null}
             {columns.map((kolom) => (
@@ -187,8 +187,6 @@ export function DataTable<T>({
                     <td
                       key={kolom.key}
                       className={[
-                        'overflow-hidden',
-                        kolom.width ? 'break-words' : 'whitespace-nowrap overflow-ellipsis',
                         PERATAAN[kolom.align ?? 'left'],
                         kolom.className ?? '',
                         kolom.cellClassName ?? '',
