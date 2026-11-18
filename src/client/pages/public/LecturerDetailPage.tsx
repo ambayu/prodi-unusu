@@ -103,10 +103,10 @@ export const LecturerDetailPage: React.FC = () => {
               />
 
               <div className="p-6 sm:p-10">
-                <div className="flex flex-col md:flex-row gap-8 items-center md:items-start text-center md:text-left">
-                  {/* Foto Profil Pas Foto Berbayang & Bingkai Halus */}
-                  <div className="shrink-0">
-                    <div className="relative w-44 h-56 sm:w-52 sm:h-64 rounded-2xl overflow-hidden bg-slate-100 border-2 border-white shadow-xl ring-1 ring-slate-200/80 flex items-center justify-center">
+                <div className="flex flex-col md:flex-row gap-8 items-center md:items-stretch text-center md:text-left">
+                  {/* Foto Profil Pas Foto Penuh (Full Height Mengikuti Konten Kanan) */}
+                  <div className="shrink-0 w-full sm:w-56 md:w-64 self-stretch flex">
+                    <div className="relative w-full min-h-[260px] rounded-2xl overflow-hidden bg-slate-100 border-2 border-white shadow-xl ring-1 ring-slate-200/80 flex items-center justify-center">
                       {dosen.photoUrl ? (
                         <img
                           src={dosen.photoUrl}
@@ -115,15 +115,15 @@ export const LecturerDetailPage: React.FC = () => {
                         />
                       ) : (
                         <div
-                          className="w-full h-full flex flex-col items-center justify-center p-4 text-center text-white"
+                          className="w-full h-full min-h-[260px] flex flex-col items-center justify-center p-6 text-center text-white"
                           style={{
                             backgroundImage: `linear-gradient(145deg, ${primary} 0%, ${primary}dd 60%, ${accent} 100%)`,
                           }}
                         >
-                          <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-xs text-white flex items-center justify-center font-black text-3xl mb-2 shadow-inner border border-white/30">
+                          <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-xs text-white flex items-center justify-center font-black text-3xl mb-3 shadow-inner border border-white/30">
                             {inisial}
                           </div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
+                          <span className="text-xs font-bold uppercase tracking-wider text-white/90">
                             Tenaga Pendidik
                           </span>
                         </div>
@@ -132,7 +132,7 @@ export const LecturerDetailPage: React.FC = () => {
                       {/* Badge Gelar / Jabatan di Sudut Bawah Foto */}
                       {dosen.academicRank && (
                         <div
-                          className="absolute bottom-2.5 left-2.5 right-2.5 py-1 px-2.5 rounded-lg text-center text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-md backdrop-blur-md"
+                          className="absolute bottom-3 left-3 right-3 py-1.5 px-3 rounded-lg text-center text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-md backdrop-blur-md"
                           style={{ backgroundColor: accent }}
                         >
                           {dosen.academicRank}
@@ -142,7 +142,7 @@ export const LecturerDetailPage: React.FC = () => {
                   </div>
 
                   {/* Uraian Identitas Profil Utama */}
-                  <div className="flex-1 min-w-0 space-y-4">
+                  <div className="flex-1 min-w-0 flex flex-col justify-between space-y-4">
                     {/* Status Pill & Tag Pendidikan */}
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/80 shadow-2xs">
