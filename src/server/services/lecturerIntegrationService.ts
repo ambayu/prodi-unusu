@@ -5,7 +5,9 @@ export interface InterServiceLecturer {
   id: number;
   name: string;
   nidn: string | null;
+  nip?: string | null;
   email: string | null;
+  gender?: string | null;
   studyProgramName: string | null;
   facultyName: string | null;
   academicRank: string | null;

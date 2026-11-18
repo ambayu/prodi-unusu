@@ -336,6 +336,8 @@ export interface Lecturer {
  * tambahan (`studyProgramName`) ikut dikirim.
  */
 export interface PublicLecturer extends Omit<Lecturer, 'isActive' | 'sortOrder' | 'expertise' | 'bio'> {
+  nip?: string | null;
+  gender?: string | null;
   expertise?: string | null;
   bio?: string | null;
   isActive?: boolean;
