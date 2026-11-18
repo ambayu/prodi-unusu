@@ -34,7 +34,6 @@ import { PortalNewsPage } from './pages/PortalNewsPage';
 import { SsoCallback } from './pages/SsoCallback';
 import { AccountPendingPage } from './pages/AccountPendingPage';import { Dashboard } from './pages/admin/Dashboard';
 import { AdminCurriculum } from './pages/admin/AdminCurriculum';
-import { AdminCurriculumCreate } from './pages/admin/AdminCurriculumCreate';
 import { AdminCurriculumItemForm } from './pages/admin/AdminCurriculumItemForm';
 import { AdminCourses } from './pages/admin/AdminCourses';
 import { AdminDocuments } from './pages/admin/AdminDocuments';
@@ -171,27 +170,9 @@ export const App: React.FC = () => {
       <Route path="/admin/mata-kuliah/baru" element={<Navigate to="/admin/mata-kuliah" replace />} />
       <Route path="/admin/mata-kuliah/:id/ubah" element={<Navigate to="/admin/mata-kuliah" replace />} />
 
-      {/* Kurikulum: wadah kurikulum, lalu penawaran mata kuliah di dalamnya. */}
-      <Route
-        path="/admin/kurikulum/wadah/baru"
-        element={
-          <RequireAuth>
-            <RequirePermission anyOf={['curriculum.create']}>
-              <AdminCurriculumCreate />
-            </RequirePermission>
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/admin/kurikulum/wadah/:id/ubah"
-        element={
-          <RequireAuth>
-            <RequirePermission anyOf={['curriculum.update']}>
-              <AdminCurriculumCreate />
-            </RequirePermission>
-          </RequireAuth>
-        }
-      />
+      {/* Kurikulum: rute lama "wadah" dialihkan ke form penawaran tunggal. */}
+      <Route path="/admin/kurikulum/wadah/baru" element={<Navigate to="/admin/kurikulum/baru" replace />} />
+      <Route path="/admin/kurikulum/wadah/:id/ubah" element={<Navigate to="/admin/kurikulum" replace />} />
       <Route
         path="/admin/kurikulum/baru"
         element={

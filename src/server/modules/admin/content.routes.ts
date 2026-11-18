@@ -5,7 +5,7 @@ import { requirePermission } from '../../middlewares/auth.js';
 import { scopedTenantId } from '../../middlewares/tenantScope.js';
 import { AppError } from '../../utils/errors.js';
 import { recordAudit } from '../../services/auditService.js';
-import { findCourseInTenant, findCourseMasterInTenant, findCurriculumItemInTenant, findSemesterInTenant } from '../../services/curriculumService.js';
+import { findCourseInTenant, findCourseMasterInTenant, findCurriculumItemInTenant, findSemesterInTenant, ensureCurriculumSemester } from '../../services/curriculumService.js';
 import { fetchLecturersFromApiHub } from '../../services/lecturerIntegrationService.js';
 import {
   createAcademicSemesterSchema,
@@ -591,6 +591,7 @@ router.post(
     const body = getBody<{
       curriculumId: number;
       courseId: number;
+      semesterNumber?: number | null;
       academicSemesterId?: number | null;
       credits: number;
       description?: string | null;
@@ -612,10 +613,16 @@ router.post(
       throw AppError.notFound('Mata kuliah tidak ditemukan pada program studi ini.');
     }
 
-    if (body.academicSemesterId) {
+    if (body.semesterNumber) {
+      body.academicSemesterId = null;
+    } else if (body.academicSemesterId) {
       const semester = await prisma.academicSemester.findUnique({ where: { id: body.academicSemesterId } });
       if (!semester) throw AppError.notFound('Semester akademik tidak ditemukan.');
     }
+
+    const semesterId = body.semesterNumber
+      ? await ensureCurriculumSemester(body.curriculumId, body.semesterNumber)
+      : null;
 
     const duplicate = await prisma.curriculumItem.findFirst({
       where: { curriculumId: body.curriculumId, courseId: body.courseId },
@@ -629,7 +636,8 @@ router.post(
       data: {
         curriculumId: body.curriculumId,
         courseId: body.courseId,
-        academicSemesterId: body.academicSemesterId ?? null,
+        academicSemesterId: semesterId ?? body.academicSemesterId ?? null,
+        semesterNumber: body.semesterNumber ?? null,
         credits: body.credits,
         description: body.description ?? null,
         lecturersData: (body.lecturersData ?? null) as any,
@@ -664,6 +672,7 @@ router.post(
       curriculumName: string;
       curriculumYear?: number;
       courseId: number;
+      semesterNumber?: number | null;
       academicSemesterId?: number | null;
       credits: number;
       description?: string | null;
@@ -676,7 +685,7 @@ router.post(
       throw AppError.notFound('Mata kuliah tidak ditemukan pada program studi ini.');
     }
 
-    if (body.academicSemesterId) {
+    if (!body.semesterNumber && body.academicSemesterId) {
       const semester = await prisma.academicSemester.findUnique({ where: { id: body.academicSemesterId } });
       if (!semester) throw AppError.notFound('Semester akademik tidak ditemukan.');
     }
@@ -719,11 +728,14 @@ router.post(
       throw AppError.conflict('Mata kuliah tersebut sudah ada pada kurikulum ini.');
     }
 
+    const semesterId = body.semesterNumber ? await ensureCurriculumSemester(curriculumId, body.semesterNumber) : null;
+
     const item = await prisma.curriculumItem.create({
       data: {
         curriculumId,
         courseId: body.courseId,
-        academicSemesterId: body.academicSemesterId ?? null,
+        academicSemesterId: semesterId ?? body.academicSemesterId ?? null,
+        semesterNumber: body.semesterNumber ?? null,
         credits: body.credits,
         description: body.description ?? null,
         lecturersData: (body.lecturersData ?? null) as any,
@@ -768,6 +780,16 @@ router.put(
         select: { id: true },
       });
       if (!target) throw AppError.notFound('Kurikulum tidak ditemukan pada program studi ini.');
+    }
+
+    if (typeof body.semesterNumber === 'number') {
+      const curriculumId =
+        typeof body.curriculumId === 'number' ? body.curriculumId : existing.curriculumId;
+      const semesterId = await ensureCurriculumSemester(curriculumId, body.semesterNumber);
+      if (!semesterId) throw AppError.notFound('Kurikulum tidak ditemukan pada program studi ini.');
+      body.academicSemesterId = semesterId;
+    } else if (body.semesterNumber === null) {
+      body.academicSemesterId = null;
     }
 
     const item = await prisma.curriculumItem.update({

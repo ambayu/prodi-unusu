@@ -86,6 +86,8 @@ export const updateCourseMasterSchema = createCourseMasterSchema.partial();
 export const createCurriculumItemSchema = z.object({
   curriculumId: z.number().int().positive(),
   courseId: z.number().int().positive(),
+  /** Semester penawaran 1 s/d 8; pengganti `academic_semester_id`. */
+  semesterNumber: z.number().int().min(1).max(8).nullable().optional(),
   academicSemesterId: z.number().int().positive().nullable().optional(),
   credits: z.number().int().min(0).max(12).default(2),
   description: optionalText(5000),

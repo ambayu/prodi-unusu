@@ -13,7 +13,6 @@ import {
   curriculumApi,
   curriculumItemApi,
   curriculumRpsApi,
-  academicSemesterApi,
   lecturerApi,
   RPS_MAX_BYTES,
   type CourseMaster,
@@ -27,26 +26,34 @@ import { firstFieldError, toApiError } from '../../services/api';
 interface Draft {
   courseId: string;
   curriculumId: string;
-  academicSemesterId: string;
+  /** Semester penawaran 1 s/d 8; kosong berarti belum dipilih. */
+  semesterNumber: string;
+  /** Tahun pemberlakuan kurikulum; dipakai saat membuat wadah baru. */
+  curriculumYear: string;
   credits: string;
   description: string;
   lecturersData: LecturerAssignment[];
-  /** Nama dan tahun wadah kurikulum; dipakai saat membuat kurikulum baru. */
-  curriculumName: string;
-  curriculumYear: string;
 }
+
+const SEMESTER_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 const emptyDraft = (defaultCurriculumId = '', defaultCurriculumYear = ''): Draft => ({
   courseId: '',
   curriculumId: defaultCurriculumId,
-  academicSemesterId: '',
+  semesterNumber: '',
+  curriculumYear: defaultCurriculumYear,
   credits: '3',
   description: '',
   lecturersData: [],
-  curriculumName: '',
-  curriculumYear: defaultCurriculumYear,
 });
 
+/**
+ * Form penawaran mata kuliah pada kurikulum (`/admin/kurikulum/baru`).
+ *
+ * Identitas mata kuliah (kode + nama) diambil dari master pada menu **Mata
+ * Kuliah**, tidak diketik di sini. Bila prodi belum punya kurikulum, kode
+ * serta nama wadah diturunkan dari data prodi dan tahun yang dipilih.
+ */
 export const AdminCurriculumItemForm: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
   const isEdit = Boolean(id);
@@ -54,6 +61,7 @@ export const AdminCurriculumItemForm: React.FC = () => {
   const queryClient = useQueryClient();
   const toast = useToast();
   const activeTenantId = useSiteStore((state) => state.activeTenantId);
+  const studyProgramName = useSiteStore((state) => state.tenant?.name ?? '');
 
   const [draft, setDraft] = useState<Draft>(() => emptyDraft('', String(new Date().getFullYear())));
   const [formError, setFormError] = useState<string | null>(null);
@@ -77,14 +85,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
     },
   });
 
-  const semestersQuery = useQuery({
-    queryKey: ['admin', 'academic-semesters'],
-    queryFn: async () => {
-      const res = await academicSemesterApi.list();
-      return res.data.semesters;
-    },
-  });
-
   const lecturersQuery = useQuery({
     queryKey: ['admin', 'lecturers'],
     queryFn: async () => {
@@ -103,7 +103,6 @@ export const AdminCurriculumItemForm: React.FC = () => {
 
   const curriculums: Curriculum[] = useMemo(() => curriculumsQuery.data ?? [], [curriculumsQuery.data]);
   const masters: CourseMaster[] = useMemo(() => mastersQuery.data ?? [], [mastersQuery.data]);
-  const semesters = useMemo(() => semestersQuery.data ?? [], [semestersQuery.data]);
   const dosenOptions = useMemo(() => lecturersQuery.data ?? [], [lecturersQuery.data]);
   const items = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data]);
 
@@ -111,7 +110,11 @@ export const AdminCurriculumItemForm: React.FC = () => {
   useEffect(() => {
     if (!isEdit && curriculums.length > 0 && !draft.curriculumId) {
       const activeCur = curriculums.find((c) => c.isActive) ?? curriculums[0];
-      setDraft((prev) => ({ ...prev, curriculumId: String(activeCur.id) }));
+      setDraft((prev) => ({
+        ...prev,
+        curriculumId: String(activeCur.id),
+        curriculumYear: String(activeCur.year),
+      }));
     }
   }, [isEdit, curriculums, draft.curriculumId]);
 
@@ -124,7 +127,7 @@ export const AdminCurriculumItemForm: React.FC = () => {
       setDraft({
         ...emptyDraft(String(found.curriculumId), found.curriculum ? String(found.curriculum.year) : ''),
         courseId: String(found.courseId),
-        academicSemesterId: found.academicSemesterId ? String(found.academicSemesterId) : '',
+        semesterNumber: found.semesterNumber ? String(found.semesterNumber) : '',
         credits: String(found.credits),
         description: found.description ?? '',
         lecturersData: found.lecturersData ?? [],
@@ -140,15 +143,15 @@ export const AdminCurriculumItemForm: React.FC = () => {
     return masters.filter((master) => !used.has(master.id));
   }, [masters, items, draft.curriculumId, isEdit]);
 
-  const curriculumOptions = useMemo<SearchableOption[]>(() => {
-    const rows: SearchableOption[] = curriculums.map((c) => ({
-      value: String(c.id),
-      label: `${c.name} (${c.year})`,
-      keywords: `${c.year}`,
-    }));
-    // Opsi kosong = buat wadah baru, berlaku juga saat prodi belum punya kurikulum.
-    return [{ value: '', label: 'Buat kurikulum baru' }, ...rows];
-  }, [curriculums]);
+  const curriculumOptions = useMemo<SearchableOption[]>(
+    () =>
+      curriculums.map((c) => ({
+        value: String(c.id),
+        label: `${c.name} (${c.year})`,
+        keywords: `${c.year}`,
+      })),
+    [curriculums],
+  );
 
   const courseOptions = useMemo<SearchableOption[]>(
     () =>
@@ -160,15 +163,12 @@ export const AdminCurriculumItemForm: React.FC = () => {
     [availableMasters],
   );
 
-  const semesterOptions = useMemo<SearchableOption[]>(() => {
-    const rows: SearchableOption[] = semesters.map((s) => ({
-      value: String(s.id),
-      label: `${s.name} (${s.code})`,
-      keywords: s.code,
-      meta: s.isActive ? 'Aktif' : undefined,
-    }));
-    return [{ value: '', label: 'Tanpa semester' }, ...rows];
-  }, [semesters]);
+  const semesterOptions = useMemo<SearchableOption[]>(
+    () => SEMESTER_NUMBERS.map((n) => ({ value: String(n), label: `Semester ${n}` })),
+    [],
+  );
+
+  const selectedMaster = masters.find((m) => String(m.id) === draft.courseId);
 
   const filteredDosen = useMemo(() => {
     const keyword = dosenSearch.trim().toLowerCase();
@@ -180,9 +180,12 @@ export const AdminCurriculumItemForm: React.FC = () => {
 
   const removeRpsMutation = useMutation({
     mutationFn: (rpsId: number) => curriculumRpsApi.remove(rpsId),
-    onSuccess: () => {
+    onSuccess: (_data, rpsId) => {
       toast.success('Berkas RPS berhasil dihapus.');
       void queryClient.invalidateQueries({ queryKey: ['admin', 'curriculum-items'] });
+      setEditingItem((prev) =>
+        prev ? { ...prev, rpsDocuments: prev.rpsDocuments.filter((rps) => rps.id !== rpsId) } : prev,
+      );
     },
     onError: (err) => {
       const apiErr = toApiError(err);
@@ -192,15 +195,17 @@ export const AdminCurriculumItemForm: React.FC = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // `@@unique([studyProgramId, year])` membuat upsert aman diulang: kurikulum
-      // dengan tahun yang sama diperlakukan sebagai pembaruan, bukan duplikat.
+      /*
+       * `@@unique([studyProgramId, year])` membuat upsert aman diulang: tahun
+       * yang sama memperbarui wadah kurikulum yang ada, bukan menduplikat.
+       */
       const { item } = (
         await curriculumItemApi.upsert({
           curriculumId: Number(draft.curriculumId) || 0,
-          curriculumName: draft.curriculumName.trim(),
+          curriculumName: studyProgramName || 'Kurikulum Program Studi',
           curriculumYear: Number(draft.curriculumYear) || undefined,
           courseId: Number(draft.courseId),
-          academicSemesterId: draft.academicSemesterId ? Number(draft.academicSemesterId) : null,
+          semesterNumber: Number(draft.semesterNumber) || null,
           credits: Number(draft.credits),
           description: draft.description.trim() || null,
           lecturersData: draft.lecturersData,
@@ -234,20 +239,20 @@ export const AdminCurriculumItemForm: React.FC = () => {
       setFormError('Pilih mata kuliah terlebih dahulu.');
       return;
     }
+    if (!draft.semesterNumber) {
+      setFormError('Pilih semester 1 sampai 8.');
+      return;
+    }
     if (!draft.curriculumId) {
-      if (!draft.curriculumName.trim()) {
-        setFormError('Nama kurikulum wajib diisi untuk membuat kurikulum baru.');
-        return;
-      }
       const tahun = Number(draft.curriculumYear);
       if (!tahun || tahun < 1990 || tahun > 2100) {
         setFormError('Tahun kurikulum harus berupa angka antara 1990 dan 2100.');
         return;
       }
-    }
-    if (!draft.curriculumId && curriculumsQuery.isLoading) {
-      setFormError('Daftar kurikulum masih dimuat. Coba lagi sebentar lagi.');
-      return;
+      if (curriculumsQuery.isLoading) {
+        setFormError('Daftar kurikulum masih dimuat. Coba lagi sebentar lagi.');
+        return;
+      }
     }
     if (rpsFile && rpsFile.size > RPS_MAX_BYTES) {
       setFormError('Ukuran berkas RPS melebihi 10 MB.');
@@ -256,116 +261,117 @@ export const AdminCurriculumItemForm: React.FC = () => {
     saveMutation.mutate();
   };
 
-  const pageTitle = isEdit ? 'Ubah Mata Kuliah pada Kurikulum' : 'Tambah Mata Kuliah pada Kurikulum';
+  const pageTitle = isEdit ? 'Ubah Mata Kuliah pada Kurikulum' : 'Tambah Kurikulum';
   const pageDescription = isEdit
-    ? 'Perbarui data mata kuliah pada kurikulum: SKS, semester, dosen pengampu, atau berkas RPS.'
+    ? 'Perbarui data mata kuliah pada kurikulum: semester, SKS, dosen pengampu, atau berkas RPS.'
     : mastersQuery.isLoading
-      ? 'Memuat daftar master mata kuliah...'
+      ? 'Memuat daftar mata kuliah...'
       : masters.length === 0
-        ? 'Master mata kuliah masih kosong. Tambahkan mata kuliah lewat menu Mata Kuliah terlebih dahulu.'
-        : 'Pilih mata kuliah dari master, lalu lengkapi detail penawarannya pada kurikulum.';
+        ? 'Belum ada mata kuliah. Tambahkan dulu lewat menu Mata Kuliah, lalu kembali ke halaman ini.'
+        : 'Pilih mata kuliah dari menu Mata Kuliah, lalu tentukan semester, tahun, dan bobotnya.';
 
   const sections: FormSection[] = [
     {
       id: 'section-mata-kuliah',
-      title: 'Pilihan Mata Kuliah',
-      description: 'Pilih mata kuliah dari master untuk ditawarkan ke kurikulum.',
+      title: 'Mata Kuliah',
+      description: 'Kode dan nama mengikuti master pada menu Mata Kuliah.',
       content: (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field
-            label="Mata Kuliah"
-            htmlFor="item-course"
-            required
-            hint="Daftar berasal dari menu Mata Kuliah."
-          >
-            <SearchableSelect
-              id="item-course"
-              aria-label="Mata Kuliah"
-              options={courseOptions}
-              value={draft.courseId}
-              onChange={(value) => setDraft({ ...draft, courseId: value })}
-              placeholder="Pilih mata kuliah..."
-              searchPlaceholder="Cari kode atau nama mata kuliah..."
-              noResultLabel="Tidak ada mata kuliah yang cocok."
-              disabled={isEdit}
-            />
-          </Field>
-
-          {draft.courseId ? (
-            <Field label="Kode Mata Kuliah" htmlFor="item-code" hint="Mengikuti master, tidak dapat diubah di sini.">
-              <input
-                id="item-code"
-                className="field-input bg-slate-100 text-slate-600 font-mono"
-                value={masters.find((m) => String(m.id) === draft.courseId)?.code ?? ''}
-                readOnly
+          <div className="sm:col-span-2">
+            <Field
+              label="Mata Kuliah"
+              htmlFor="item-course"
+              required
+              hint={
+                mastersQuery.isLoading
+                  ? 'Memuat daftar mata kuliah...'
+                  : masters.length === 0
+                    ? 'Daftar master masih kosong. Tambahkan lewat menu Mata Kuliah.'
+                    : 'Daftar berasal dari menu Mata Kuliah.'
+              }
+            >
+              <SearchableSelect
+                id="item-course"
+                aria-label="Mata Kuliah"
+                options={courseOptions}
+                value={draft.courseId}
+                onChange={(value) => setDraft({ ...draft, courseId: value })}
+                placeholder="Pilih mata kuliah..."
+                searchPlaceholder="Cari kode atau nama mata kuliah..."
+                noResultLabel="Tidak ada mata kuliah yang cocok."
+                disabled={isEdit}
               />
             </Field>
+          </div>
+
+          {selectedMaster ? (
+            <div className="sm:col-span-2 grid grid-cols-1 gap-4 rounded-[12px] border border-slate-200 bg-slate-50 px-4 py-3 sm:grid-cols-2">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Kode Mata Kuliah</p>
+                <p className="mt-0.5 font-mono text-sm font-semibold text-slate-900">{selectedMaster.code}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Nama Mata Kuliah</p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-900">{selectedMaster.name}</p>
+              </div>
+            </div>
           ) : null}
 
-          <Field
-            label="Kurikulum"
-            htmlFor="item-curriculum"
-            hint={
-              curriculums.length === 0
-                ? 'Belum ada kurikulum. Biarkan kosong, lalu isi nama dan tahun di bawah untuk membuatnya sekaligus.'
-                : 'Kurikulum tempat mata kuliah ini ditawarkan.'
-            }
-          >
-            <SearchableSelect
-              id="item-curriculum"
-              aria-label="Kurikulum"
-              options={curriculumOptions}
-              value={draft.curriculumId}
-              onChange={(value) => setDraft({ ...draft, curriculumId: value })}
-              placeholder="Buat kurikulum baru"
-              emptyLabel="Buat kurikulum baru"
-              searchPlaceholder="Cari kurikulum..."
-            />
-          </Field>
-
-          {!draft.curriculumId && !isEdit ? (
-            <>
-              <Field label="Nama Kurikulum Baru" htmlFor="item-curriculum-name" required>
-                <input
-                  id="item-curriculum-name"
-                  type="text"
-                  className="field-input"
-                  placeholder="Contoh: Kurikulum 2026 Teknik Informatika"
-                  value={draft.curriculumName}
-                  onChange={(event) => setDraft({ ...draft, curriculumName: event.target.value })}
-                />
-              </Field>
-              <Field label="Tahun Pemberlakuan" htmlFor="item-curriculum-year" required>
-                <input
-                  id="item-curriculum-year"
-                  type="number"
-                  min={1990}
-                  max={2100}
-                  className="field-input"
-                  placeholder="2026"
-                  value={draft.curriculumYear}
-                  onChange={(event) => setDraft({ ...draft, curriculumYear: event.target.value })}
-                />
-              </Field>
-            </>
-          ) : null}
-
-          <Field
-            label="Semester"
-            htmlFor="item-semester"
-            hint="Dipilih dari master semester (kalender akademik)."
-          >
+          <Field label="Semester" htmlFor="item-semester" required hint="Semester ke-1 sampai ke-8 pada kurikulum ini.">
             <SearchableSelect
               id="item-semester"
               aria-label="Semester"
               options={semesterOptions}
-              value={draft.academicSemesterId}
-              onChange={(value) => setDraft({ ...draft, academicSemesterId: value })}
-              placeholder="Tanpa semester"
-              emptyLabel="Tanpa semester"
+              value={draft.semesterNumber}
+              onChange={(value) => setDraft({ ...draft, semesterNumber: value })}
+              placeholder="Pilih semester..."
               searchPlaceholder="Cari semester..."
             />
           </Field>
+
+          {curriculums.length > 1 ? (
+            <Field label="Kurikulum" htmlFor="item-curriculum" hint="Kurikulum tempat mata kuliah ini ditawarkan.">
+              <SearchableSelect
+                id="item-curriculum"
+                aria-label="Kurikulum"
+                options={curriculumOptions}
+                value={draft.curriculumId}
+                onChange={(value) =>
+                  setDraft({
+                    ...draft,
+                    curriculumId: value,
+                    curriculumYear: curriculums.find((c) => String(c.id) === value)?.year
+                      ? String(curriculums.find((c) => String(c.id) === value)?.year)
+                      : draft.curriculumYear,
+                  })
+                }
+                placeholder="Pilih kurikulum..."
+                searchPlaceholder="Cari kurikulum..."
+              />
+            </Field>
+          ) : (
+            <Field
+              label="Tahun"
+              htmlFor="item-curriculum-year"
+              required
+              hint={
+                curriculums.length === 1
+                  ? 'Tahun kurikulum yang sedang dipakai. Ubah bila perlu periode baru.'
+                  : 'Kurikulum untuk tahun ini dibuat otomatis saat disimpan.'
+              }
+            >
+              <input
+                id="item-curriculum-year"
+                type="number"
+                min={1990}
+                max={2100}
+                className="field-input"
+                placeholder="2026"
+                value={draft.curriculumYear}
+                onChange={(event) => setDraft({ ...draft, curriculumYear: event.target.value })}
+              />
+            </Field>
+          )}
         </div>
       ),
     },

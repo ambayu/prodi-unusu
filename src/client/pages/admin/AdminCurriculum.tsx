@@ -123,20 +123,12 @@ export const AdminCurriculum: React.FC = () => {
       title="Kurikulum"
       description={`${filtered.length} penawaran mata kuliah • ${totalCredits} SKS`}
       actions={
-        <div className="flex gap-2">
-          {has('curriculum.create') ? (
-            <Link to="/admin/kurikulum/baru" className="btn-secondary">
-              <PlusIcon className="h-4 w-4" />
-              Tambah Mata Kuliah
-            </Link>
-          ) : null}
-          {has('curriculum.create') ? (
-            <Link to="/admin/kurikulum/wadah/baru" className="btn-primary">
-              <PlusIcon className="h-4 w-4" />
-              Tambah Kurikulum
-            </Link>
-          ) : null}
-        </div>
+        has('curriculum.create') ? (
+          <Link to="/admin/kurikulum/baru" className="btn-primary">
+            <PlusIcon className="h-4 w-4" />
+            Tambah Kurikulum
+          </Link>
+        ) : null
       }
     >
       <div className="space-y-4">
@@ -200,30 +192,19 @@ export const AdminCurriculum: React.FC = () => {
           emptyTitle={
             curriculumsQuery.isLoading || curriculums.length === 0
               ? 'Belum ada kurikulum'
-              : items.length === 0
-                ? 'Belum ada mata kuliah pada kurikulum'
-                : 'Tidak ada mata kuliah yang cocok'
+              : 'Belum ada mata kuliah pada kurikulum'
           }
           emptyDescription={
             curriculumsQuery.isLoading || curriculums.length === 0
-              ? 'Buat kurikulum terlebih dahulu via tombol "Tambah Kurikulum", lalu tawarkan mata kuliah di dalamnya.'
-              : items.length === 0
-                ? 'Tawarkan mata kuliah yang sudah terdaftar di menu Mata Kuliah untuk kurikulum ini.'
-                : 'Ubah kata kunci pencarian untuk menemukan mata kuliah lainnya.'
+              ? 'Klik "Tambah Kurikulum": pilih mata kuliah dari menu Mata Kuliah, lalu tentukan semester dan tahunnya.'
+              : 'Tawarkan mata kuliah yang sudah terdaftar di menu Mata Kuliah untuk kurikulum ini.'
           }
           emptyAction={
-            curriculumsQuery.isLoading || curriculums.length === 0 ? (
-              has('curriculum.create') ? (
-                <Link to="/admin/kurikulum/wadah/baru" className="btn-primary">
-                  <PlusIcon className="h-4 w-4" />
-                  Tambah Kurikulum
-                </Link>
-              ) : null
-            ) : items.length === 0 ? (
+            items.length === 0 && !curriculumsQuery.isLoading ? (
               has('curriculum.create') ? (
                 <Link to="/admin/kurikulum/baru" className="btn-primary">
                   <PlusIcon className="h-4 w-4" />
-                  Tambah Mata Kuliah
+                  Tambah Kurikulum
                 </Link>
               ) : null
             ) : (
@@ -269,18 +250,8 @@ export const AdminCurriculum: React.FC = () => {
                 cellClassName: 'text-xs font-medium text-slate-700',
                 render: (item) =>
                   item.curriculum ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="truncate" title={item.curriculum.name}>
-                        {item.curriculum.name}
-                      </span>
-                      {has('curriculum.update') ? (
-                        <Link
-                          to={`/admin/kurikulum/wadah/${item.curriculum.id}/ubah`}
-                          className="shrink-0 text-[11px] font-semibold text-[#1e3a8a] hover:underline"
-                        >
-                          Ubah
-                        </Link>
-                      ) : null}
+                    <span className="cell-nowrap" title={item.curriculum.name}>
+                      {item.curriculum.name}
                     </span>
                   ) : (
                     <span className="italic text-slate-400">—</span>
@@ -299,7 +270,14 @@ export const AdminCurriculum: React.FC = () => {
                 header: 'Semester',
                 width: 112,
                 cellClassName: 'text-xs font-medium text-slate-700',
-                render: (item) => item.academicSemester?.name ?? <span className="italic text-slate-400">—</span>,
+                render: (item) =>
+                  item.semesterNumber ? (
+                    `Semester ${item.semesterNumber}`
+                  ) : item.academicSemester?.name ? (
+                    item.academicSemester.name
+                  ) : (
+                    <span className="italic text-slate-400">—</span>
+                  ),
               },
               {
                 key: 'keterangan',
@@ -315,6 +293,7 @@ export const AdminCurriculum: React.FC = () => {
               {
                 key: 'dosen',
                 header: 'Dosen Pengampu',
+                width: 220,
                 render: (item) => {
                   const lecturers = item.lecturersData ?? [];
                   return lecturers.length > 0 ? (
@@ -322,11 +301,11 @@ export const AdminCurriculum: React.FC = () => {
                       {lecturers.map((lecturer) => (
                         <span
                           key={String(lecturer.id)}
-                          className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
-                          title={lecturer.nidn ? `NIDN: ${lecturer.nidn}` : undefined}
+                          className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+                          title={lecturer.nidn ? `${lecturer.name} — NIDN: ${lecturer.nidn}` : lecturer.name}
                         >
-                          <UserGroupIcon className="h-3 w-3 text-slate-500" />
-                          {lecturer.name}
+                          <UserGroupIcon className="h-3 w-3 shrink-0 text-slate-500" />
+                          <span className="cell-nowrap">{lecturer.name}</span>
                         </span>
                       ))}
                     </div>
@@ -338,7 +317,7 @@ export const AdminCurriculum: React.FC = () => {
               {
                 key: 'rps',
                 header: 'RPS',
-                width: 80,
+                width: 96,
                 align: 'center',
                 render: (item) => {
                   const rps = item.rpsDocuments ?? [];
@@ -347,10 +326,10 @@ export const AdminCurriculum: React.FC = () => {
                       href={adminRpsFileUrl(rps[0].fileUrl, activeTenantId)}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                      className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
                       title={rps[0].title}
                     >
-                      <DocumentTextIcon className="h-3 w-3" />
+                      <DocumentTextIcon className="h-3 w-3 shrink-0" />
                       Lihat
                     </a>
                   ) : (

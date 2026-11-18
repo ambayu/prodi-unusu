@@ -91,6 +91,36 @@ export function buildCurriculumSummary(curriculums: CurriculumWithSemesters): Cu
   return { totalSemesters, totalCourses, totalCredits, totalRps };
 }
 
+/**
+ * Memastikan wadah semester ke-`semesterNumber` ada pada satu kurikulum.
+ *
+ * Penawaran kini cukup memilih "Semester 1 s/d 8" tanpa menautkan kalender
+ * akademik; semester kurikulum dibuat otomatis di sini. `null` berarti
+ * kurikulum tidak ditemukan atau bukan milik prodi pemanggil.
+ */
+export async function ensureCurriculumSemester(
+  curriculumId: number,
+  semesterNumber: number,
+): Promise<number | null> {
+  const curriculum = await prisma.curriculum.findUnique({
+    where: { id: curriculumId },
+    select: { id: true },
+  });
+  if (!curriculum) return null;
+
+  const semester = await prisma.curriculumSemester.upsert({
+    where: { curriculumId_semesterNumber: { curriculumId, semesterNumber } },
+    create: {
+      curriculumId,
+      semesterNumber,
+      title: `Semester ${semesterNumber}`,
+    },
+    update: {},
+    select: { id: true },
+  });
+  return semester.id;
+}
+
 /** Memastikan sebuah semester berada di bawah tenant yang sedang dikelola. */
 export async function findSemesterInTenant(semesterId: number, studyProgramId: number) {
   return prisma.curriculumSemester.findFirst({

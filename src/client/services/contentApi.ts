@@ -124,6 +124,8 @@ export interface CurriculumItem {
   curriculumId: number;
   courseId: number;
   academicSemesterId: number | null;
+  /** Semester penawaran 1 s/d 8. */
+  semesterNumber: number | null;
   credits: number;
   description: string | null;
   lecturersData: LecturerAssignment[] | null;
@@ -228,6 +230,7 @@ export const curriculumItemApi = {
     curriculumName: string;
     curriculumYear?: number;
     courseId: number;
+    semesterNumber?: number | null;
     academicSemesterId?: number | null;
     credits: number;
     description?: string | null;

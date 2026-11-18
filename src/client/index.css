@@ -124,4 +124,14 @@
     overflow-wrap: anywhere;
     word-break: break-word;
   }
+
+  /*
+   * Sel yang dibungkus kelas ini (nama dosen, tautan RPS) cukup dipotong dengan
+   * elipsis bila kolom sempit, tidak dipatahkan kata per kata.
+   */
+  .table-base tbody td .cell-nowrap {
+    @apply block truncate;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
 }
