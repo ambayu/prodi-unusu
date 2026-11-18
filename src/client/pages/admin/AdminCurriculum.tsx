@@ -203,45 +203,45 @@ export const AdminCurriculum: React.FC = () => {
                 key: 'kode',
                 header: 'Kode',
                 width: 96,
-                cellClassName: 'font-mono font-bold text-slate-700',
+                cellClassName: 'font-mono text-xs font-semibold text-slate-700',
                 render: (item) => item.course.code,
               },
               {
                 key: 'nama',
                 header: 'Nama Mata Kuliah',
-                cellClassName: 'font-semibold text-slate-800',
+                cellClassName: 'text-xs font-semibold text-slate-800',
                 render: (item) => item.course.name,
               },
               {
                 key: 'kurikulum',
                 header: 'Kurikulum',
                 width: 160,
-                cellClassName: 'text-slate-600',
-                render: (item) => (item.curriculum ? `${item.curriculum.name}` : '-'),
+                cellClassName: 'text-xs text-slate-600',
+                render: (item) => (item.curriculum ? `${item.curriculum.name}` : <span className="italic text-slate-400">—</span>),
               },
               {
                 key: 'sks',
                 header: 'SKS',
                 width: 64,
                 align: 'center',
-                cellClassName: 'font-bold',
+                cellClassName: 'text-xs font-semibold text-slate-800',
                 render: (item) => item.credits,
               },
               {
                 key: 'semester',
                 header: 'Semester',
                 width: 112,
-                cellClassName: 'text-slate-600',
-                render: (item) => item.academicSemester?.name ?? '-',
+                cellClassName: 'text-xs text-slate-600',
+                render: (item) => item.academicSemester?.name ?? <span className="italic text-slate-400">—</span>,
               },
               {
                 key: 'keterangan',
                 header: 'Keterangan',
                 width: 140,
-                cellClassName: 'text-slate-600',
+                cellClassName: 'text-xs text-slate-600',
                 render: (item) => (
                   <span className="block max-w-[130px] truncate" title={item.description ?? ''}>
-                    {item.description || '-'}
+                    {item.description || <span className="italic text-slate-400">—</span>}
                   </span>
                 ),
               },
@@ -255,7 +255,7 @@ export const AdminCurriculum: React.FC = () => {
                       {lecturers.map((lecturer) => (
                         <span
                           key={String(lecturer.id)}
-                          className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-800"
+                          className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700"
                           title={lecturer.nidn ? `NIDN: ${lecturer.nidn}` : undefined}
                         >
                           <UserGroupIcon className="h-3 w-3 text-slate-500" />
@@ -280,14 +280,14 @@ export const AdminCurriculum: React.FC = () => {
                       href={rps[0].fileUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-blue-700 hover:bg-blue-100"
+                      className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
                       title={rps[0].title}
                     >
                       <DocumentTextIcon className="h-3 w-3" />
                       Lihat
                     </a>
                   ) : (
-                    <span className="text-xs italic text-slate-400">-</span>
+                    <span className="text-xs italic text-slate-400">—</span>
                   );
                 },
               },

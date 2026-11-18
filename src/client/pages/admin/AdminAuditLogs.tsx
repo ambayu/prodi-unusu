@@ -158,14 +158,14 @@ export const AdminAuditLogs: React.FC = () => {
               key: 'waktu',
               header: 'Waktu',
               width: 170,
-              cellClassName: 'whitespace-nowrap text-slate-600',
+              cellClassName: 'text-xs text-slate-500 whitespace-nowrap',
               render: (entri) => formatWaktu(entri.createdAt),
             },
             {
               key: 'pengguna',
               header: 'Pengguna',
               width: 200,
-              cellClassName: 'font-semibold text-slate-800',
+              cellClassName: 'text-xs font-semibold text-slate-800',
               render: (entri) =>
                 entri.user?.name ?? (
                   <span className="font-normal italic text-slate-400">Sistem</span>
@@ -177,8 +177,8 @@ export const AdminAuditLogs: React.FC = () => {
               width: 190,
               render: (entri) => (
                 <span
-                  className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-bold ${
-                    NADA_AKSI[entri.action] ?? 'border-slate-200 bg-slate-50 text-slate-700'
+                  className={`rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${
+                    NADA_AKSI[entri.action] ?? 'bg-slate-100 text-slate-700'
                   }`}
                 >
                   {LABEL_AKSI[entri.action] ?? entri.action}
@@ -189,14 +189,13 @@ export const AdminAuditLogs: React.FC = () => {
               key: 'modul',
               header: 'Modul',
               width: 150,
-              cellClassName: 'text-slate-600',
+              cellClassName: 'text-xs text-slate-600',
               render: (entri) => LABEL_MODUL[entri.module] ?? entri.module,
             },
             {
               key: 'objek',
               header: 'Objek',
-              /* Satu-satunya kolom tanpa lebar tetap: menyerap sisa ruang. */
-              cellClassName: 'text-slate-500',
+              cellClassName: 'text-xs text-slate-500',
               render: (entri) =>
                 entri.targetType ? (
                   <>

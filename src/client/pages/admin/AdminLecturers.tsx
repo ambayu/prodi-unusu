@@ -72,7 +72,7 @@ export const AdminLecturers: React.FC = () => {
                     <UserCircleIcon className="h-6 w-6 text-slate-400" aria-hidden="true" />
                   )}
                 </div>
-                <span className="block min-w-0 text-[14px] font-extrabold leading-snug text-slate-900">
+                <span className="block min-w-0 text-xs font-semibold text-slate-900">
                   {lecturer.name}
                 </span>
               </div>
@@ -82,33 +82,37 @@ export const AdminLecturers: React.FC = () => {
             key: 'email',
             header: 'Email',
             width: 220,
-            render: (lecturer) => lecturer.email ?? <span className="text-slate-400">—</span>,
+            cellClassName: 'font-mono text-xs text-slate-600',
+            render: (lecturer) => lecturer.email ?? <span className="italic text-slate-400">—</span>,
           },
           {
             key: 'nidn',
             header: 'NIDN',
             width: 130,
-            cellClassName: 'whitespace-nowrap font-mono font-semibold text-slate-700',
-            render: (lecturer) => lecturer.nidn ?? <span className="text-slate-400">—</span>,
+            cellClassName: 'font-mono text-xs font-semibold text-slate-700',
+            render: (lecturer) => lecturer.nidn ?? <span className="italic text-slate-400">—</span>,
           },
           {
             key: 'homebase',
             header: 'Homebase / Prodi',
             width: 200,
-            render: (lecturer) => lecturer.studyProgramName ?? lecturer.expertise ?? <span className="text-slate-400">—</span>,
+            cellClassName: 'text-xs text-slate-700',
+            render: (lecturer) => lecturer.studyProgramName ?? lecturer.expertise ?? <span className="italic text-slate-400">—</span>,
           },
           {
             key: 'jabatan',
             header: 'Jabatan Fungsional',
             width: 160,
-            render: (lecturer) => lecturer.academicRank ?? <span className="text-slate-400">—</span>,
+            cellClassName: 'text-xs text-slate-700',
+            render: (lecturer) => lecturer.academicRank ?? <span className="italic text-slate-400">—</span>,
           },
           {
             key: 'pendidikan',
             header: 'Pendidikan',
             width: 120,
             align: 'center',
-            render: (lecturer) => lecturer.education ?? <span className="text-slate-400">—</span>,
+            cellClassName: 'text-xs text-slate-700',
+            render: (lecturer) => lecturer.education ?? <span className="italic text-slate-400">—</span>,
           },
           {
             key: 'status',
@@ -117,10 +121,10 @@ export const AdminLecturers: React.FC = () => {
             align: 'center',
             render: (lecturer) => (
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${
+                className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
                   lecturer.isActive
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    : 'bg-slate-100 text-slate-600'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-slate-100 text-slate-500'
                 }`}
               >
                 {lecturer.isActive ? 'Aktif' : 'Nonaktif'}

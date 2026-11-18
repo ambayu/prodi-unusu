@@ -157,32 +157,32 @@ export const AdminPortalOverview: React.FC = () => {
       key: 'kode',
       header: 'Kode',
       width: 100,
-      cellClassName: 'whitespace-nowrap font-bold text-slate-700',
+      cellClassName: 'font-mono text-xs font-semibold text-slate-700',
       render: (row) => row.studyProgram.code,
     },
     {
       key: 'prodi',
       header: 'Program Studi',
-      cellClassName: 'font-semibold text-slate-900',
+      cellClassName: 'text-xs font-semibold text-slate-900',
       render: (row) => row.studyProgram.name,
     },
     {
       key: 'fakultas',
       header: 'Fakultas',
       width: 220,
-      cellClassName: 'text-slate-600',
+      cellClassName: 'text-xs text-slate-600',
       render: (row) => row.studyProgram.faculty.name,
     },
     {
       key: 'hostname',
       header: 'Hostname',
       width: 230,
-      cellClassName: '',
+      cellClassName: 'font-mono text-xs text-slate-700',
       render: (row) => (
         <>
-          <span className="font-mono text-xs text-slate-700">{row.hostname}</span>
+          {row.hostname}
           {row.isPrimary ? (
-            <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-blue-700">
+            <span className="ml-1.5 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
               utama
             </span>
           ) : null}
@@ -195,11 +195,11 @@ export const AdminPortalOverview: React.FC = () => {
       width: 120,
       render: (row) =>
         row.isActive ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
             <CheckCircleIcon className="h-3 w-3" aria-hidden="true" /> Aktif
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-600">
+          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
             <XCircleIcon className="h-3 w-3" aria-hidden="true" /> Nonaktif
           </span>
         ),

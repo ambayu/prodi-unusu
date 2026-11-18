@@ -133,22 +133,23 @@ export const AdminAcademicSemesters: React.FC = () => {
             key: 'kode',
             header: 'Kode Semester',
             width: 128,
-            cellClassName: 'font-mono font-bold text-slate-800',
+            cellClassName: 'font-mono text-xs font-semibold text-slate-700',
             render: (sem) => sem.code,
           },
           {
             key: 'nama',
             header: 'Nama Semester',
-            /* Satu-satunya kolom tanpa lebar tetap: nama semester bisa panjang. */
-            render: (sem) => <div className="font-semibold text-slate-900">{sem.name}</div>,
+            cellClassName: 'text-xs font-semibold text-slate-900',
+            render: (sem) => sem.name,
           },
           {
             key: 'rentang',
             header: 'Rentang Tanggal',
             width: 256,
+            cellClassName: 'text-xs text-slate-600',
             render: (sem) => (
-              <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                <CalendarDaysIcon className="h-4 w-4 text-slate-400" />
+              <div className="flex items-center gap-1.5">
+                <CalendarDaysIcon className="h-4 w-4 shrink-0 text-slate-400" />
                 <span>{formatDate(sem.startDate)}</span>
                 <span className="text-slate-400">—</span>
                 <span>{formatDate(sem.endDate)}</span>
@@ -163,11 +164,11 @@ export const AdminAcademicSemesters: React.FC = () => {
             render: (sem) => (
               <span
                 className={[
-                  'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold',
-                  sem.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600',
+                  'rounded-md px-2 py-0.5 text-xs font-semibold',
+                  sem.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500',
                 ].join(' ')}
               >
-                {sem.isActive ? 'Aktif' : 'Non-aktif'}
+                {sem.isActive ? 'Aktif' : 'Nonaktif'}
               </span>
             ),
           },

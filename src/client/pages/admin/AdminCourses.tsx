@@ -170,15 +170,13 @@ export const AdminCourses: React.FC = () => {
                 key: 'kode',
                 header: 'Kode',
                 width: 128,
-                /* Ukuran huruf tidak diturunkan di sini: seluruh kolom memakai
-                   ukuran isi tabel baku agar seragam. */
-                cellClassName: 'font-mono font-semibold text-slate-700',
+                cellClassName: 'font-mono text-xs font-semibold text-slate-700',
                 render: (course) => course.code,
               },
               {
                 key: 'nama',
                 header: 'Nama Mata Kuliah',
-                cellClassName: 'font-semibold text-slate-800',
+                cellClassName: 'text-xs font-semibold text-slate-800',
                 render: (course) => course.name,
               },
               {

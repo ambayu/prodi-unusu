@@ -89,7 +89,7 @@ export const AdminDomains: React.FC = () => {
     {
       key: 'hostname',
       header: 'Hostname',
-      cellClassName: 'font-mono font-bold text-[#1e3a8a]',
+      cellClassName: 'font-mono text-xs font-semibold text-[#1e3a8a]',
       render: (domain) => domain.hostname,
     },
     {
@@ -99,18 +99,18 @@ export const AdminDomains: React.FC = () => {
       render: (domain) =>
         domain.studyProgram ? (
           <>
-            <span className="block font-semibold text-slate-800">{domain.studyProgram.name}</span>
+            <span className="block text-xs font-semibold text-slate-800">{domain.studyProgram.name}</span>
             <span className="font-mono text-xs text-slate-500">{domain.studyProgram.code}</span>
           </>
         ) : domain.faculty ? (
           <>
-            <span className="block font-semibold text-slate-800">{domain.faculty.name}</span>
+            <span className="block text-xs font-semibold text-slate-800">{domain.faculty.name}</span>
             <span className="font-mono text-xs text-slate-500">
               {domain.faculty.code} · Fakultas
             </span>
           </>
         ) : (
-          <span className="text-xs text-slate-400">-</span>
+          <span className="text-xs italic text-slate-400">—</span>
         ),
     },
     {
@@ -119,11 +119,11 @@ export const AdminDomains: React.FC = () => {
       width: 100,
       render: (domain) =>
         domain.isPrimary ? (
-          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-[#1e3a8a]">
+          <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-[#1e3a8a]">
             Utama
           </span>
         ) : (
-          <span className="text-xs text-slate-400">-</span>
+          <span className="text-xs italic text-slate-400">—</span>
         ),
     },
     {
@@ -135,8 +135,8 @@ export const AdminDomains: React.FC = () => {
           type="button"
           onClick={() => toggleMutation.mutate({ id: domain.id, isActive: !domain.isActive })}
           disabled={!has('domain.update') || toggleMutation.isPending}
-          className={`rounded px-1.5 py-0.5 text-xs font-bold disabled:cursor-not-allowed ${
-            domain.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+          className={`rounded-md px-2 py-0.5 text-xs font-semibold disabled:cursor-not-allowed ${
+            domain.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
           }`}
         >
           {domain.isActive ? 'Aktif' : 'Nonaktif'}

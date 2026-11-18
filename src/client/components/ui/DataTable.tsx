@@ -95,8 +95,8 @@ export function DataTable<T>({
   loadingRows = 4,
   minWidth = 720,
   showRowNumber = true,
-  pageSize = 10,
-  pageSizeOptions = [10, 25, 50],
+  pageSize = 20,
+  pageSizeOptions = [20, 50, 100],
   footer,
   className = '',
 }: DataTableProps<T>) {

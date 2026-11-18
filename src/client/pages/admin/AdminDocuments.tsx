@@ -557,20 +557,16 @@ export const AdminDocuments: React.FC = () => {
           {
             key: 'judul',
             header: 'Judul Dokumen',
-            render: (baris) => (
-              <span className="block text-[14px] font-extrabold leading-snug text-slate-900">{baris.judul}</span>
-            ),
+            cellClassName: 'text-xs font-semibold text-slate-900',
+            render: (baris) => baris.judul,
           },
           {
             key: 'nomor',
             header: 'Nomor Dokumen',
             width: 180,
+            cellClassName: 'font-mono text-xs text-slate-700',
             render: (baris) =>
-              baris.nomor ? (
-                <span className="block font-mono text-slate-700">{baris.nomor}</span>
-              ) : (
-                <span className="text-slate-400">—</span>
-              ),
+              baris.nomor ?? <span className="italic text-slate-400">—</span>,
           },
           {
             key: 'berkas',
@@ -580,11 +576,11 @@ export const AdminDocuments: React.FC = () => {
             render: (baris) => {
               const jenis = ekstensiBerkas(baris.mimeType);
               return jenis ? (
-                <span className="inline-block rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs font-bold uppercase text-slate-600">
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-semibold uppercase text-slate-600">
                   {jenis}
                 </span>
               ) : (
-                <span className="text-slate-400">—</span>
+                <span className="italic text-slate-400">—</span>
               );
             },
           },
@@ -592,15 +588,16 @@ export const AdminDocuments: React.FC = () => {
             key: 'kategori',
             header: 'Kategori',
             width: 150,
-            render: (baris) => baris.kategori ?? <span className="text-slate-400">—</span>,
+            cellClassName: 'text-xs text-slate-700',
+            render: (baris) => baris.kategori ?? <span className="italic text-slate-400">—</span>,
           },
           {
             key: 'tahun',
             header: 'Tahun',
             width: 80,
             align: 'center',
-            cellClassName: 'whitespace-nowrap',
-            render: (baris) => baris.tahun ?? <span className="text-slate-400">—</span>,
+            cellClassName: 'text-xs text-slate-700',
+            render: (baris) => baris.tahun ?? <span className="italic text-slate-400">—</span>,
           },
           {
             key: 'status',
@@ -608,7 +605,7 @@ export const AdminDocuments: React.FC = () => {
             width: 110,
             render: (baris) => (
               <span
-                className={`inline-block max-w-full truncate rounded px-2 py-1 align-middle font-bold ${
+                className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
                   WARNA_STATUS[baris.status ?? ''] ?? 'bg-slate-100 text-slate-600'
                 }`}
               >
