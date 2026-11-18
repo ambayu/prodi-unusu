@@ -52,6 +52,16 @@ export interface LmsStudentRow {
   name: string;
 }
 
+export interface LmsSyncRow {
+  prodiClassId: number;
+  kodeMk: string;
+  status: 'tersinkron' | 'gagal';
+  alasan?: string;
+  classId?: number;
+  pesertaBaru?: number;
+  dosenTerhubung?: boolean;
+}
+
 export const lmsAdminApi = {
   courses: () => api.get<{ success: boolean; courses: LmsCourseOption[] }>('/admin/lms/courses'),
   classrooms: () => api.get<{ success: boolean; classrooms: LmsClassroom[] }>('/admin/lms/classrooms'),
@@ -65,4 +75,6 @@ export const lmsAdminApi = {
   saveStudents: (classroomId: number, students: LmsStudentRow[]) =>
     api.put(`/admin/lms/classrooms/${classroomId}/students`, { students }),
   knownStudents: () => api.get<{ success: boolean; students: LmsStudentRow[] }>('/admin/lms/students'),
+  sinkron: () =>
+    api.post<{ success: boolean; message: string; hasil: LmsSyncRow[] }>('/admin/lms/sinkron'),
 };

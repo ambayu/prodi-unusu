@@ -310,7 +310,121 @@ router.put(
 );
 
 /**
- * GET /api/v1/admin/lms/students: kandidat peserta untuk formulir plotting.
+ * POST /api/v1/admin/lms/sinkron: dorong seluruh kelas prodi aktif ke LMS.
+ *
+ * Portal Prodi sumber data kelas, tetapi LMS menyimpan salinannya sendiri.
+ * Endpoint ini yang menjembatani keduanya: setiap kelas dikirim bersama kode MK,
+ * jadwal, dosen, dan pesertanya. LMS memakai `prodiClassId` sebagai kunci, jadi
+ * menekan tombol ini berulang kali tidak menggandakan kelas.
+ *
+ * `LMS_SYNC_URL` dan `LMS_SYNC_API_KEY` dibaca langsung dari lingkungan (bukan
+ * dari `config`) karena keduanya bukan syarat berjalannya Portal Prodi — tanpa
+ * nilai itu hanya fitur sinkron yang menolak, aplikasi tetap melayani.
+ */
+router.post(
+  '/lms/sinkron',
+  requirePermission('curriculum.update'),
+  asyncHandler(async (req, res) => {
+    const tenantId = scopedTenantId(req);
+    const urlSah = (process.env.LMS_SYNC_URL ?? '').trim().replace(/\/$/, '');
+    const kunciSah = (process.env.LMS_SYNC_API_KEY ?? '').trim();
+
+    if (!urlSah) {
+      throw AppError.badRequest('LMS_SYNC_URL belum diatur pada server Portal Prodi.');
+    }
+    if (!kunciSah) {
+      throw AppError.badRequest('LMS_SYNC_API_KEY belum diatur pada server Portal Prodi.');
+    }
+
+    const semester = await prisma.academicSemester.findFirst({
+      where: { isActive: true },
+      orderBy: { startDate: 'desc' },
+      select: { name: true },
+    });
+    if (!semester) {
+      throw AppError.badRequest('Belum ada semester aktif. Aktifkan satu semester sebelum sinkron.');
+    }
+
+    const classrooms = await prisma.lmsClassroom.findMany({
+      where: { curriculumItem: { curriculum: { studyProgramId: tenantId, isActive: true } } },
+      orderBy: { id: 'asc' },
+      select: {
+        id: true,
+        group: true,
+        day: true,
+        startTime: true,
+        endTime: true,
+        room: true,
+        lecturerNidn: true,
+        curriculumItem: {
+          select: {
+            credits: true,
+            semesterNumber: true,
+            course: { select: { code: true, name: true } },
+          },
+        },
+        students: { orderBy: { nim: 'asc' }, select: { nim: true, name: true } },
+      },
+    });
+
+    if (classrooms.length === 0) {
+      throw AppError.badRequest('Belum ada kelas pada kurikulum aktif untuk dikirim.');
+    }
+
+    const payload = {
+      semester: semester.name,
+      kelas: classrooms.map((kelas) => ({
+        prodiClassId: kelas.id,
+        kodeMk: kelas.curriculumItem.course.code,
+        namaMk: kelas.curriculumItem.course.name,
+        sks: kelas.curriculumItem.credits,
+        semester: kelas.curriculumItem.semesterNumber,
+        rombel: kelas.group,
+        hari: kelas.day,
+        jamMulai: kelas.startTime,
+        jamSelesai: kelas.endTime,
+        ruang: kelas.room,
+        dosenNidn: kelas.lecturerNidn,
+        peserta: kelas.students,
+      })),
+    };
+
+    const upstream = await fetch(`${urlSah}/api/internal/sinkron-kelas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${kunciSah}` },
+      body: JSON.stringify(payload),
+    }).catch(() => null);
+
+    if (!upstream) {
+      throw AppError.badGateway('LMS tidak dapat dihubungi. Periksa LMS_SYNC_URL.');
+    }
+
+    const hasil = (await upstream.json().catch(() => null)) as
+      | { message?: string; hasil?: unknown[]; gagal?: unknown[] }
+      | null;
+    if (!upstream.ok) {
+      throw new AppError(
+        upstream.status === 401 ? 502 : upstream.status,
+        hasil?.message ?? `LMS membalas status ${upstream.status}.`,
+        'LMS_SYNC_FAILED',
+        undefined,
+        { gagal: hasil?.gagal },
+      );
+    }
+
+    await recordAudit({
+      req,
+      action: 'UPDATE',
+      module: 'CURRICULUM',
+      targetType: 'lms_sync',
+      targetId: tenantId,
+    });
+
+    res.json({ success: true, message: hasil?.message ?? 'Sinkron selesai.', hasil: hasil?.hasil ?? [] });
+  }),
+);
+
+/** GET /api/v1/admin/lms/students: kandidat peserta untuk formulir plotting.
  *
  * Data induk mahasiswa milik SIAKAD, bukan Portal Prodi. Yang tersedia di sini
  * adalah mahasiswa yang SUDAH pernah di-plot ke kelas mana pun pada prodi ini,
