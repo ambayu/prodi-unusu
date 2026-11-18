@@ -10,6 +10,7 @@ import { getPublishedPageBySlug } from '../../services/pageService.js';
 import { buildCurriculumSummary, listPublicCurriculum } from '../../services/curriculumService.js';
 import { fetchLecturersFromApiHub } from '../../services/lecturerIntegrationService.js';
 import type { InterServiceLecturer } from '../../services/lecturerIntegrationService.js';
+import { getSarprasByProdiCode } from '../../services/sarprasService.js';
 
 const router = Router();
 
@@ -446,12 +447,18 @@ router.get(
   '/facilities',
   requireTenant,
   asyncHandler(async (req, res) => {
-    const facilities = await prisma.facility.findMany({
-      where: { studyProgramId: req.tenant!.tenantType === 'faculty' ? -1 : req.tenant!.id },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
-    });
+    const isProdi = req.tenant!.tenantType !== 'faculty';
+    const studyProgramId = isProdi ? req.tenant!.id : -1;
 
-    res.json({ success: true, facilities });
+    const [facilities, sarprasHub] = await Promise.all([
+      prisma.facility.findMany({
+        where: { studyProgramId },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+      }),
+      isProdi && req.tenant!.code ? getSarprasByProdiCode(req.tenant!.code) : Promise.resolve([]),
+    ]);
+
+    res.json({ success: true, facilities: [...facilities, ...sarprasHub] });
   }),
 );
 

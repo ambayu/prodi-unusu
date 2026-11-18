@@ -559,7 +559,7 @@ export const dokumenProdiApi = {
 // ---------------------------------------------------------
 
 export interface Facility {
-  id: number;
+  id: number | string;
   name: string;
   category: string;
   location: string | null;
