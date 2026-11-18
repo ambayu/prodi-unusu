@@ -141,6 +141,12 @@ export const AdminDocuments: React.FC = () => {
     queryKey: ['admin', 'dokumen-password'],
     queryFn: () => arsipDokumenApi.passwordStatus().then((res) => res.data),
     retry: 1,
+    /*
+     * Status sandi juga dipakai halaman Kurikulum untuk memperingatkan bahwa RPS
+     * tertutup selama sandi belum dipasang. Kunci yang sama membuat keduanya
+     * ikut segar begitu sandi disimpan di sini.
+     */
+    staleTime: 5 * 60 * 1000,
   });
 
   const invalidasi = () => {

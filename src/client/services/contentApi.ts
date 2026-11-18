@@ -129,7 +129,7 @@ export interface CurriculumItem {
   lecturersData: LecturerAssignment[] | null;
   sortOrder: number;
   course: { id: number; code: string; name: string };
-  curriculum?: { id: number; name: string; year: number };
+  curriculum?: { id: number; name: string; year: number; description?: string | null };
   academicSemester?: AcademicSemester | null;
   rpsDocuments: CurriculumRpsRow[];
 }
@@ -215,6 +215,24 @@ export const curriculumItemApi = {
     description?: string | null;
     lecturersData?: LecturerAssignment[] | null;
   }) => api.post<{ item: CurriculumItem }>('/admin/curriculum-items', data),
+  /**
+   * Menawarkan mata kuliah sekaligus menyiapkan wadah kurikulumnya.
+   *
+   * `curriculumId` kosong (0) berarti kurikulum belum ada: server mencari
+   * wadah dengan `studyProgramId` + `curriculumYear` yang sama, membuatnya bila
+   * belum ada, lalu menautkan penawaran ke situ. Dengan begitu prodi baru dapat
+   * mengisi kurikulum dari satu formulir.
+   */
+  upsert: (data: {
+    curriculumId: number;
+    curriculumName: string;
+    curriculumYear?: number;
+    courseId: number;
+    academicSemesterId?: number | null;
+    credits: number;
+    description?: string | null;
+    lecturersData?: LecturerAssignment[] | null;
+  }) => api.post<{ item: CurriculumItem }>('/admin/curriculum-items/upsert', data),
   update: (id: number, data: Record<string, unknown>) =>
     api.put<{ item: CurriculumItem }>(`/admin/curriculum-items/${id}`, data),
   remove: (id: number) => api.delete(`/admin/curriculum-items/${id}`),

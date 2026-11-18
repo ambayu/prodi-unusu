@@ -93,6 +93,21 @@ export const createCurriculumItemSchema = z.object({
   sortOrder: z.number().int().min(0).default(0),
 });
 
+/*
+ * Penawaran sekaligus wadah kurikulumnya.
+ *
+ * `curriculumId` boleh 0 bila prodi belum punya kurikulum sama sekali: server
+ * akan memakai (atau membuat) wadah kurikulum dari `curriculumName` +
+ * `curriculumYear`. `studyProgramId` tetap tidak diterima dari browser.
+ */
+export const upsertCurriculumItemSchema = createCurriculumItemSchema
+  .omit({ curriculumId: true })
+  .extend({
+    curriculumId: z.number().int().min(0),
+    curriculumName: z.string().trim().max(200).default(''),
+    curriculumYear: z.number().int().min(1990).max(2100).optional(),
+  });
+
 export const updateCurriculumItemSchema = createCurriculumItemSchema.partial();
 
 export const createRpsSchema = z.object({

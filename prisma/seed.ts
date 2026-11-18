@@ -452,6 +452,9 @@ async function main() {
   console.log('11. Tema visual, halaman beranda, & page builder 14 prodi');
   await seedPageBuilderAndThemes();
 
+  console.log('12. Master semester akademik (Semester 1 s/d 8)');
+  await seedAcademicSemesters();
+
   const durationMs = Date.now() - startedAt;
   console.log('');
   console.log('=== Ringkasan ===');

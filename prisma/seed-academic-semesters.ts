@@ -5,6 +5,7 @@
  * bukan sekadar periode Ganjil/Genap.
  */
 import { PrismaClient } from '@prisma/client';
+import { pathToFileURL } from 'node:url';
 
 const prisma = new PrismaClient();
 
@@ -125,9 +126,16 @@ export async function seedAcademicSemesters() {
   console.log('SUKSES: Master Semester-1-2026 s/d Semester-8-2026 berhasil disemai.');
 }
 
-seedAcademicSemesters()
-  .catch((err) => {
-    console.error('Gagal menyemai master semester:', err);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+/*
+ * Skrip dapat dijalankan langsung (`npx tsx prisma/seed-academic-semesters.ts`)
+ * maupun diimpor oleh `seed.ts`; eksekusi otomatis di bawah hanya berlaku untuk
+ * jalur langsung agar seeder utama tidak menyemai dua kali.
+ */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  seedAcademicSemesters()
+    .catch((err) => {
+      console.error('Gagal menyemai master semester:', err);
+      process.exit(1);
+    })
+    .finally(() => prisma.$disconnect());
+}

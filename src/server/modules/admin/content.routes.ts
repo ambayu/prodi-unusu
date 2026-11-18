@@ -15,6 +15,7 @@ import {
   createCourseMasterSchema,
   updateCourseMasterSchema,
   createCurriculumItemSchema,
+  upsertCurriculumItemSchema,
   updateCurriculumItemSchema,
   createFacilitySchema,
 } from '../../../shared/schemas/content.js';
@@ -627,6 +628,100 @@ router.post(
     const item = await prisma.curriculumItem.create({
       data: {
         curriculumId: body.curriculumId,
+        courseId: body.courseId,
+        academicSemesterId: body.academicSemesterId ?? null,
+        credits: body.credits,
+        description: body.description ?? null,
+        lecturersData: (body.lecturersData ?? null) as any,
+        sortOrder: body.sortOrder,
+      },
+      include: { course: true, academicSemester: true, rpsDocuments: true },
+    });
+
+    await recordAudit({ req, action: 'CREATE', module: 'CURRICULUM', targetType: 'curriculum_item', targetId: item.id });
+    res.status(201).json({ success: true, message: 'Mata kuliah berhasil ditambahkan ke kurikulum.', item });
+  }),
+);
+
+/**
+ * POST /api/v1/admin/curriculum-items/upsert
+ *
+ * Menawarkan mata kuliah dan, bila perlu, menyiapkan wadah kurikulumnya dalam
+ * satu permintaan. Dipakai formulir "Tambah Mata Kuliah": prodi yang belum punya
+ * kurikulum cukup mengisi nama dan tahun, tanpa berpindah halaman.
+ *
+ * Pencarian wadah memakai `@@unique([studyProgramId, year])`, sehingga
+ * menekan simpan dua kali untuk tahun yang sama tidak membuat duplikat.
+ */
+router.post(
+  '/curriculum-items/upsert',
+  requirePermission('curriculum.create'),
+  validate({ body: upsertCurriculumItemSchema }),
+  asyncHandler(async (req, res) => {
+    const studyProgramId = scopedTenantId(req);
+    const body = getBody<{
+      curriculumId: number;
+      curriculumName: string;
+      curriculumYear?: number;
+      courseId: number;
+      academicSemesterId?: number | null;
+      credits: number;
+      description?: string | null;
+      lecturersData?: unknown;
+      sortOrder: number;
+    }>(req);
+
+    const course = await findCourseMasterInTenant(body.courseId, studyProgramId);
+    if (!course) {
+      throw AppError.notFound('Mata kuliah tidak ditemukan pada program studi ini.');
+    }
+
+    if (body.academicSemesterId) {
+      const semester = await prisma.academicSemester.findUnique({ where: { id: body.academicSemesterId } });
+      if (!semester) throw AppError.notFound('Semester akademik tidak ditemukan.');
+    }
+
+    let curriculumId = body.curriculumId;
+    if (curriculumId > 0) {
+      const owned = await prisma.curriculum.findFirst({
+        where: { id: curriculumId, studyProgramId },
+        select: { id: true },
+      });
+      if (!owned) {
+        throw AppError.notFound('Kurikulum tidak ditemukan pada program studi ini.');
+      }
+    } else {
+      if (!body.curriculumName || !body.curriculumYear) {
+        throw AppError.badRequest(
+          'Isi nama dan tahun kurikulum baru terlebih dahulu.',
+          'CURRICULUM_REQUIRED',
+        );
+      }
+      const curriculum = await prisma.curriculum.upsert({
+        where: { studyProgramId_year: { studyProgramId, year: body.curriculumYear } },
+        create: {
+          studyProgramId,
+          name: body.curriculumName,
+          year: body.curriculumYear,
+          isActive: true,
+        },
+        update: { name: body.curriculumName },
+        select: { id: true },
+      });
+      curriculumId = curriculum.id;
+    }
+
+    const duplicate = await prisma.curriculumItem.findFirst({
+      where: { curriculumId, courseId: body.courseId },
+      select: { id: true },
+    });
+    if (duplicate) {
+      throw AppError.conflict('Mata kuliah tersebut sudah ada pada kurikulum ini.');
+    }
+
+    const item = await prisma.curriculumItem.create({
+      data: {
+        curriculumId,
         courseId: body.courseId,
         academicSemesterId: body.academicSemesterId ?? null,
         credits: body.credits,

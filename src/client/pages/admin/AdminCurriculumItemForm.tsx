@@ -31,15 +31,20 @@ interface Draft {
   credits: string;
   description: string;
   lecturersData: LecturerAssignment[];
+  /** Nama dan tahun wadah kurikulum; dipakai saat membuat kurikulum baru. */
+  curriculumName: string;
+  curriculumYear: string;
 }
 
-const emptyDraft = (defaultCurriculumId = ''): Draft => ({
+const emptyDraft = (defaultCurriculumId = '', defaultCurriculumYear = ''): Draft => ({
   courseId: '',
   curriculumId: defaultCurriculumId,
   academicSemesterId: '',
   credits: '3',
   description: '',
   lecturersData: [],
+  curriculumName: '',
+  curriculumYear: defaultCurriculumYear,
 });
 
 export const AdminCurriculumItemForm: React.FC = () => {
@@ -50,7 +55,7 @@ export const AdminCurriculumItemForm: React.FC = () => {
   const toast = useToast();
   const activeTenantId = useSiteStore((state) => state.activeTenantId);
 
-  const [draft, setDraft] = useState<Draft>(emptyDraft());
+  const [draft, setDraft] = useState<Draft>(() => emptyDraft('', String(new Date().getFullYear())));
   const [formError, setFormError] = useState<string | null>(null);
   const [dosenSearch, setDosenSearch] = useState('');
   const [rpsFile, setRpsFile] = useState<File | null>(null);
@@ -117,8 +122,8 @@ export const AdminCurriculumItemForm: React.FC = () => {
     if (found) {
       setEditingItem(found);
       setDraft({
+        ...emptyDraft(String(found.curriculumId), found.curriculum ? String(found.curriculum.year) : ''),
         courseId: String(found.courseId),
-        curriculumId: String(found.curriculumId),
         academicSemesterId: found.academicSemesterId ? String(found.academicSemesterId) : '',
         credits: String(found.credits),
         description: found.description ?? '',
@@ -135,15 +140,15 @@ export const AdminCurriculumItemForm: React.FC = () => {
     return masters.filter((master) => !used.has(master.id));
   }, [masters, items, draft.curriculumId, isEdit]);
 
-  const curriculumOptions = useMemo<SearchableOption[]>(
-    () =>
-      curriculums.map((c) => ({
-        value: String(c.id),
-        label: `${c.name} (${c.year})`,
-        keywords: `${c.year}`,
-      })),
-    [curriculums],
-  );
+  const curriculumOptions = useMemo<SearchableOption[]>(() => {
+    const rows: SearchableOption[] = curriculums.map((c) => ({
+      value: String(c.id),
+      label: `${c.name} (${c.year})`,
+      keywords: `${c.year}`,
+    }));
+    // Opsi kosong = buat wadah baru, berlaku juga saat prodi belum punya kurikulum.
+    return [{ value: '', label: 'Buat kurikulum baru' }, ...rows];
+  }, [curriculums]);
 
   const courseOptions = useMemo<SearchableOption[]>(
     () =>
@@ -187,26 +192,31 @@ export const AdminCurriculumItemForm: React.FC = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
-        curriculumId: Number(draft.curriculumId),
-        courseId: Number(draft.courseId),
-        academicSemesterId: draft.academicSemesterId ? Number(draft.academicSemesterId) : null,
-        credits: Number(draft.credits),
-        description: draft.description.trim() || null,
-        lecturersData: draft.lecturersData,
-      };
-
-      const saved = isEdit && id
-        ? await curriculumItemApi.update(Number(id), payload)
-        : await curriculumItemApi.create(payload);
+      // `@@unique([studyProgramId, year])` membuat upsert aman diulang: kurikulum
+      // dengan tahun yang sama diperlakukan sebagai pembaruan, bukan duplikat.
+      const { item } = (
+        await curriculumItemApi.upsert({
+          curriculumId: Number(draft.curriculumId) || 0,
+          curriculumName: draft.curriculumName.trim(),
+          curriculumYear: Number(draft.curriculumYear) || undefined,
+          courseId: Number(draft.courseId),
+          academicSemesterId: draft.academicSemesterId ? Number(draft.academicSemesterId) : null,
+          credits: Number(draft.credits),
+          description: draft.description.trim() || null,
+          lecturersData: draft.lecturersData,
+        })
+      ).data;
 
       if (rpsFile) {
-        await curriculumRpsApi.upload(saved.data.item.id, rpsFile);
+        await curriculumRpsApi.upload(item.id, rpsFile);
       }
-      return saved.data.item;
+      return item;
     },
     onSuccess: () => {
-      toast.success(isEdit ? 'Mata kuliah kurikulum berhasil diperbarui.' : 'Mata kuliah berhasil ditambahkan ke kurikulum.');
+      // `curriculum` ikut di-invalidasi: daftar wadah berubah bila upsert membuat kurikulum baru.
+      toast.success(
+        isEdit ? 'Mata kuliah kurikulum berhasil diperbarui.' : 'Mata kuliah berhasil ditambahkan ke kurikulum.',
+      );
       void queryClient.invalidateQueries({ queryKey: ['admin', 'curriculum-items'] });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'curriculums'] });
       navigate('/admin/kurikulum');
@@ -225,7 +235,18 @@ export const AdminCurriculumItemForm: React.FC = () => {
       return;
     }
     if (!draft.curriculumId) {
-      setFormError('Pilih kurikulum terlebih dahulu.');
+      if (!draft.curriculumName.trim()) {
+        setFormError('Nama kurikulum wajib diisi untuk membuat kurikulum baru.');
+        return;
+      }
+      const tahun = Number(draft.curriculumYear);
+      if (!tahun || tahun < 1990 || tahun > 2100) {
+        setFormError('Tahun kurikulum harus berupa angka antara 1990 dan 2100.');
+        return;
+      }
+    }
+    if (!draft.curriculumId && curriculumsQuery.isLoading) {
+      setFormError('Daftar kurikulum masih dimuat. Coba lagi sebentar lagi.');
       return;
     }
     if (rpsFile && rpsFile.size > RPS_MAX_BYTES) {
@@ -235,10 +256,14 @@ export const AdminCurriculumItemForm: React.FC = () => {
     saveMutation.mutate();
   };
 
-  const pageTitle = isEdit ? 'Ubah Kurikulum' : 'Tambah Kurikulum';
+  const pageTitle = isEdit ? 'Ubah Mata Kuliah pada Kurikulum' : 'Tambah Mata Kuliah pada Kurikulum';
   const pageDescription = isEdit
     ? 'Perbarui data mata kuliah pada kurikulum: SKS, semester, dosen pengampu, atau berkas RPS.'
-    : 'Pilih mata kuliah dari master, lalu lengkapi detail penawarannya pada kurikulum.';
+    : mastersQuery.isLoading
+      ? 'Memuat daftar master mata kuliah...'
+      : masters.length === 0
+        ? 'Master mata kuliah masih kosong. Tambahkan mata kuliah lewat menu Mata Kuliah terlebih dahulu.'
+        : 'Pilih mata kuliah dari master, lalu lengkapi detail penawarannya pada kurikulum.';
 
   const sections: FormSection[] = [
     {
@@ -275,6 +300,54 @@ export const AdminCurriculumItemForm: React.FC = () => {
                 readOnly
               />
             </Field>
+          ) : null}
+
+          <Field
+            label="Kurikulum"
+            htmlFor="item-curriculum"
+            hint={
+              curriculums.length === 0
+                ? 'Belum ada kurikulum. Biarkan kosong, lalu isi nama dan tahun di bawah untuk membuatnya sekaligus.'
+                : 'Kurikulum tempat mata kuliah ini ditawarkan.'
+            }
+          >
+            <SearchableSelect
+              id="item-curriculum"
+              aria-label="Kurikulum"
+              options={curriculumOptions}
+              value={draft.curriculumId}
+              onChange={(value) => setDraft({ ...draft, curriculumId: value })}
+              placeholder="Buat kurikulum baru"
+              emptyLabel="Buat kurikulum baru"
+              searchPlaceholder="Cari kurikulum..."
+            />
+          </Field>
+
+          {!draft.curriculumId && !isEdit ? (
+            <>
+              <Field label="Nama Kurikulum Baru" htmlFor="item-curriculum-name" required>
+                <input
+                  id="item-curriculum-name"
+                  type="text"
+                  className="field-input"
+                  placeholder="Contoh: Kurikulum 2026 Teknik Informatika"
+                  value={draft.curriculumName}
+                  onChange={(event) => setDraft({ ...draft, curriculumName: event.target.value })}
+                />
+              </Field>
+              <Field label="Tahun Pemberlakuan" htmlFor="item-curriculum-year" required>
+                <input
+                  id="item-curriculum-year"
+                  type="number"
+                  min={1990}
+                  max={2100}
+                  className="field-input"
+                  placeholder="2026"
+                  value={draft.curriculumYear}
+                  onChange={(event) => setDraft({ ...draft, curriculumYear: event.target.value })}
+                />
+              </Field>
+            </>
           ) : null}
 
           <Field

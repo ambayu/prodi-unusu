@@ -6,6 +6,8 @@ import {
   MagnifyingGlassIcon,
   UserGroupIcon,
   DocumentTextIcon,
+  ExclamationTriangleIcon,
+  KeyIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
@@ -15,6 +17,7 @@ import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import {
   adminRpsFileUrl,
+  arsipDokumenApi,
   curriculumApi,
   curriculumItemApi,
   academicSemesterApi,
@@ -58,6 +61,20 @@ export const AdminCurriculum: React.FC = () => {
     queryKey: ['admin', 'academic-semesters'],
     queryFn: () => academicSemesterApi.list().then((res) => res.data.semesters),
   });
+
+  /*
+   * RPS dilindungi sandi prodi yang sama dengan arsip dokumen. Bila sandi belum
+   * dipasang, seluruh berkas RPS tertutup bagi pengunjung (fail-closed), sehingga
+   * admin perlu diberi tahu sebelum mengunggah. Kegagalan memuat status sandi
+   * tidak boleh menggagalkan halaman: peringatan cukup tidak tampil.
+   */
+  const passwordQuery = useQuery({
+    queryKey: ['admin', 'dokumen-password'],
+    queryFn: () => arsipDokumenApi.passwordStatus().then((res) => res.data),
+    retry: 1,
+    staleTime: 5 * 60 * 1000,
+  });
+  const sandiBelumDipasang = passwordQuery.data?.passwordActive === false;
 
   const items = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data]);
   const curriculums: Curriculum[] = useMemo(() => curriculumsQuery.data ?? [], [curriculumsQuery.data]);
@@ -108,7 +125,13 @@ export const AdminCurriculum: React.FC = () => {
       actions={
         <div className="flex gap-2">
           {has('curriculum.create') ? (
-            <Link to="/admin/kurikulum/baru" className="btn-primary">
+            <Link to="/admin/kurikulum/baru" className="btn-secondary">
+              <PlusIcon className="h-4 w-4" />
+              Tambah Mata Kuliah
+            </Link>
+          ) : null}
+          {has('curriculum.create') ? (
+            <Link to="/admin/kurikulum/wadah/baru" className="btn-primary">
               <PlusIcon className="h-4 w-4" />
               Tambah Kurikulum
             </Link>
@@ -117,6 +140,23 @@ export const AdminCurriculum: React.FC = () => {
       }
     >
       <div className="space-y-4">
+        {sandiBelumDipasang ? (
+          <div className="flex items-start gap-3 rounded-[14px] border border-amber-300 bg-amber-50 px-4 py-3.5">
+            <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div className="min-w-0 text-sm text-amber-900">
+              <p className="font-bold leading-snug">RPS belum dapat dibuka pengunjung.</p>
+              <p className="mt-1.5 leading-relaxed">
+                Kata sandi dokumen prodi ini belum dipasang. Selama belum ada sandi, seluruh berkas RPS
+                tertutup untuk publik. Pasang sandi terlebih dahulu sebelum mengunggah RPS.
+              </p>
+              <Link to="/admin/dokumen" className="btn-primary mt-3 gap-2 bg-amber-600 hover:bg-amber-700">
+                <KeyIcon className="h-4 w-4" />
+                Pasang Kata Sandi
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
         {/* Baris Filter & Pencarian */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative max-w-md flex-1">
@@ -161,22 +201,29 @@ export const AdminCurriculum: React.FC = () => {
             curriculumsQuery.isLoading || curriculums.length === 0
               ? 'Belum ada kurikulum'
               : items.length === 0
-                ? 'Belum ada kurikulum'
-                : 'Tidak ada kurikulum yang cocok'
+                ? 'Belum ada mata kuliah pada kurikulum'
+                : 'Tidak ada mata kuliah yang cocok'
           }
           emptyDescription={
             curriculumsQuery.isLoading || curriculums.length === 0
-              ? 'Klik tombol "Tambah Kurikulum" di atas untuk membuat kurikulum pertama.'
+              ? 'Buat kurikulum terlebih dahulu via tombol "Tambah Kurikulum", lalu tawarkan mata kuliah di dalamnya.'
               : items.length === 0
-                ? 'Klik tombol "Tambah Kurikulum" di atas untuk menambahkan kurikulum.'
-                : 'Ubah kata kunci pencarian untuk menemukan kurikulum lainnya.'
+                ? 'Tawarkan mata kuliah yang sudah terdaftar di menu Mata Kuliah untuk kurikulum ini.'
+                : 'Ubah kata kunci pencarian untuk menemukan mata kuliah lainnya.'
           }
           emptyAction={
-            curriculumsQuery.isLoading || curriculums.length === 0 || items.length === 0 ? (
+            curriculumsQuery.isLoading || curriculums.length === 0 ? (
+              has('curriculum.create') ? (
+                <Link to="/admin/kurikulum/wadah/baru" className="btn-primary">
+                  <PlusIcon className="h-4 w-4" />
+                  Tambah Kurikulum
+                </Link>
+              ) : null
+            ) : items.length === 0 ? (
               has('curriculum.create') ? (
                 <Link to="/admin/kurikulum/baru" className="btn-primary">
                   <PlusIcon className="h-4 w-4" />
-                  Tambah Kurikulum
+                  Tambah Mata Kuliah
                 </Link>
               ) : null
             ) : (
@@ -220,7 +267,24 @@ export const AdminCurriculum: React.FC = () => {
                 header: 'Kurikulum',
                 width: 160,
                 cellClassName: 'text-xs font-medium text-slate-700',
-                render: (item) => (item.curriculum ? `${item.curriculum.name}` : <span className="italic text-slate-400">—</span>),
+                render: (item) =>
+                  item.curriculum ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="truncate" title={item.curriculum.name}>
+                        {item.curriculum.name}
+                      </span>
+                      {has('curriculum.update') ? (
+                        <Link
+                          to={`/admin/kurikulum/wadah/${item.curriculum.id}/ubah`}
+                          className="shrink-0 text-[11px] font-semibold text-[#1e3a8a] hover:underline"
+                        >
+                          Ubah
+                        </Link>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <span className="italic text-slate-400">—</span>
+                  ),
               },
               {
                 key: 'sks',
