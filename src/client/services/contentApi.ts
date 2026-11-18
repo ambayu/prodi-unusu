@@ -532,14 +532,25 @@ async function ambilBerkasArsip(
       ? `/api/v1/admin/${segmen}/${id}/file${mode === 'download' ? '?download=1' : ''}`
       : `/api/v1/public/${segmen}/${id}/${mode}`;
 
-  const response =
-    sumber === 'admin'
-      ? await fetch(url, { method: 'GET', credentials: 'include' })
-      : await fetch(url, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'X-Arsip-Password': password },
-        });
+  const headers: Record<string, string> = {};
+  if (sumber === 'admin') {
+    const activeTenantId = sessionStorage.getItem('active_tenant_id');
+    if (activeTenantId) {
+      headers['X-Tenant-Id'] = activeTenantId;
+    }
+    const activeFacultyId = sessionStorage.getItem('active_faculty_id');
+    if (!activeTenantId && activeFacultyId) {
+      headers['X-Faculty-Id'] = activeFacultyId;
+    }
+  } else {
+    headers['X-Arsip-Password'] = password;
+  }
+
+  const response = await fetch(url, {
+    method: sumber === 'admin' ? 'GET' : 'POST',
+    credentials: 'include',
+    headers,
+  });
 
   if (!response.ok) {
     let pesan = 'Berkas dokumen tidak dapat dibuka.';
