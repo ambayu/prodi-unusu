@@ -50,6 +50,7 @@ model Faculty {
   messages            ContactMessage[]
   ProfileContent      ProfileContent?
   VisionMission       VisionMission?
+  documents           Document[]
 
   @@index([isActive, sortOrder])
   @@map("faculties")
@@ -777,24 +778,27 @@ model Lecturer {
 // hanya memetakan ulang tabel itu tanpa migrasi baru. `is_public` = Publish.
 // Dokumen kiriman pusat tetap dibaca lewat `services/arsipDokumenService.ts`.
 model Document {
-  id             Int      @id @default(autoincrement())
-  studyProgramId Int      @map("study_program_id")
-  code           String?  @db.VarChar(50)
-  title          String   @db.VarChar(255)
-  category       String   @db.VarChar(100)
-  description    String?  @db.Text
-  year           Int      @default(2026)
-  fileUrl        String   @map("file_url") @db.VarChar(500)
-  fileSize       Int?     @map("file_size")
-  mimeType       String?  @map("mime_type") @db.VarChar(120)
-  isPublic       Boolean  @default(true) @map("is_public")
-  downloadCount  Int      @default(0) @map("download_count")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id             Int           @id @default(autoincrement())
+  studyProgramId Int?          @map("study_program_id")
+  facultyId      Int?          @map("faculty_id")
+  code           String?       @db.VarChar(50)
+  title          String        @db.VarChar(255)
+  category       String        @db.VarChar(100)
+  description    String?       @db.Text
+  year           Int           @default(2026)
+  fileUrl        String        @map("file_url") @db.VarChar(500)
+  fileSize       Int?          @map("file_size")
+  mimeType       String?       @map("mime_type") @db.VarChar(120)
+  isPublic       Boolean       @default(true) @map("is_public")
+  downloadCount  Int           @default(0) @map("download_count")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  studyProgram StudyProgram? @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+  faculty      Faculty?      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
   @@index([studyProgramId, isPublic])
+  @@index([facultyId, isPublic])
   @@index([category])
   @@map("documents")
 }

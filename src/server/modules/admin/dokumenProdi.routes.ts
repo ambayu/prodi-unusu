@@ -272,12 +272,19 @@ router.delete(
  */
 export const publicDokumenProdiRouter = Router();
 
+function tenantScope(tenant: { id: number; tenantType?: string | undefined }) {
+  return tenant.tenantType === 'faculty'
+    ? { facultyId: tenant.id, studyProgramId: null }
+    : { studyProgramId: tenant.id, facultyId: null };
+}
+
 publicDokumenProdiRouter.get(
   '/public/dokumen-prodi',
   requireTenant,
   asyncHandler(async (req, res) => {
+    const scope = tenantScope(req.tenant!);
     const rows = await prisma.document.findMany({
-      where: { studyProgramId: req.tenant!.id, isPublic: true },
+      where: { ...scope, isPublic: true },
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
       select: { id: true, code: true, title: true, category: true, year: true, mimeType: true },
     });
@@ -303,15 +310,17 @@ for (const [aksi, unduh] of [['preview', false], ['download', true]] as const) {
     requireTenant,
     validate({ params: idParamSchema }),
     asyncHandler(async (req, res) => {
-      const studyProgramId = req.tenant!.id;
-      await assertArsipPassword(studyProgramId, req);
+      const scope = tenantScope(req.tenant!);
+      if (scope.studyProgramId) {
+        await assertArsipPassword(scope.studyProgramId, req);
+      }
 
       const { id } = getParams<{ id: number }>(req);
       const dokumen = await prisma.document.findFirst({
-        where: { id, studyProgramId, isPublic: true },
+        where: { id, ...scope, isPublic: true },
         select: { title: true, fileUrl: true },
       });
-      if (!dokumen) throw AppError.notFound('Dokumen tidak ditemukan pada program studi ini.');
+      if (!dokumen) throw AppError.notFound('Dokumen tidak ditemukan pada unit ini.');
       kirimBerkas(res, dokumen, unduh);
     }),
   );

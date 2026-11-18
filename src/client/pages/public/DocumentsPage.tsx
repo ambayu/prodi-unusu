@@ -229,16 +229,6 @@ export const DocumentsPage: React.FC = () => {
                   ))}
                 </ul>
               </div>
-
-              {meta?.passwordActive === false ? (
-                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">
-                  <p className="font-bold">Kata sandi arsip belum dipasang.</p>
-                  <p className="mt-1">
-                    Pengelola program studi belum memasang kata sandi, sehingga berkas dokumen belum dapat
-                    dibuka siapa pun.
-                  </p>
-                </div>
-              ) : null}
             </aside>
 
             {/* -------------------------------------------------------
