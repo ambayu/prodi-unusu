@@ -368,7 +368,7 @@ export const FacultyLandingPage: React.FC = () => {
                           href={url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-extrabold text-slate-950 shadow-sm transition-all hover:brightness-105 active:scale-95"
+                          className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[13px] font-bold text-white shadow-sm transition-all hover:brightness-110 hover:shadow-md active:scale-[0.98]"
                           style={{ backgroundColor: accent }}
                         >
                           Kunjungi Website
