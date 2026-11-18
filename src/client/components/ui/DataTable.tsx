@@ -207,12 +207,12 @@ export function DataTable<T>({
         {enablePagination && totalRows > 0 && (
           <div className="flex flex-col gap-3 border-t border-[#CBD5E1]/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between bg-white rounded-b-[14px]">
             {/* Sisi Kiri: Info Jumlah Data & Pilihan Limit */}
-            <div className="flex items-center gap-3 text-xs text-slate-600">
+            <div className="flex items-center gap-3 text-xs text-slate-700">
               <span>
                 Menampilkan{' '}
-                <span className="font-bold text-slate-900">{startIndex + 1}</span>–
-                <span className="font-bold text-slate-900">{Math.min(startIndex + limit, totalRows)}</span> dari{' '}
-                <span className="font-bold text-slate-900">{totalRows}</span> data
+                <span className="font-semibold text-slate-900">{startIndex + 1}</span>–
+                <span className="font-semibold text-slate-900">{Math.min(startIndex + limit, totalRows)}</span> dari{' '}
+                <span className="font-semibold text-slate-900">{totalRows}</span> data
               </span>
 
               {pageSizeOptions.length > 1 && totalRows > pageSizeOptions[0] && (

@@ -352,21 +352,21 @@ export const AdminUsers: React.FC = () => {
           onRetry={() => void usersQuery.refetch()}
           emptyTitle="Belum ada akun terdaftar"
           emptyDescription="Akun muncul di sini setelah pengguna masuk minimal satu kali melalui SSO ONE UNUSU. Setelah itu Anda dapat memberikan akses Admin Utama atau Admin Prodi."
-          minWidth={1140}
+          minWidth={1200}
           columns={
             [
               {
                 key: 'username',
                 header: 'NIDN / NIM',
-                width: 125,
-                cellClassName: 'text-xs font-medium text-slate-700 whitespace-nowrap',
+                width: 130,
+                cellClassName: 'text-sm font-normal text-slate-900 whitespace-nowrap',
                 render: (user) => user.username,
               },
               {
                 key: 'nama',
                 header: 'Nama Lengkap',
-                width: 150,
-                cellClassName: 'text-xs font-medium text-slate-700',
+                width: 170,
+                cellClassName: 'text-sm font-medium text-slate-900',
                 render: (user) => (
                   <span className="block truncate" title={user.name}>{user.name}</span>
                 ),
@@ -374,8 +374,8 @@ export const AdminUsers: React.FC = () => {
               {
                 key: 'email',
                 header: 'Email',
-                width: 175,
-                cellClassName: 'text-xs font-medium text-slate-700',
+                width: 190,
+                cellClassName: 'text-sm font-normal text-slate-700',
                 render: (user) =>
                   user.email ? (
                     <span className="block truncate" title={user.email}>{user.email}</span>
@@ -386,7 +386,7 @@ export const AdminUsers: React.FC = () => {
               {
                 key: 'peran-sso',
                 header: 'Peran SSO',
-                width: 115,
+                width: 130,
                 render: (user) => {
                   const daftarPeran = bacaJson<string[]>(user.ssoRoles, []);
                   const peranSso =
@@ -396,24 +396,24 @@ export const AdminUsers: React.FC = () => {
                       {peranSso.map((kode) => (
                         <span
                           key={kode}
-                          className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+                          className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-800 border border-slate-200/80"
                         >
                           {labelPeranSso(kode)}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <span className="text-xs italic text-slate-400">—</span>
+                    <span className="text-sm italic text-slate-400">—</span>
                   );
                 },
               },
               {
                 key: 'peran-aplikasi',
                 header: 'Peran Aplikasi',
-                width: 150,
+                width: 165,
                 render: (user) =>
                   user.userRoles.length === 0 ? (
-                    <span className="rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 whitespace-nowrap">
+                    <span className="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 border border-amber-200/60 whitespace-nowrap">
                       Menunggu peran
                     </span>
                   ) : (
@@ -422,7 +422,7 @@ export const AdminUsers: React.FC = () => {
                         <span
                           key={assignment.id}
                           title={assignment.role.name}
-                          className="inline-flex max-w-[120px] items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-[#1e3a8a]"
+                          className="inline-flex max-w-[135px] items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-900 border border-blue-200/60"
                         >
                           <span className="truncate">{assignment.role.name}</span>
                           {has('users.assign_role') ? (
@@ -445,10 +445,10 @@ export const AdminUsers: React.FC = () => {
               {
                 key: 'cakupan',
                 header: 'Cakupan',
-                width: 135,
+                width: 145,
                 render: (user) =>
                   user.userRoles.length === 0 ? (
-                    <span className="text-xs italic text-slate-400">—</span>
+                    <span className="text-sm italic text-slate-400">—</span>
                   ) : (
                     <div className="flex flex-wrap gap-1">
                       {user.userRoles.map((assignment) => {
@@ -461,7 +461,7 @@ export const AdminUsers: React.FC = () => {
                           <span
                             key={assignment.id}
                             title={label}
-                            className="max-w-[105px] truncate rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
+                            className="max-w-[125px] truncate rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-800 border border-slate-200/80"
                           >
                             {label}
                           </span>
@@ -473,11 +473,13 @@ export const AdminUsers: React.FC = () => {
               {
                 key: 'status',
                 header: 'Status',
-                width: 100,
+                width: 105,
                 render: (user) => (
                   <span
-                    className={`rounded-md px-2 py-0.5 text-xs font-medium ${
-                      user.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium border ${
+                      user.isActive
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200/60'
+                        : 'bg-slate-100 text-slate-600 border-slate-200/80'
                     }`}
                   >
                     {user.isActive ? 'Aktif' : 'Nonaktif'}
@@ -487,8 +489,8 @@ export const AdminUsers: React.FC = () => {
               {
                 key: 'login-terakhir',
                 header: 'Login Terakhir',
-                width: 130,
-                cellClassName: 'text-xs font-medium text-slate-700',
+                width: 135,
+                cellClassName: 'text-sm font-normal text-slate-700',
                 render: (user) =>
                   user.lastLoginAt
                     ? new Date(user.lastLoginAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })
