@@ -591,6 +591,7 @@ model CurriculumItem {
   course           Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
   academicSemester AcademicSemester? @relation(fields: [academicSemesterId], references: [id], onDelete: SetNull)
   rpsDocuments     CurriculumRps[]
+  classrooms       LmsClassroom[]
 
   // Satu mata kuliah hanya boleh muncul sekali dalam kurikulum yang sama.
   @@unique([curriculumId, courseId])
@@ -685,6 +686,51 @@ model CurriculumCourse {
   @@index([academicSemesterId])
   @@index([code])
   @@map("curriculum_courses")
+}
+
+// Kelas perkuliahan LMS (`lms_classrooms`).
+//
+// Satu penawaran mata kuliah (`CurriculumItem`) dapat dibuka dalam beberapa
+// kelas/rombel dengan jadwal, ruang, dan dosen pengampu yang berbeda. Portal
+// Prodi menjadi satu-satunya sumber data kelas: LMS menariknya lewat ONE UNUSU
+// API Hub, bukan menyimpan salinan sendiri.
+model LmsClassroom {
+  id               Int      @id @default(autoincrement())
+  curriculumItemId Int      @map("curriculum_item_id")
+  group            String   @default("Utama") @db.VarChar(30)
+  day              String?  @db.VarChar(20)
+  startTime        String?  @map("start_time") @db.VarChar(5)
+  endTime          String?  @map("end_time") @db.VarChar(5)
+  room             String?  @db.VarChar(100)
+  lecturerNidn     String?  @map("lecturer_nidn") @db.VarChar(30)
+  lecturerName     String?  @map("lecturer_name") @db.VarChar(200)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  curriculumItem CurriculumItem        @relation(fields: [curriculumItemId], references: [id], onDelete: Cascade)
+  students       LmsClassroomStudent[]
+
+  @@unique([curriculumItemId, group])
+  @@index([lecturerNidn])
+  @@map("lms_classrooms")
+}
+
+// Peserta satu kelas LMS (`lms_classroom_students`).
+//
+// NIM disimpan sebagai teks, bukan relasi ke tabel mahasiswa: Portal Prodi
+// tidak memiliki tabel mahasiswa sendiri (data induk mahasiswa milik SIAKAD).
+model LmsClassroomStudent {
+  id          Int      @id @default(autoincrement())
+  classroomId Int      @map("classroom_id")
+  nim         String   @db.VarChar(50)
+  name        String   @db.VarChar(200)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  classroom LmsClassroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, nim])
+  @@index([nim])
+  @@map("lms_classroom_students")
 }
 
 model RpsDocument {

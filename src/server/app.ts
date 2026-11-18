@@ -20,6 +20,7 @@ import websiteRoutes from './modules/admin/website.routes.js';
 import portalRoutes from './modules/admin/portal.routes.js';
 import builderRoutes from './modules/admin/builder.routes.js';
 import contentRoutes from './modules/admin/content.routes.js';
+import lmsRoutes from './modules/admin/lms.routes.js';
 import rpsRoutes, { publicRpsFileRouter } from './modules/admin/rps.routes.js';
 import publicationRoutes from './modules/admin/publication.routes.js';
 import mediaRoutes from './modules/admin/media.routes.js';
@@ -256,6 +257,7 @@ export function createApp() {
   adminRouter.use('/', portalRoutes);
   adminRouter.use('/', builderRoutes);
   adminRouter.use('/', contentRoutes);
+  adminRouter.use('/', lmsRoutes);
   adminRouter.use('/', rpsRoutes);
   adminRouter.use('/', publicationRoutes);
   adminRouter.use('/media', mediaRoutes);

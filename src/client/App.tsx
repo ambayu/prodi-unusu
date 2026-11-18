@@ -38,6 +38,9 @@ import { AccountPendingPage } from './pages/AccountPendingPage';import { Dashboa
 import { AdminCurriculum } from './pages/admin/AdminCurriculum';
 import { AdminCurriculumItemForm } from './pages/admin/AdminCurriculumItemForm';
 import { AdminCourses } from './pages/admin/AdminCourses';
+import { AdminLmsJadwal } from './pages/admin/AdminLmsJadwal';
+import { AdminLmsPeserta } from './pages/admin/AdminLmsPeserta';
+import { AdminLmsSinkronisasi } from './pages/admin/AdminLmsSinkronisasi';
 import { AdminDocuments } from './pages/admin/AdminDocuments';
 import { AdminLecturers } from './pages/admin/AdminLecturers';
 import { AdminFacilities } from './pages/admin/AdminFacilities';
@@ -196,6 +199,38 @@ export const App: React.FC = () => {
         }
       />
       <Route path="/admin/kurikulum/semester/baru" element={<Navigate to="/admin/kurikulum" replace />} />
+
+      {/* Manajemen LMS: kelas, peserta, dan sinkronisasi ke LMS. */}
+      <Route
+        path="/admin/lms/jadwal"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['curriculum.view']}>
+              <AdminLmsJadwal />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/lms/peserta"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['curriculum.view']}>
+              <AdminLmsPeserta />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/lms/sinkronisasi"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['curriculum.view']}>
+              <AdminLmsSinkronisasi />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
       <Route
         path="/admin/kurikulum"
         element={

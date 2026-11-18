@@ -181,6 +181,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   // State collapse untuk tiap grup kategori menu
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    'LMS': false,
     'WEBSITE': false,
     'TATA KELOLA': false,
     'UNIVERSITAS': false,
@@ -300,6 +301,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     ? []
     : menu.filter((item) => item.section === 'KONTEN' || item.menuKey.startsWith('content.'));
   const websiteMenus = menu.filter((item) => item.section === 'WEBSITE' || item.menuKey.startsWith('website.') || item.menuKey === 'builder');
+  const lmsMenus = menu.filter((item) => item.section === 'LMS' || item.menuKey.startsWith('lms.') || item.menuKey === 'lms');
   const tataKelolaMenus = menu.filter((item) => item.section === 'TATA KELOLA' || item.menuKey.startsWith('management.'));
   const universitasMenus = menu.filter((item) => item.section === 'UNIVERSITAS' || item.menuKey.startsWith('super.'));
   // Menu lain yang belum terpetakan agar tidak hilang
@@ -307,6 +309,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     (item) =>
       !utamaMenus.includes(item) &&
       !kontenMenus.includes(item) &&
+      !lmsMenus.includes(item) &&
       !websiteMenus.includes(item) &&
       !tataKelolaMenus.includes(item) &&
       !universitasMenus.includes(item)
@@ -469,7 +472,32 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 </div>
               )}
 
-              {/* 3. Menu Tata Kelola Website */}
+              {/* 3. Menu Manajemen LMS */}
+              {lmsMenus.length > 0 && (
+                <div>
+                  {!isCollapsedView && (
+                    <button
+                      type="button"
+                      onClick={() => toggleSection('LMS')}
+                      className="w-full flex items-center justify-between px-3 pb-2 text-[11px] font-bold text-slate-600 hover:text-[#1e3a8a] uppercase tracking-widest transition-colors"
+                    >
+                      <span>MANAJEMEN LMS</span>
+                      <ChevronDownIcon
+                        className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
+                          collapsedSections['LMS'] ? '-rotate-90' : 'rotate-0'
+                        }`}
+                      />
+                    </button>
+                  )}
+                  {!collapsedSections['LMS'] && (
+                    <nav className="space-y-1.5 animate-fadeIn" role="navigation" aria-label="Menu Manajemen LMS">
+                      {lmsMenus.map((item) => renderMenuItem(item, isCollapsedView))}
+                    </nav>
+                  )}
+                </div>
+              )}
+
+              {/* 4. Menu Tata Kelola Website */}
               {websiteMenus.length > 0 && (
                 <div>
                   {!isCollapsedView && (

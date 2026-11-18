@@ -111,4 +111,131 @@ router.post(
   }),
 );
 
+/**
+ * GET /api/v1/public/lms-kurikulum
+ *
+ * Katalog perkuliahan untuk LMS: setiap penawaran mata kuliah pada kurikulum
+ * aktif beserta kelas (rombel), jadwal, dosen pengampu, berkas RPS, dan daftar
+ * peserta. LMS memakainya untuk menyusun kelas, menu "Mata Kuliah & RPS",
+ * serta tombol "Tarik Data Mahasiswa" — sehingga Portal Prodi tetap menjadi
+ * satu-satunya sumber data perkuliahan.
+ *
+ * Filter opsional `nidn` mempersempit hasil ke kelas yang diampu dosen
+ * tersebut; tanpa filter, seluruh kelas prodi dikirim (dipakai LMS untuk
+ * menarik semua kelas sekaligus saat sinkronisasi).
+ */
+router.get(
+  '/lms-kurikulum',
+  wajibApiKeyProdi,
+  asyncHandler(async (req, res) => {
+    const nidn = typeof req.query.nidn === 'string' ? req.query.nidn.trim() : '';
+
+    const programs = await prisma.studyProgram.findMany({
+      where: { status: 'active' },
+      orderBy: [{ id: 'asc' }],
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        faculty: { select: { code: true, name: true } },
+        curriculums: {
+          where: { isActive: true },
+          orderBy: [{ year: 'desc' }, { id: 'asc' }],
+          select: {
+            id: true,
+            name: true,
+            year: true,
+            items: {
+              orderBy: [{ semesterNumber: 'asc' }, { sortOrder: 'asc' }],
+              select: {
+                id: true,
+                semesterNumber: true,
+                credits: true,
+                description: true,
+                lecturersData: true,
+                course: { select: { code: true, name: true } },
+                rpsDocuments: {
+                  where: { isPublic: true },
+                  orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+                  select: { id: true, title: true, fileUrl: true, revision: true, createdAt: true },
+                },
+                classrooms: {
+                  orderBy: { id: 'asc' },
+                  select: {
+                    id: true,
+                    group: true,
+                    day: true,
+                    startTime: true,
+                    endTime: true,
+                    room: true,
+                    lecturerNidn: true,
+                    lecturerName: true,
+                    students: { orderBy: { nim: 'asc' }, select: { nim: true, name: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const semesterAktif = await prisma.academicSemester.findFirst({
+      where: { isActive: true },
+      orderBy: { startDate: 'desc' },
+      select: { id: true, code: true, name: true, startDate: true, endDate: true },
+    });
+
+    const data = programs.map((program) => ({
+      prodiId: program.id,
+      kodeProdi: program.code,
+      namaProdi: program.name,
+      fakultas: program.faculty ? `${program.faculty.code} — ${program.faculty.name}` : null,
+      kurikulum: program.curriculums.map((kurikulum) => ({
+        id: kurikulum.id,
+        nama: kurikulum.name,
+        tahun: kurikulum.year,
+        mataKuliah: kurikulum.items.map((item) => ({
+          id: item.id,
+          kodeMk: item.course.code,
+          namaMk: item.course.name,
+          sks: item.credits,
+          semester: item.semesterNumber,
+          keterangan: item.description,
+          dosenPengampu: item.lecturersData,
+          rps: item.rpsDocuments,
+          kelas: item.classrooms
+            .filter((kelas) => (nidn ? kelas.lecturerNidn === nidn : true))
+            .map((kelas) => ({
+              id: kelas.id,
+              rombel: kelas.group,
+              hari: kelas.day,
+              jamMulai: kelas.startTime,
+              jamSelesai: kelas.endTime,
+              ruang: kelas.room,
+              dosenNidn: kelas.lecturerNidn,
+              dosenNama: kelas.lecturerName,
+              peserta: kelas.students,
+            })),
+        })),
+      })),
+    }));
+
+    res.json({
+      success: true,
+      semesterAktif,
+      data,
+      meta: {
+        totalProdi: data.length,
+        totalMataKuliah: data.reduce(
+          (jumlah, prodi) =>
+            jumlah + prodi.kurikulum.reduce((sub, kur) => sub + kur.mataKuliah.length, 0),
+          0,
+        ),
+        sumber: 'Portal Prodi UNUSU',
+      },
+    });
+  }),
+);
+
 export default router;
