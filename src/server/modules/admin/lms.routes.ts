@@ -6,6 +6,7 @@ import { requirePermission } from '../../middlewares/auth.js';
 import { scopedTenantId } from '../../middlewares/tenantScope.js';
 import { AppError } from '../../utils/errors.js';
 import { recordAudit } from '../../services/auditService.js';
+import { idParamSchema } from '../../../shared/schemas/common.js';
 
 const router = Router();
 
@@ -184,11 +185,10 @@ router.post(
 router.put(
   '/lms/classrooms/:id',
   requirePermission('curriculum.update'),
-  validate({ body: updateClassroomSchema }),
+  validate({ body: updateClassroomSchema, params: idParamSchema }),
   asyncHandler(async (req, res) => {
     const tenantId = scopedTenantId(req);
-    const params = getParams<{ id: string }>(req);
-    const id = Number(params.id);
+    const { id } = getParams<{ id: number }>(req);
     const body = getBody<Partial<ClassroomInput>>(req);
 
     await findOwnedClassroom(id, tenantId);
@@ -226,10 +226,10 @@ router.put(
 router.delete(
   '/lms/classrooms/:id',
   requirePermission('curriculum.update'),
+  validate({ params: idParamSchema }),
   asyncHandler(async (req, res) => {
     const tenantId = scopedTenantId(req);
-    const params = getParams<{ id: string }>(req);
-    const id = Number(params.id);
+    const { id } = getParams<{ id: number }>(req);
 
     await findOwnedClassroom(id, tenantId);
     await prisma.lmsClassroom.delete({ where: { id } });
@@ -250,10 +250,10 @@ router.delete(
 router.get(
   '/lms/classrooms/:id/students',
   requirePermission('curriculum.view'),
+  validate({ params: idParamSchema }),
   asyncHandler(async (req, res) => {
     const tenantId = scopedTenantId(req);
-    const params = getParams<{ id: string }>(req);
-    const id = Number(params.id);
+    const { id } = getParams<{ id: number }>(req);
 
     await findOwnedClassroom(id, tenantId);
     const students = await prisma.lmsClassroomStudent.findMany({
@@ -275,11 +275,10 @@ router.get(
 router.put(
   '/lms/classrooms/:id/students',
   requirePermission('curriculum.update'),
-  validate({ body: studentsSchema }),
+  validate({ body: studentsSchema, params: idParamSchema }),
   asyncHandler(async (req, res) => {
     const tenantId = scopedTenantId(req);
-    const params = getParams<{ id: string }>(req);
-    const id = Number(params.id);
+    const { id } = getParams<{ id: number }>(req);
     const body = getBody<z.infer<typeof studentsSchema>>(req);
 
     await findOwnedClassroom(id, tenantId);
