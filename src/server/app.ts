@@ -91,10 +91,18 @@ export function createApp() {
   fs.mkdirSync(path.join(uploadRoot, 'media'), { recursive: true });
   fs.mkdirSync(path.join(uploadRoot, 'documents'), { recursive: true });
   fs.mkdirSync(path.join(uploadRoot, 'rps'), { recursive: true });
+  fs.mkdirSync(path.join(uploadRoot, 'dosen'), { recursive: true });
 
   app.use(
     '/uploads/media',
     express.static(path.join(uploadRoot, 'media'), {
+      fallthrough: true,
+      maxAge: config.isProduction ? '30d' : 0,
+    }),
+  );
+  app.use(
+    '/uploads/dosen',
+    express.static(path.join(uploadRoot, 'dosen'), {
       fallthrough: true,
       maxAge: config.isProduction ? '30d' : 0,
     }),

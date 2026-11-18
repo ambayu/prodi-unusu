@@ -606,9 +606,9 @@ const LecturersWidget: React.FC<{ title?: string; limit: number; primaryColor: s
   const lecturers = lecturersQuery.data ?? [];
 
   return (
-    <section className="py-16 sm:py-20 bg-white border-t border-slate-100">
+    <section className="py-16 sm:py-20 bg-slate-50/50 border-t border-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-slate-100 gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-slate-200/80 gap-4">
           <div>
             <span
               className="inline-block py-1 px-3.5 rounded-full text-xs font-black tracking-widest uppercase mb-2"
@@ -630,23 +630,76 @@ const LecturersWidget: React.FC<{ title?: string; limit: number; primaryColor: s
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          {lecturers.map((doc) => (
-            <div key={doc.id} className="text-center space-y-3 p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs hover:shadow-md transition-shadow">
-              <div className="w-24 h-24 mx-auto rounded-full overflow-hidden border-2 border-emerald-500 bg-slate-100">
-                <img
-                  src={doc.photoUrl || '/avatar-placeholder.png'}
-                  alt={doc.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div>
-                <p className="font-bold text-xs sm:text-sm text-slate-900">{doc.name}</p>
-                <p className="text-[11px] text-slate-500">{doc.academicRank || doc.education || 'Dosen Tetap'}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        {lecturers.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500 bg-white">
+            Belum ada data dosen yang ditambahkan.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {lecturers.map((doc) => {
+              const inisial = (doc.name || 'D')
+                .replace(/^(Dr\.|Prof\.|Drs\.|Ir\.)\s+/i, '')
+                .split(' ')
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((n) => n[0]?.toUpperCase())
+                .join('');
+
+              return (
+                <div
+                  key={doc.id}
+                  className="group relative flex flex-col items-center text-center p-6 rounded-2xl border border-slate-200/90 bg-white shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                >
+                  {/* Avatar Lingkaran Cantik dengan Fallback Inisial Mewah */}
+                  <div className="relative mb-4">
+                    <div className="w-24 h-24 rounded-full overflow-hidden p-1 ring-2 ring-slate-100 group-hover:ring-emerald-500/40 transition-all duration-300 shadow-sm bg-gradient-to-tr from-slate-100 to-white">
+                      {doc.photoUrl ? (
+                        <img
+                          src={doc.photoUrl}
+                          alt={doc.name}
+                          className="w-full h-full object-cover object-top rounded-full transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            // Sembunyikan gambar rusak & tampilkan fallback visual
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.nextElementSibling;
+                            if (fallback) fallback.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className={`w-full h-full rounded-full flex items-center justify-center font-black text-xl text-white shadow-inner ${
+                          doc.photoUrl ? 'hidden' : ''
+                        }`}
+                        style={{
+                          background: `linear-gradient(135deg, ${primaryColor} 0%, #0d9488 100%)`,
+                        }}
+                      >
+                        {inisial || 'DS'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="w-full space-y-1.5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-800 transition-colors line-clamp-2 leading-snug">
+                        {doc.name}
+                      </h3>
+                      {doc.nidn ? (
+                        <p className="text-[11px] font-mono text-slate-400 mt-0.5">NIDN: {doc.nidn}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="pt-2">
+                      <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 group-hover:bg-emerald-50 group-hover:text-emerald-700 transition-colors">
+                        {doc.academicRank || doc.education || 'Dosen Tetap'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -835,46 +888,82 @@ const CurriculumOverviewWidget: React.FC<{ title?: string; primaryColor: string 
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
-            <p className="text-3xl font-extrabold tabular-nums" style={{ color: primaryColor }}>
-              {summary?.totalCredits ?? 144}
-            </p>
-            <p className="text-xs font-bold text-slate-600 mt-1 uppercase tracking-wider">Total Beban SKS</p>
+        {/* Kartu Metrik Kurikulum Modern & Elegan */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <div className="group relative overflow-hidden p-6 rounded-2xl bg-gradient-to-b from-white to-slate-50/70 border border-slate-200/80 shadow-xs hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Beban</span>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: primaryColor }} />
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl sm:text-4xl font-extrabold tabular-nums tracking-tight text-slate-900">
+                {summary?.totalCredits ?? 144}
+              </span>
+              <span className="text-xs font-semibold text-slate-400">SKS</span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2 font-medium">Beban kelulusan akademik</p>
           </div>
-          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
-            <p className="text-3xl font-extrabold tabular-nums" style={{ color: primaryColor }}>
-              {summary?.totalSemesters ?? 8}
-            </p>
-            <p className="text-xs font-bold text-slate-600 mt-1 uppercase tracking-wider">Masa Studi Semester</p>
+
+          <div className="group relative overflow-hidden p-6 rounded-2xl bg-gradient-to-b from-white to-slate-50/70 border border-slate-200/80 shadow-xs hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Masa Studi</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl sm:text-4xl font-extrabold tabular-nums tracking-tight text-slate-900">
+                {summary?.totalSemesters ?? 8}
+              </span>
+              <span className="text-xs font-semibold text-slate-400">Semester</span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2 font-medium">Paket kurikulum standar</p>
           </div>
-          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
-            <p className="text-3xl font-extrabold tabular-nums" style={{ color: primaryColor }}>
-              {summary?.totalCourses ?? 48}
-            </p>
-            <p className="text-xs font-bold text-slate-600 mt-1 uppercase tracking-wider">Mata Kuliah Inti</p>
+
+          <div className="group relative overflow-hidden p-6 rounded-2xl bg-gradient-to-b from-white to-slate-50/70 border border-slate-200/80 shadow-xs hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mata Kuliah</span>
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl sm:text-4xl font-extrabold tabular-nums tracking-tight text-slate-900">
+                {summary?.totalCourses ?? 48}
+              </span>
+              <span className="text-xs font-semibold text-slate-400">MK Inti</span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2 font-medium">Distribusi materi komprehensif</p>
           </div>
-          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
-            <p className="text-3xl font-extrabold tabular-nums" style={{ color: primaryColor }}>
-              {summary?.totalRps ?? 48}
-            </p>
-            <p className="text-xs font-bold text-slate-600 mt-1 uppercase tracking-wider">Dokumen RPS Lengkap</p>
+
+          <div className="group relative overflow-hidden p-6 rounded-2xl bg-gradient-to-b from-white to-slate-50/70 border border-slate-200/80 shadow-xs hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dokumen RPS</span>
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl sm:text-4xl font-extrabold tabular-nums tracking-tight text-slate-900">
+                {summary?.totalRps ?? 48}
+              </span>
+              <span className="text-xs font-semibold text-slate-400">Tersedia</span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-2 font-medium">Rencana pembelajaran semester</p>
           </div>
         </div>
 
+        {/* Banner Kurikulum Aktif */}
         {activeCurriculum && (
-          <div className="p-5 rounded-2xl border border-blue-200 bg-blue-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold text-blue-950 uppercase tracking-wide">
-                Kurikulum Aktif: {activeCurriculum.name} (Tahun {activeCurriculum.year})
-              </p>
-              <p className="text-xs text-blue-800 mt-0.5">
-                {activeCurriculum.description || 'Disusun mengacu pada Kerangka Kualifikasi Nasional Indonesia (KKNI) dan Standar Nasional Pendidikan Tinggi.'}
+          <div className="relative overflow-hidden p-6 rounded-2xl border border-emerald-900/10 bg-gradient-to-r from-emerald-900/5 via-teal-900/5 to-transparent flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                <span className="text-xs font-black text-emerald-950 uppercase tracking-wider">
+                  Kurikulum Aktif: {activeCurriculum.name} (Tahun {activeCurriculum.year})
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
+                {activeCurriculum.description || 'Disusun mengacu pada Kerangka Kualifikasi Nasional Indonesia (KKNI) dan Standar Nasional Pendidikan Tinggi berbasis Outcome-Based Education (OBE).'}
               </p>
             </div>
             <Link
               to="/kurikulum"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shrink-0 shadow-2xs"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white shrink-0 shadow-md transition-all hover:opacity-95"
               style={{ backgroundColor: primaryColor }}
             >
               <span>Buka Kurikulum</span>
