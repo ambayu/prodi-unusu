@@ -353,6 +353,23 @@ router.put(
   }),
 );
 
+const meetingScheduleSchema = z.object({
+  day: z.string().trim().max(20).nullish(),
+  date: z.string().trim().max(30).nullish(),
+  startTime: hhmm.nullish(),
+  endTime: hhmm.nullish(),
+  room: z.string().trim().max(100).nullish(),
+  lecturerName: z.string().trim().max(200).nullish(),
+  isRescheduled: z.boolean().default(false),
+  rescheduleReason: z.string().trim().max(500).nullish(),
+  status: z.string().trim().max(30).nullish(),
+});
+
+const meetingParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  meetingNumber: z.coerce.number().int().min(1).max(16),
+});
+
 /** GET /api/v1/admin/lms/classrooms/:id/meetings: daftar 16 pertemuan dari LMS. */
 router.get(
   '/lms/classrooms/:id/meetings',
@@ -361,26 +378,128 @@ router.get(
   asyncHandler(async (req, res) => {
     const tenantId = scopedTenantId(req);
     const { id } = getParams<{ id: number }>(req);
-    await findOwnedClassroom(id, tenantId);
+    const classroom = await prisma.lmsClassroom.findFirst({
+      where: { id, group: 'Utama', curriculumItem: { curriculum: { studyProgramId: tenantId } } },
+      include: { _count: { select: { students: true } } },
+    });
+    if (!classroom) throw AppError.notFound('Kelas perkuliahan tidak ditemukan pada program studi ini.');
 
     const url = (process.env.LMS_SYNC_URL ?? '').trim().replace(/\/$/, '');
     const apiKey = (process.env.LMS_SYNC_API_KEY ?? '').trim();
+
+    const makeFallback = () =>
+      Array.from({ length: 16 }, (_, i) => {
+        const number = i + 1;
+        const defaultScheduleLabel = [
+          classroom.day,
+          classroom.startTime && classroom.endTime ? `${classroom.startTime} - ${classroom.endTime}` : null,
+        ].filter(Boolean).join(', ') || null;
+
+        return {
+          id: number,
+          number,
+          title: `Pertemuan ${number}`,
+          status: 'planned',
+          heldAt: null,
+          schedule: {
+            day: classroom.day,
+            date: null,
+            startTime: classroom.startTime,
+            endTime: classroom.endTime,
+            room: classroom.room,
+            lecturerName: classroom.lecturerName,
+            isRescheduled: false,
+            rescheduleReason: null,
+            originalSchedule: defaultScheduleLabel,
+            originalRoom: classroom.room,
+          },
+          materi: [],
+          tugas: [],
+          kuis: [],
+          presensi: {
+            recorded: false,
+            attended: 0,
+            totalStudents: classroom._count.students ?? 0,
+          },
+        };
+      });
+
     if (!url || !apiKey) {
-      return res.json({ success: true, meetings: [] });
+      return res.json({ success: true, meetings: makeFallback() });
     }
+
     try {
       const response = await fetch(`${url}/api/internal/classes/${id}/meetings`, {
         method: 'GET',
         headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
       });
       if (!response.ok) {
-        return res.json({ success: true, meetings: [] });
+        return res.json({ success: true, meetings: makeFallback() });
       }
-      const data = (await response.json()) as { success: boolean; meetings: Array<{ id: number; number: number; title: string; status: string }> };
-      return res.json({ success: true, meetings: data.meetings ?? [] });
+      const data = (await response.json()) as { success: boolean; meetings?: unknown[] };
+      const meetings = Array.isArray(data.meetings) && data.meetings.length > 0 ? data.meetings : makeFallback();
+      return res.json({ success: true, meetings });
     } catch {
-      return res.json({ success: true, meetings: [] });
+      return res.json({ success: true, meetings: makeFallback() });
     }
+  }),
+);
+
+/** PUT /api/v1/admin/lms/classrooms/:id/meetings/:meetingNumber/schedule: edit jadwal & status pergantian per pertemuan. */
+router.put(
+  '/lms/classrooms/:id/meetings/:meetingNumber/schedule',
+  requirePermission('curriculum.update'),
+  validate({ params: meetingParamSchema, body: meetingScheduleSchema }),
+  asyncHandler(async (req, res) => {
+    const tenantId = scopedTenantId(req);
+    const { id, meetingNumber } = getParams<{ id: number; meetingNumber: number }>(req);
+    const body = getBody<z.infer<typeof meetingScheduleSchema>>(req);
+    await findOwnedClassroom(id, tenantId);
+
+    const url = (process.env.LMS_SYNC_URL ?? '').trim().replace(/\/$/, '');
+    const apiKey = (process.env.LMS_SYNC_API_KEY ?? '').trim();
+    if (!url || !apiKey) {
+      throw AppError.badRequest('Konfigurasi koneksi LMS belum lengkap.');
+    }
+
+    let upstream: Response;
+    try {
+      upstream = await fetch(`${url}/api/internal/classes/${id}/meetings/${meetingNumber}/schedule`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw AppError.badGateway('Gagal menghubungi peladen LMS.', 'UPSTREAM_UNREACHABLE');
+    }
+
+    const payload = (await upstream.json().catch(() => null)) as {
+      success?: boolean;
+      message?: string;
+      schedule?: unknown;
+    } | null;
+
+    if (!upstream.ok || !payload?.success) {
+      throw AppError.badGateway(payload?.message || 'LMS mengembalikan kegagalan saat menyimpan jadwal pertemuan.', 'UPSTREAM_ERROR');
+    }
+
+    await recordAudit({
+      req,
+      action: 'UPDATE',
+      module: 'CURRICULUM',
+      targetType: 'lms_meeting_schedule',
+      targetId: id,
+    });
+
+    return res.json({
+      success: true,
+      message: payload.message || 'Jadwal pertemuan berhasil diperbarui.',
+      schedule: payload.schedule,
+    });
   }),
 );
 

@@ -12,6 +12,11 @@ import {
   XCircleIcon,
   ClipboardDocumentListIcon,
   PencilSquareIcon,
+  BookOpenIcon,
+  DocumentTextIcon,
+  LightBulbIcon,
+  ClipboardDocumentCheckIcon,
+  ArrowsRightLeftIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
@@ -49,6 +54,30 @@ const EMPTY_DRAFT: Draft = {
   lecturerNidn: '',
 };
 
+interface MeetingDraft {
+  day: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  room: string;
+  lecturerName: string;
+  isRescheduled: boolean;
+  rescheduleReason: string;
+  status: string;
+}
+
+const EMPTY_MEETING_DRAFT: MeetingDraft = {
+  day: 'Senin',
+  date: '',
+  startTime: '08:00',
+  endTime: '09:40',
+  room: '',
+  lecturerName: '',
+  isRescheduled: false,
+  rescheduleReason: '',
+  status: 'planned',
+};
+
 function cleanLecturerName(name?: string | null): string {
   if (!name) return 'Dosen belum ditetapkan';
   return name.replace(/^-\s*/, '').trim();
@@ -76,6 +105,14 @@ export const AdminLmsJadwal: React.FC = () => {
   const [editingCourse, setEditingCourse] = useState<LmsCourseOffering | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [editingMeeting, setEditingMeeting] = useState<{
+    classroomId: number;
+    courseName: string;
+    meeting: LmsMeeting;
+  } | null>(null);
+  const [meetingDraft, setMeetingDraft] = useState<MeetingDraft>(EMPTY_MEETING_DRAFT);
+  const [meetingFormError, setMeetingFormError] = useState<string | null>(null);
 
   const curriculumsQuery = useQuery({
     queryKey: ['admin', 'curriculums'],
@@ -210,6 +247,63 @@ export const AdminLmsJadwal: React.FC = () => {
     });
     setFormError(null);
   };
+
+  const openEditMeetingModal = (
+    classroomId: number,
+    courseName: string,
+    meeting: LmsMeeting,
+    defaultRoom?: string | null,
+    defaultLecturer?: string | null,
+  ) => {
+    const sched = meeting.schedule;
+    setEditingMeeting({ classroomId, courseName, meeting });
+    setMeetingDraft({
+      day: sched?.day || 'Senin',
+      date: sched?.date || '',
+      startTime: sched?.startTime || '08:00',
+      endTime: sched?.endTime || '09:40',
+      room: sched?.room || defaultRoom || '',
+      lecturerName: sched?.lecturerName || defaultLecturer || '',
+      isRescheduled: Boolean(sched?.isRescheduled),
+      rescheduleReason: sched?.rescheduleReason || '',
+      status: meeting.status || 'planned',
+    });
+    setMeetingFormError(null);
+  };
+
+  const saveMeetingScheduleMutation = useMutation({
+    mutationFn: (resetToRegular: boolean) => {
+      if (!editingMeeting) throw new Error('Pertemuan belum dipilih.');
+      return lmsAdminApi.saveMeetingSchedule(
+        editingMeeting.classroomId,
+        editingMeeting.meeting.number,
+        resetToRegular
+          ? { isRescheduled: false, status: 'planned' }
+          : {
+              day: meetingDraft.day || null,
+              date: meetingDraft.date || null,
+              startTime: meetingDraft.startTime || null,
+              endTime: meetingDraft.endTime || null,
+              room: meetingDraft.room.trim() || null,
+              lecturerName: meetingDraft.lecturerName.trim() || null,
+              isRescheduled: meetingDraft.isRescheduled,
+              rescheduleReason: meetingDraft.isRescheduled ? meetingDraft.rescheduleReason.trim() : null,
+              status: meetingDraft.status || null,
+            },
+      );
+    },
+    onSuccess: (_, resetToRegular) => {
+      toast.success(
+        resetToRegular
+          ? 'Jadwal pertemuan berhasil dikembalikan ke reguler.'
+          : 'Jadwal pertemuan berhasil disimpan dan diperbarui.',
+      );
+      setEditingMeeting(null);
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'lms-meetings', expandedDosenClassId] });
+    },
+    onError: (error) =>
+      setMeetingFormError(firstFieldError(toApiError(error)) ?? toApiError(error).message),
+  });
 
   const toggleCourse = (courseId: number) => {
     if (expandedCourseId === courseId) {
@@ -460,58 +554,288 @@ export const AdminLmsJadwal: React.FC = () => {
                       {expandedDosenClassId === classroom?.id && (
                         <div
                           id={`pertemuan-kelas-${classroom.id}`}
-                          className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs"
+                          className="mt-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs"
                         >
-                          <div className="flex items-center justify-between mb-3">
-                            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                              <ClockIcon className="h-4 w-4 text-[#1e3a8a]" />
-                              Rincian 16 Pertemuan Perkuliahan (LMS)
-                            </h5>
-                            <span className="text-[11px] text-slate-500">
-                              Standar 16 Pertemuan Semester
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+                            <div>
+                              <h5 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                <ClockIcon className="h-4 w-4 text-[#1e3a8a]" />
+                                Rincian 16 Pertemuan Perkuliahan (LMS)
+                              </h5>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Menampilkan jadwal tersendiri per pertemuan, materi, tugas, presensi, kuis, dan status pergantian jadwal.
+                              </p>
+                            </div>
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1e3a8a]">
+                              16 Pertemuan Semester
                             </span>
                           </div>
 
                           {meetingsQuery.isLoading ? (
-                            <div className="py-4 text-center text-xs text-slate-500">
-                              Memuat daftar pertemuan dari LMS...
+                            <div className="py-8 text-center text-xs text-slate-500">
+                              Memuat data 16 pertemuan dari LMS...
                             </div>
                           ) : (meetingsQuery.data ?? []).length === 0 ? (
-                            <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500 italic">
+                            <div className="rounded-lg bg-slate-50 p-4 text-xs text-slate-500 italic">
                               Belum ada daftar pertemuan. Simpan jadwal ulang untuk menyinkronkan 16 pertemuan ke LMS.
                             </div>
                           ) : (
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                              {(meetingsQuery.data ?? []).map((m: LmsMeeting) => (
-                                <div
-                                  key={m.id}
-                                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 text-xs"
-                                >
-                                  <div className="min-w-0">
-                                    <p className="font-bold text-slate-800">
-                                      Pertemuan {m.number}
-                                    </p>
-                                    <p className="truncate text-[11px] text-slate-500" title={m.title}>
-                                      {m.title}
-                                    </p>
-                                  </div>
-                                  <span
-                                    className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-                                      m.status === 'completed'
-                                        ? 'bg-emerald-100 text-emerald-800'
-                                        : m.status === 'ongoing'
-                                        ? 'bg-blue-100 text-blue-800'
-                                        : 'bg-slate-200 text-slate-700'
+                            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                              {(meetingsQuery.data ?? []).map((m: LmsMeeting) => {
+                                const isRescheduled = Boolean(m.schedule?.isRescheduled);
+                                const isCompleted = m.status === 'completed' || m.status === 'done';
+                                const isOngoing = m.status === 'ongoing';
+
+                                return (
+                                  <div
+                                    key={m.id}
+                                    className={`flex flex-col justify-between rounded-xl border p-4 transition-all shadow-2xs ${
+                                      isRescheduled
+                                        ? 'border-amber-300/80 bg-amber-50/15 ring-1 ring-amber-300/30'
+                                        : 'border-slate-200/90 bg-white hover:border-slate-300'
                                     }`}
                                   >
-                                    {m.status === 'completed'
-                                      ? 'Selesai'
-                                      : m.status === 'ongoing'
-                                      ? 'Berjalan'
-                                      : 'Rencana'}
-                                  </span>
-                                </div>
-                              ))}
+                                    <div>
+                                      {/* Baris Atas: Nomor, Judul, Status & Aksi Edit */}
+                                      <div className="flex flex-wrap items-start justify-between gap-2 pb-3 border-b border-slate-100">
+                                        <div className="min-w-0">
+                                          <div className="flex items-center gap-2">
+                                            <span className="inline-flex shrink-0 items-center justify-center rounded-md bg-[#1e3a8a] px-2 py-0.5 text-[11px] font-bold text-white shadow-2xs">
+                                              P{m.number}
+                                            </span>
+                                            <h6 className="truncate text-sm font-bold text-slate-900" title={m.title}>
+                                              {m.title || `Pertemuan ${m.number}`}
+                                            </h6>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                          {/* Status Pelaksanaan */}
+                                          <span
+                                            className={`inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                                              isCompleted
+                                                ? 'bg-emerald-100 text-emerald-800'
+                                                : isOngoing
+                                                ? 'bg-blue-100 text-blue-800'
+                                                : 'bg-slate-100 text-slate-600'
+                                            }`}
+                                          >
+                                            {isCompleted ? 'Selesai' : isOngoing ? 'Berjalan' : 'Rencana'}
+                                          </span>
+
+                                          {/* Status Pergantian Jadwal */}
+                                          {isRescheduled ? (
+                                            <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-amber-100/90 px-2 py-0.5 text-[10px] font-bold text-amber-900 shadow-2xs">
+                                              <ArrowsRightLeftIcon className="h-3 w-3 text-amber-700" />
+                                              Jadwal Diganti
+                                            </span>
+                                          ) : (
+                                            <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                                              <CheckCircleIcon className="h-3 w-3 text-emerald-600" />
+                                              Sesuai Jadwal
+                                            </span>
+                                          )}
+
+                                          {/* Tombol Edit Jadwal Pertemuan */}
+                                          {canEdit ? (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                openEditMeetingModal(
+                                                  classroom.id,
+                                                  course.name,
+                                                  m,
+                                                  classroom.room,
+                                                  dosenName,
+                                                )
+                                              }
+                                              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
+                                              title={`Edit jadwal khusus Pertemuan ${m.number}`}
+                                            >
+                                              <PencilSquareIcon className="h-3.5 w-3.5 text-[#1e3a8a]" />
+                                              Edit
+                                            </button>
+                                          ) : null}
+                                        </div>
+                                      </div>
+
+                                      {/* Baris Jadwal & Dosen Tersendiri per Pertemuan */}
+                                      <div className="mt-3 rounded-lg border border-slate-200/80 bg-slate-50/70 p-2.5 text-xs text-slate-700 space-y-1.5">
+                                        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <CalendarDaysIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" />
+                                            <span>
+                                              <strong>Jadwal:</strong>{' '}
+                                              {m.schedule?.day || classroom?.day || 'Senin'},{' '}
+                                              {m.schedule?.startTime && m.schedule?.endTime
+                                                ? `${m.schedule.startTime} - ${m.schedule.endTime}`
+                                                : classroom?.startTime && classroom?.endTime
+                                                ? `${classroom.startTime} - ${classroom.endTime}`
+                                                : '08:00 - 09:40'}
+                                            </span>
+                                            {m.schedule?.date ? (
+                                              <span className="font-mono text-[11px] text-slate-500">
+                                                ({m.schedule.date})
+                                              </span>
+                                            ) : null}
+                                          </div>
+
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <MapPinIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" />
+                                            <span>
+                                              <strong>Ruang:</strong> {m.schedule?.room || classroom?.room || 'Belum diatur'}
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 pt-1.5 border-t border-slate-200/50">
+                                          <div className="flex items-center gap-1.5 min-w-0 truncate">
+                                            <AcademicCapIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" />
+                                            <span className="truncate">
+                                              <strong>Dosen:</strong> {m.schedule?.lecturerName || dosenName}
+                                            </span>
+                                          </div>
+
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <UserGroupIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                                            <span>
+                                              <strong>Peserta:</strong> {classroom?._count.students ?? 0} Mhs
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {/* Keterangan Pergantian Jadwal jika ada */}
+                                        {isRescheduled && (
+                                          <div className="mt-1.5 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900 space-y-0.5">
+                                            <p className="font-bold flex items-center gap-1 text-amber-950">
+                                              <ArrowsRightLeftIcon className="h-3 w-3 text-amber-700" />
+                                              Informasi Pergantian Jadwal
+                                            </p>
+                                            {m.schedule?.rescheduleReason ? (
+                                              <p>
+                                                <strong>Alasan:</strong> {m.schedule.rescheduleReason}
+                                              </p>
+                                            ) : null}
+                                            {m.schedule?.originalSchedule ? (
+                                              <p className="text-[10px] text-amber-800/80">
+                                                Jadwal Semula: {m.schedule.originalSchedule}
+                                                {m.schedule.originalRoom ? ` (Ruang: ${m.schedule.originalRoom})` : ''}
+                                              </p>
+                                            ) : null}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Detail Pembelajaran LMS: Materi, Tugas, Kuis, Presensi */}
+                                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                        {/* Materi */}
+                                        <div className="rounded-lg border border-slate-200/80 bg-white p-2.5">
+                                          <div className="flex items-center justify-between mb-1.5">
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                                              <BookOpenIcon className="h-3.5 w-3.5 text-emerald-600" />
+                                              Materi ({m.materi?.length ?? 0})
+                                            </span>
+                                          </div>
+                                          {(m.materi ?? []).length === 0 ? (
+                                            <p className="text-[11px] text-slate-400 italic">Belum ada materi</p>
+                                          ) : (
+                                            <ul className="space-y-1">
+                                              {m.materi!.map((mat) => (
+                                                <li key={mat.id} className="flex items-start justify-between gap-1 text-[11px]">
+                                                  <span className="truncate text-slate-800 font-medium" title={mat.title}>
+                                                    {mat.title}
+                                                  </span>
+                                                  {mat.fileName ? (
+                                                    <span className="shrink-0 text-[10px] text-emerald-700 font-semibold" title={mat.fileName}>
+                                                      Lampiran
+                                                    </span>
+                                                  ) : null}
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          )}
+                                        </div>
+
+                                        {/* Tugas */}
+                                        <div className="rounded-lg border border-slate-200/80 bg-white p-2.5">
+                                          <div className="flex items-center justify-between mb-1.5">
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                                              <DocumentTextIcon className="h-3.5 w-3.5 text-amber-600" />
+                                              Tugas ({m.tugas?.length ?? 0})
+                                            </span>
+                                          </div>
+                                          {(m.tugas ?? []).length === 0 ? (
+                                            <p className="text-[11px] text-slate-400 italic">Belum ada tugas</p>
+                                          ) : (
+                                            <ul className="space-y-1">
+                                              {m.tugas!.map((tug) => (
+                                                <li key={tug.id} className="text-[11px]">
+                                                  <p className="truncate font-medium text-slate-800" title={tug.title}>
+                                                    {tug.title}
+                                                  </p>
+                                                  <div className="flex items-center justify-between text-[10px] text-slate-500 mt-0.5">
+                                                    <span>{tug.submissionCount ?? 0} kumpul</span>
+                                                    {tug.deadline ? <span className="truncate">Tenggat: {tug.deadline}</span> : null}
+                                                  </div>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          )}
+                                        </div>
+
+                                        {/* Kuis */}
+                                        <div className="rounded-lg border border-slate-200/80 bg-white p-2.5">
+                                          <div className="flex items-center justify-between mb-1.5">
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                                              <LightBulbIcon className="h-3.5 w-3.5 text-indigo-600" />
+                                              Kuis ({m.kuis?.length ?? 0})
+                                            </span>
+                                          </div>
+                                          {(m.kuis ?? []).length === 0 ? (
+                                            <p className="text-[11px] text-slate-400 italic">Belum ada kuis</p>
+                                          ) : (
+                                            <ul className="space-y-1">
+                                              {m.kuis!.map((kui) => (
+                                                <li key={kui.id} className="text-[11px]">
+                                                  <p className="truncate font-medium text-slate-800" title={kui.title}>
+                                                    {kui.title}
+                                                  </p>
+                                                  <div className="flex items-center justify-between text-[10px] text-slate-500 mt-0.5">
+                                                    <span>{kui.questionsCount ?? 0} soal</span>
+                                                    <span>{kui.submissionCount ?? 0} responden</span>
+                                                  </div>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          )}
+                                        </div>
+
+                                        {/* Presensi */}
+                                        <div className="rounded-lg border border-slate-200/80 bg-white p-2.5">
+                                          <div className="flex items-center justify-between mb-1.5">
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                                              <ClipboardDocumentCheckIcon className="h-3.5 w-3.5 text-blue-600" />
+                                              Presensi
+                                            </span>
+                                          </div>
+                                          {m.presensi?.recorded ? (
+                                            <div className="space-y-0.5 text-[11px]">
+                                              <p className="font-semibold text-emerald-700">
+                                                {m.presensi.attended} hadir dari {m.presensi.totalStudents} mhs
+                                              </p>
+                                              <p className="text-[10px] text-slate-500">
+                                                Tingkat kehadiran: {m.presensi.totalStudents > 0 ? Math.round((m.presensi.attended / m.presensi.totalStudents) * 100) : 0}%
+                                              </p>
+                                            </div>
+                                          ) : (
+                                            <p className="text-[11px] text-slate-400 italic">Presensi belum dicatat dosen</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -608,6 +932,175 @@ export const AdminLmsJadwal: React.FC = () => {
           <ClockIcon className="h-3.5 w-3.5 text-slate-400" />
           Penyimpanan otomatis memperbarui kelas dan memastikan 16 pertemuan aktif di LMS.
         </p>
+      </FormModal>
+
+      {/* MODAL EDIT JADWAL PERTEMUAN KHUSUS */}
+      <FormModal
+        open={editingMeeting !== null}
+        title={
+          editingMeeting
+            ? `Edit Jadwal Pertemuan ${editingMeeting.meeting.number} - ${editingMeeting.courseName}`
+            : 'Edit Jadwal Pertemuan'
+        }
+        busy={saveMeetingScheduleMutation.isPending}
+        error={meetingFormError}
+        onClose={() => {
+          setEditingMeeting(null);
+          setMeetingFormError(null);
+        }}
+        onSubmit={(event) => {
+          event.preventDefault();
+          setMeetingFormError(null);
+          if (meetingDraft.isRescheduled && !meetingDraft.rescheduleReason.trim()) {
+            setMeetingFormError('Alasan pergantian jadwal wajib diisi jika status pergantian aktif.');
+            return;
+          }
+          if (meetingDraft.startTime && meetingDraft.endTime && meetingDraft.startTime >= meetingDraft.endTime) {
+            setMeetingFormError('Jam selesai harus lebih lambat dari jam mulai.');
+            return;
+          }
+          saveMeetingScheduleMutation.mutate(false);
+        }}
+      >
+        <div className="space-y-4">
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">
+            Perubahan ini hanya berlaku untuk <strong>Pertemuan {editingMeeting?.meeting.number}</strong>. Jadwal perkuliahan reguler pertemuan lainnya tetap sesuai jadwal utama.
+          </p>
+
+          {/* Toggle Status Pergantian Jadwal */}
+          <div className="rounded-xl border border-amber-200/90 bg-amber-50/70 p-3.5">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                id="meeting-is-rescheduled"
+                checked={meetingDraft.isRescheduled}
+                onChange={(event) =>
+                  setMeetingDraft((prev) => ({
+                    ...prev,
+                    isRescheduled: event.target.checked,
+                  }))
+                }
+                className="mt-0.5 h-4 w-4 rounded border-amber-300 text-[#1e3a8a] focus:ring-[#1e3a8a]"
+              />
+              <div className="min-w-0">
+                <span className="font-bold text-xs text-amber-950 flex items-center gap-1.5">
+                  <ArrowsRightLeftIcon className="h-4 w-4 text-amber-700" />
+                  Tandai Sebagai Jadwal Pengganti (Rescheduled)
+                </span>
+                <p className="text-[11px] text-amber-800/90 mt-0.5">
+                  Aktifkan penanda ini jika dosen melakukan pergantian waktu, hari, tanggal, atau ruang perkuliahan.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {meetingDraft.isRescheduled && (
+            <Field label="Alasan Pergantian Jadwal" htmlFor="meeting-reschedule-reason" required>
+              <textarea
+                id="meeting-reschedule-reason"
+                rows={2}
+                className="field-input"
+                value={meetingDraft.rescheduleReason}
+                onChange={(event) =>
+                  setMeetingDraft((prev) => ({ ...prev, rescheduleReason: event.target.value }))
+                }
+                placeholder="Contoh: Dosen berhalangan hadir karena dinas luar kota / ujian proposal skripsi"
+              />
+            </Field>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Hari Perkuliahan" htmlFor="meeting-day">
+              <SearchableSelect
+                id="meeting-day"
+                value={meetingDraft.day}
+                onChange={(val) => setMeetingDraft((prev) => ({ ...prev, day: val }))}
+                options={dayOptions}
+                placeholder="Pilih hari"
+                clearable={false}
+                searchPlaceholder="Cari hari..."
+              />
+            </Field>
+
+            <Field label="Tanggal Pelaksanaan (Opsional)" htmlFor="meeting-date">
+              <input
+                id="meeting-date"
+                type="date"
+                className="field-input"
+                value={meetingDraft.date}
+                onChange={(event) => setMeetingDraft((prev) => ({ ...prev, date: event.target.value }))}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Jam Mulai" htmlFor="meeting-start">
+              <input
+                id="meeting-start"
+                type="time"
+                className="field-input"
+                value={meetingDraft.startTime}
+                onChange={(event) => setMeetingDraft((prev) => ({ ...prev, startTime: event.target.value }))}
+              />
+            </Field>
+
+            <Field label="Jam Selesai" htmlFor="meeting-end">
+              <input
+                id="meeting-end"
+                type="time"
+                className="field-input"
+                value={meetingDraft.endTime}
+                onChange={(event) => setMeetingDraft((prev) => ({ ...prev, endTime: event.target.value }))}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Ruang Perkuliahan" htmlFor="meeting-room">
+              <input
+                id="meeting-room"
+                placeholder="Contoh: Ruang A.201 / Lab Komputer"
+                className="field-input"
+                value={meetingDraft.room}
+                onChange={(event) => setMeetingDraft((prev) => ({ ...prev, room: event.target.value }))}
+              />
+            </Field>
+
+            <Field label="Dosen Pengampu / Pengganti" htmlFor="meeting-lecturer">
+              <input
+                id="meeting-lecturer"
+                placeholder="Nama dosen pengajar sesi ini"
+                className="field-input"
+                value={meetingDraft.lecturerName}
+                onChange={(event) => setMeetingDraft((prev) => ({ ...prev, lecturerName: event.target.value }))}
+              />
+            </Field>
+          </div>
+
+          <Field label="Status Pelaksanaan Pertemuan" htmlFor="meeting-status">
+            <select
+              id="meeting-status"
+              className="field-input"
+              value={meetingDraft.status}
+              onChange={(event) => setMeetingDraft((prev) => ({ ...prev, status: event.target.value }))}
+            >
+              <option value="planned">Rencana (Terjadwal)</option>
+              <option value="ongoing">Sedang Berjalan</option>
+              <option value="completed">Selesai Terlaksana</option>
+            </select>
+          </Field>
+
+          {editingMeeting?.meeting.schedule?.isRescheduled ? (
+            <button
+              type="button"
+              disabled={saveMeetingScheduleMutation.isPending}
+              onClick={() => saveMeetingScheduleMutation.mutate(true)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 cursor-pointer"
+            >
+              Kembalikan ke Jadwal Reguler
+            </button>
+          ) : null}
+        </div>
       </FormModal>
     </AdminLayout>
   );

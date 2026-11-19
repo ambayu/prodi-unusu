@@ -41,11 +41,76 @@ export interface LmsLecturer {
   nidn: string;
 }
 
+export interface LmsMeetingSchedule {
+  day?: string | null;
+  date?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  room?: string | null;
+  lecturerName?: string | null;
+  isRescheduled: boolean;
+  rescheduleReason?: string | null;
+  originalSchedule?: string | null;
+  originalRoom?: string | null;
+}
+
+export interface LmsMeetingResource {
+  id: number;
+  title: string;
+  description?: string;
+  filePath?: string | null;
+  fileName?: string | null;
+  createdAt?: string | null;
+}
+
+export interface LmsMeetingTask {
+  id: number;
+  title: string;
+  description?: string;
+  deadline?: string | null;
+  submissionCount: number;
+  createdAt?: string | null;
+}
+
+export interface LmsMeetingQuiz {
+  id: number;
+  title: string;
+  description?: string;
+  deadline?: string | null;
+  questionsCount: number;
+  submissionCount: number;
+  createdAt?: string | null;
+}
+
+export interface LmsMeetingAttendance {
+  recorded: boolean;
+  attended: number;
+  totalStudents: number;
+}
+
 export interface LmsMeeting {
   id: number;
   number: number;
   title: string;
   status: string;
+  heldAt?: string | null;
+  schedule?: LmsMeetingSchedule;
+  materi?: LmsMeetingResource[];
+  tugas?: LmsMeetingTask[];
+  kuis?: LmsMeetingQuiz[];
+  presensi?: LmsMeetingAttendance;
+}
+
+export interface LmsMeetingScheduleInput {
+  day?: string | null;
+  date?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  room?: string | null;
+  lecturerName?: string | null;
+  isRescheduled: boolean;
+  rescheduleReason?: string | null;
+  status?: string | null;
 }
 
 export interface LmsCourseOffering {
@@ -70,6 +135,11 @@ export const lmsAdminApi = {
     api.post<{ success: boolean; classroom: LmsClassroom }>('/admin/lms/classrooms', data),
   meetings: (classroomId: number) =>
     api.get<{ success: boolean; meetings: LmsMeeting[] }>(`/admin/lms/classrooms/${classroomId}/meetings`),
+  saveMeetingSchedule: (classroomId: number, meetingNumber: number, data: LmsMeetingScheduleInput) =>
+    api.put<{ success: boolean; message: string; schedule?: LmsMeetingSchedule }>(
+      `/admin/lms/classrooms/${classroomId}/meetings/${meetingNumber}/schedule`,
+      data,
+    ),
   students: (classroomId: number) =>
     api.get<{ success: boolean; students: LmsStudentRow[] }>(`/admin/lms/classrooms/${classroomId}/students`),
   saveStudents: (classroomId: number, students: LmsStudentRow[]) =>
