@@ -12,8 +12,8 @@ import { lmsAdminApi, type LmsStudentRow } from '../../services/lmsAdminApi';
  *
  * Peserta disimpan per kelas. Daftar dikirim utuh ke server setiap kali
  * disimpan, sehingga layar hanya perlu memegang satu salinan sementara.
- * NIM dan nama diketik bebas karena data induk mahasiswa milik SIAKAD; daftar
- * "mahasiswa yang sudah pernah di-plot" dipakai sebagai saran isian cepat.
+ * Kandidat mahasiswa dibaca dari ONE UNUSU. Operator memilih peserta dari
+ * daftar tersebut agar NIM dan nama tetap konsisten dengan sumber induknya.
  */
 export const AdminLmsPeserta: React.FC = () => {
   const queryClient = useQueryClient();
@@ -23,8 +23,6 @@ export const AdminLmsPeserta: React.FC = () => {
 
   const [classroomId, setClassroomId] = useState<number | null>(null);
   const [rows, setRows] = useState<LmsStudentRow[]>([]);
-  const [nim, setNim] = useState('');
-  const [nama, setNama] = useState('');
   const [cari, setCari] = useState('');
 
   const classroomsQuery = useQuery({
@@ -81,8 +79,6 @@ export const AdminLmsPeserta: React.FC = () => {
   const tambah = (siswa: LmsStudentRow) => {
     if (!siswa.nim || rows.some((row) => row.nim === siswa.nim)) return;
     setRows([...rows, siswa]);
-    setNim('');
-    setNama('');
     setCari('');
   };
 
@@ -119,7 +115,7 @@ export const AdminLmsPeserta: React.FC = () => {
           <div className="card p-8 text-center space-y-2">
             <p className="font-semibold text-slate-800">Belum ada kelas LMS</p>
             <p className="text-sm text-slate-500">
-              Buka kelas terlebih dahulu pada menu Jadwal &amp; Ruang Kuliah.
+              Atur perkuliahan terlebih dahulu pada menu Perkuliahan LMS.
             </p>
           </div>
         ) : (
@@ -149,44 +145,13 @@ export const AdminLmsPeserta: React.FC = () => {
             {canEdit ? (
               <section className="card p-5 space-y-4">
                 <h2 className="text-sm font-bold text-slate-900">Tambah Peserta</h2>
-                <form
-                  className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.6fr_auto]"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    tambah({ nim: nim.trim(), name: nama.trim() });
-                  }}
-                >
-                  <input
-                    className="field-input"
-                    placeholder="NIM"
-                    value={nim}
-                    onChange={(event) => setNim(event.target.value)}
-                    aria-label="NIM mahasiswa"
-                  />
-                  <input
-                    className="field-input"
-                    placeholder="Nama mahasiswa"
-                    value={nama}
-                    onChange={(event) => setNama(event.target.value)}
-                    aria-label="Nama mahasiswa"
-                  />
-                  <button
-                    type="submit"
-                    className="btn-secondary"
-                    disabled={!nim.trim() || !nama.trim() || rows.some((row) => row.nim === nim.trim())}
-                  >
-                    <PlusIcon className="h-4 w-4" />
-                    Tambah
-                  </button>
-                </form>
-
                 <div>
                   <label
                     htmlFor="lms-cari-mahasiswa"
                     className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500"
                   >
                     <MagnifyingGlassIcon className="h-3.5 w-3.5" />
-                    Pilih dari mahasiswa yang pernah di-plot
+                    Cari mahasiswa dari ONE UNUSU
                   </label>
                   <input
                     id="lms-cari-mahasiswa"

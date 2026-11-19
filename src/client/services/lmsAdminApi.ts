@@ -1,26 +1,15 @@
 import { api } from './api';
 
-/**
- * Klien Manajemen LMS Portal Prodi.
- *
- * Portal Prodi adalah sumber tunggal data kelas perkuliahan: jadwal, ruang,
- * dosen pengampu, dan peserta diatur di sini, lalu ditarik LMS melalui ONE
- * UNUSU API Hub.
- */
-
-export interface LmsCourseOption {
-  id: number;
-  code: string;
+/** Klien manajemen perkuliahan yang diteruskan Portal Prodi ke LMS. */
+export interface LmsStudentRow {
+  nim: string;
   name: string;
-  credits: number;
-  semesterNumber: number | null;
-  classrooms: Array<{ id: number; group: string }>;
 }
 
 export interface LmsClassroom {
   id: number;
   curriculumItemId: number;
-  group: string;
+  group: 'Utama';
   day: string | null;
   startTime: string | null;
   endTime: string | null;
@@ -38,7 +27,6 @@ export interface LmsClassroom {
 
 export interface LmsClassroomInput {
   curriculumItemId: number;
-  group: string;
   day?: string | null;
   startTime?: string | null;
   endTime?: string | null;
@@ -47,38 +35,27 @@ export interface LmsClassroomInput {
   lecturerName?: string | null;
 }
 
-export interface LmsStudentRow {
-  nim: string;
+export interface LmsCourseOffering {
+  id: number;
+  code: string;
   name: string;
-}
-
-export interface LmsSyncRow {
-  prodiClassId: number;
-  kodeMk: string;
-  status: 'tersinkron' | 'gagal';
-  alasan?: string;
-  classId?: number;
-  pesertaBaru?: number;
-  dosenTerhubung?: boolean;
+  credits: number;
+  semesterNumber: number | null;
+  classroom: Omit<LmsClassroom, 'curriculumItemId' | 'group' | 'curriculumItem'> | null;
 }
 
 export const lmsAdminApi = {
-  courses: () => api.get<{ success: boolean; courses: LmsCourseOption[] }>('/admin/lms/courses'),
+  courses: () =>
+    api.get<{
+      success: boolean;
+      courses: LmsCourseOffering[];
+    }>('/admin/lms/courses'),
   classrooms: () => api.get<{ success: boolean; classrooms: LmsClassroom[] }>('/admin/lms/classrooms'),
-  createClassroom: (data: LmsClassroomInput) =>
+  saveClassroom: (data: LmsClassroomInput) =>
     api.post<{ success: boolean; classroom: LmsClassroom }>('/admin/lms/classrooms', data),
-  updateClassroom: (id: number, data: Partial<LmsClassroomInput>) =>
-    api.put<{ success: boolean; classroom: LmsClassroom }>(`/admin/lms/classrooms/${id}`, data),
-  removeClassroom: (id: number) => api.delete(`/admin/lms/classrooms/${id}`),
-  generateClassrooms: (semesterNumber?: number) =>
-    api.post<{ success: boolean; created: number; skipped: number }>('/admin/lms/classrooms/generate',
-      semesterNumber ? { semesterNumber } : {},
-    ),
   students: (classroomId: number) =>
     api.get<{ success: boolean; students: LmsStudentRow[] }>(`/admin/lms/classrooms/${classroomId}/students`),
   saveStudents: (classroomId: number, students: LmsStudentRow[]) =>
     api.put(`/admin/lms/classrooms/${classroomId}/students`, { students }),
   knownStudents: () => api.get<{ success: boolean; students: LmsStudentRow[] }>('/admin/lms/students'),
-  sinkron: () =>
-    api.post<{ success: boolean; message: string; hasil: LmsSyncRow[] }>('/admin/lms/sinkron'),
 };

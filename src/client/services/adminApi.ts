@@ -945,11 +945,11 @@ export const adminMenuApi = {
             scopeType: 'prodi',
           },
 
-          // 4. MANAJEMEN LMS (kelas, peserta, sinkronisasi ke LMS)
+          // 4. MANAJEMEN LMS
           {
             menuKey: 'lms',
             label: 'Manajemen LMS',
-            desc: 'Jadwal, peserta & sinkronisasi kelas',
+            desc: 'Perkuliahan dan peserta kelas',
             route: '/admin/lms/jadwal',
             icon: 'AcademicCapIcon',
             parentKey: null,
@@ -960,8 +960,8 @@ export const adminMenuApi = {
           },
           {
             menuKey: 'lms.jadwal',
-            label: 'Jadwal & Ruang Kuliah',
-            desc: 'Hari, jam, ruang & dosen pengampu',
+            label: 'Perkuliahan',
+            desc: 'Dosen, jadwal, ruang, dan kelas LMS',
             route: '/admin/lms/jadwal',
             icon: 'CalendarDaysIcon',
             parentKey: 'lms',
@@ -978,18 +978,6 @@ export const adminMenuApi = {
             icon: 'UserGroupIcon',
             parentKey: 'lms',
             sortOrder: 27,
-            section: 'LMS',
-            requiredPermission: 'curriculum.view',
-            scopeType: 'prodi',
-          },
-          {
-            menuKey: 'lms.sinkronisasi',
-            label: 'Sinkronisasi',
-            desc: 'Kirim data kelas ke LMS',
-            route: '/admin/lms/sinkronisasi',
-            icon: 'ArrowPathIcon',
-            parentKey: 'lms',
-            sortOrder: 28,
             section: 'LMS',
             requiredPermission: 'curriculum.view',
             scopeType: 'prodi',

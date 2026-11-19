@@ -299,9 +299,8 @@ export const ADMIN_MENUS: Array<{
   { menuKey: 'content.messages', label: 'Pesan Masuk', route: '/admin/pesan', icon: 'InboxIcon', parentKey: 'content', sortOrder: 40, requiredPermission: 'contact_messages.view', scopeType: 'prodi' },
 
   { menuKey: 'lms', label: 'Manajemen LMS', route: '/admin/lms/jadwal', icon: 'AcademicCapIcon', sortOrder: 45, requiredPermission: 'curriculum.view', scopeType: 'prodi' },
-  { menuKey: 'lms.jadwal', label: 'Jadwal & Ruang Kuliah', route: '/admin/lms/jadwal', icon: 'CalendarDaysIcon', parentKey: 'lms', sortOrder: 46, requiredPermission: 'curriculum.view', scopeType: 'prodi' },
+  { menuKey: 'lms.jadwal', label: 'Perkuliahan', route: '/admin/lms/jadwal', icon: 'CalendarDaysIcon', parentKey: 'lms', sortOrder: 46, requiredPermission: 'curriculum.view', scopeType: 'prodi' },
   { menuKey: 'lms.peserta', label: 'Plotting Peserta', route: '/admin/lms/peserta', icon: 'UserGroupIcon', parentKey: 'lms', sortOrder: 47, requiredPermission: 'curriculum.view', scopeType: 'prodi' },
-  { menuKey: 'lms.sinkronisasi', label: 'Sinkronisasi', route: '/admin/lms/sinkronisasi', icon: 'ArrowPathIcon', parentKey: 'lms', sortOrder: 48, requiredPermission: 'curriculum.view', scopeType: 'prodi' },
 
   { menuKey: 'management', label: 'Pengelolaan', route: '/admin/pengelolaan', icon: 'Cog6ToothIcon', sortOrder: 50, requiredPermission: 'media.view', scopeType: 'prodi' },
   { menuKey: 'management.media', label: 'Media Library', route: '/admin/media', icon: 'PhotoIcon', parentKey: 'management', sortOrder: 51, requiredPermission: 'media.view', scopeType: 'prodi' },
