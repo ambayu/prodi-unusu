@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AcademicCapIcon,
@@ -14,10 +14,10 @@ import { EditRowButton, RowActions } from '../../components/ui/RowActions';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { firstFieldError, toApiError } from '../../services/api';
-import { lecturerApi } from '../../services/contentApi';
 import {
   lmsAdminApi,
   type LmsCourseOffering,
+  type LmsLecturer,
 } from '../../services/lmsAdminApi';
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -61,19 +61,34 @@ export const AdminLmsJadwal: React.FC = () => {
     queryFn: () => lmsAdminApi.courses().then((res) => res.data.courses),
   });
   const lecturersQuery = useQuery({
-    queryKey: ['admin', 'lecturers', 'lms'],
-    queryFn: () => lecturerApi.all().then((res) => res.data.lecturers),
+    queryKey: ['admin', 'lms-lecturers'],
+    queryFn: () => lmsAdminApi.lecturers().then((res) => res.data.lecturers),
   });
 
   const courses = coursesQuery.data ?? [];
   const lecturers = lecturersQuery.data ?? [];
-  const courseGroups = courses.reduce<Map<number, LmsCourseOffering[]>>((groups, course) => {
-    const semester = course.semesterNumber ?? 0;
-    const entries = groups.get(semester) ?? [];
-    entries.push(course);
-    groups.set(semester, entries);
-    return groups;
-  }, new Map());
+  const lecturerGroups = useMemo(() => {
+    const groups = new Map<string, { lecturer: LmsLecturer | null; courses: LmsCourseOffering[] }>();
+    for (const course of courses) {
+      const nidn = course.classroom?.lecturerNidn ?? '';
+      const key = nidn || 'unassigned';
+      const lecturer = nidn
+        ? lecturers.find((item) => item.nidn === nidn) ?? {
+            id: 0,
+            name: course.classroom?.lecturerName || 'Dosen tidak ditemukan',
+            nidn,
+          }
+        : null;
+      const group = groups.get(key) ?? { lecturer, courses: [] };
+      group.courses.push(course);
+      groups.set(key, group);
+    }
+    return [...groups.values()].sort((left, right) => {
+      if (!left.lecturer) return 1;
+      if (!right.lecturer) return -1;
+      return left.lecturer.name.localeCompare(right.lecturer.name, 'id');
+    });
+  }, [courses, lecturers]);
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -115,7 +130,7 @@ export const AdminLmsJadwal: React.FC = () => {
   return (
     <AdminLayout
       title="Perkuliahan LMS"
-      description="Atur dosen, jadwal, ruang, dan peserta untuk setiap mata kuliah pada kurikulum aktif."
+      description="Jadwal per dosen pengampu untuk mata kuliah pada kurikulum aktif."
     >
       {coursesQuery.isLoading ? (
         <LoadingState label="Memuat mata kuliah kurikulum..." />
@@ -128,25 +143,28 @@ export const AdminLmsJadwal: React.FC = () => {
         />
       ) : (
         <div className="space-y-5">
-          {[...courseGroups.entries()].map(([semester, semesterCourses]) => (
-            <section key={semester} className="card overflow-hidden">
-              <header className="border-b border-slate-200 px-5 py-3.5">
-                <h2 className="text-sm font-bold text-slate-900">Semester {semester || 'Belum ditentukan'}</h2>
+          {lecturerGroups.map(({ lecturer, courses: lecturerCourses }) => (
+            <section key={lecturer?.nidn ?? 'unassigned'} className="card overflow-hidden">
+              <header className="flex items-center gap-2 border-b border-slate-200 px-5 py-3.5">
+                <AcademicCapIcon className="h-5 w-5 text-slate-500" />
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">{lecturer?.name ?? 'Dosen belum ditetapkan'}</h2>
+                  <p className="text-xs text-slate-500">{lecturer?.nidn ? `NIDN ${lecturer.nidn}` : `${lecturerCourses.length} mata kuliah menunggu pengampu`}</p>
+                </div>
               </header>
               <ul className="divide-y divide-slate-100">
-                {semesterCourses.map((course) => {
+                {lecturerCourses.map((course) => {
                   const classroom = course.classroom;
                   return (
                     <li key={course.id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
                       <div className="min-w-0">
                         <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                          {course.code} · {course.credits} SKS
+                          Semester {course.semesterNumber ?? '-'} · {course.code} · {course.credits} SKS
                         </p>
                         <h3 className="truncate text-sm font-bold text-slate-900">{course.name}</h3>
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-600">
                           <span className="inline-flex items-center gap-1.5"><CalendarDaysIcon className="h-4 w-4 text-slate-400" />{scheduleLabel(course)}</span>
                           <span className="inline-flex items-center gap-1.5"><MapPinIcon className="h-4 w-4 text-slate-400" />{classroom?.room || 'Ruang belum diatur'}</span>
-                          <span className="inline-flex items-center gap-1.5"><AcademicCapIcon className="h-4 w-4 text-slate-400" />{classroom?.lecturerName || 'Dosen belum ditetapkan'}</span>
                           <span className="inline-flex items-center gap-1.5"><UserGroupIcon className="h-4 w-4 text-slate-400" />{classroom?._count.students ?? 0} peserta</span>
                         </div>
                       </div>

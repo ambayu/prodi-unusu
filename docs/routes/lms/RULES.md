@@ -9,6 +9,7 @@
 
 - Sumber kelas adalah penawaran `curriculum_items` pada kurikulum aktif. Penawaran dikelompokkan menurut `semester_number` 1 sampai 8, bukan Master Semester Akademik.
 - Setiap penawaran hanya memiliki satu kelas operasional bernama `Utama`. Administrator mengatur dosen, hari, jam, ruang, dan peserta melalui aksi **Atur Perkuliahan**.
+- Halaman Perkuliahan mengelompokkan mata kuliah berdasarkan dosen pengampu. Mata kuliah tanpa dosen berada dalam kelompok **Dosen belum ditetapkan**.
 - Penyimpanan memakai upsert kelas `Utama` lalu langsung menyinkronkan kelas tersebut ke LMS. LMS memastikan 16 pertemuan tersedia secara idempoten.
 - Antarmuka tidak menyediakan rombel, hapus kelas, buka kelas baru, generate seluruh kurikulum, atau sinkronisasi manual.
 

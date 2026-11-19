@@ -8,6 +8,7 @@ import { AppError } from '../../utils/errors.js';
 import { recordAudit } from '../../services/auditService.js';
 import { idParamSchema } from '../../../shared/schemas/common.js';
 import { config } from '../../config/index.js';
+import { fetchLecturersFromApiHub } from '../../services/lecturerIntegrationService.js';
 
 const router = Router();
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Format jam harus HH:MM.');
@@ -200,6 +201,22 @@ router.get(
         semesterNumber: item.semesterNumber,
         classroom: item.classrooms[0] ?? null,
       })),
+    });
+  }),
+);
+
+/** GET /api/v1/admin/lms/classrooms: hanya kelas Utama milik kurikulum aktif. */
+router.get(
+  '/lms/lecturers',
+  requirePermission('curriculum.view'),
+  asyncHandler(async (_req, res) => {
+    const lecturers = await fetchLecturersFromApiHub();
+    res.json({
+      success: true,
+      lecturers: lecturers
+        .filter((lecturer) => Boolean(lecturer.nidn))
+        .map((lecturer) => ({ id: lecturer.id, name: lecturer.name, nidn: lecturer.nidn }))
+        .sort((left, right) => left.name.localeCompare(right.name, 'id')),
     });
   }),
 );

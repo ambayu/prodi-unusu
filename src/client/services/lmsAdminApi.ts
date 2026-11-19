@@ -35,6 +35,12 @@ export interface LmsClassroomInput {
   lecturerName?: string | null;
 }
 
+export interface LmsLecturer {
+  id: number;
+  name: string;
+  nidn: string;
+}
+
 export interface LmsCourseOffering {
   id: number;
   code: string;
@@ -50,6 +56,7 @@ export const lmsAdminApi = {
       success: boolean;
       courses: LmsCourseOffering[];
     }>('/admin/lms/courses'),
+  lecturers: () => api.get<{ success: boolean; lecturers: LmsLecturer[] }>('/admin/lms/lecturers'),
   classrooms: () => api.get<{ success: boolean; classrooms: LmsClassroom[] }>('/admin/lms/classrooms'),
   saveClassroom: (data: LmsClassroomInput) =>
     api.post<{ success: boolean; classroom: LmsClassroom }>('/admin/lms/classrooms', data),
