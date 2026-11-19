@@ -584,8 +584,10 @@ model CurriculumItem {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
+  academicSemesterId Int?              @map("academic_semester_id")
   curriculum   Curriculum      @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
   course       Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  academicSemester AcademicSemester? @relation(fields: [academicSemesterId], references: [id])
   rpsDocuments CurriculumRps[]
   classrooms       LmsClassroom[]
 

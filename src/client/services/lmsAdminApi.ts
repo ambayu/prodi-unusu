@@ -59,11 +59,11 @@ export interface LmsCourseOffering {
 }
 
 export const lmsAdminApi = {
-  courses: () =>
+  courses: (params?: { curriculumId?: number; year?: number; all?: boolean }) =>
     api.get<{
       success: boolean;
       courses: LmsCourseOffering[];
-    }>('/admin/lms/courses'),
+    }>('/admin/lms/courses', { params }),
   lecturers: () => api.get<{ success: boolean; lecturers: LmsLecturer[] }>('/admin/lms/lecturers'),
   classrooms: () => api.get<{ success: boolean; classrooms: LmsClassroom[] }>('/admin/lms/classrooms'),
   saveClassroom: (data: LmsClassroomInput) =>

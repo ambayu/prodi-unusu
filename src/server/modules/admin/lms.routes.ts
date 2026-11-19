@@ -41,16 +41,16 @@ type OneUnusuStudent = {
 
 async function findOwnedItem(itemId: number, tenantId: number) {
   const item = await prisma.curriculumItem.findFirst({
-    where: { id: itemId, curriculum: { studyProgramId: tenantId, isActive: true } },
+    where: { id: itemId, curriculum: { studyProgramId: tenantId } },
     select: { id: true },
   });
-  if (!item) throw AppError.notFound('Mata kuliah tidak ditemukan pada kurikulum aktif program studi ini.');
+  if (!item) throw AppError.notFound('Mata kuliah tidak ditemukan pada kurikulum program studi ini.');
   return item;
 }
 
 async function findOwnedClassroom(id: number, tenantId: number) {
   const classroom = await prisma.lmsClassroom.findFirst({
-    where: { id, group: 'Utama', curriculumItem: { curriculum: { studyProgramId: tenantId, isActive: true } } },
+    where: { id, group: 'Utama', curriculumItem: { curriculum: { studyProgramId: tenantId } } },
     select: { id: true },
   });
   if (!classroom) throw AppError.notFound('Kelas perkuliahan tidak ditemukan pada program studi ini.');
@@ -160,14 +160,30 @@ async function syncClassroomToLms(classroomId: number, tenantId: number) {
   }
 }
 
-/** GET /api/v1/admin/lms/courses: seluruh penawaran pada kurikulum aktif, dikelompokkan UI berdasarkan semester kurikulum. */
+/** GET /api/v1/admin/lms/courses: seluruh penawaran pada kurikulum aktif atau tahun yang dipilih, dikelompokkan UI berdasarkan semester kurikulum. */
 router.get(
   '/lms/courses',
   requirePermission('curriculum.view'),
   asyncHandler(async (req, res) => {
     const tenantId = scopedTenantId(req);
+    const yearParam = req.query.year ? Number(req.query.year) : undefined;
+    const curriculumIdParam = req.query.curriculumId ? Number(req.query.curriculumId) : undefined;
+    const isAll = req.query.all === 'true' || req.query.all === '1';
+
+    const curriculumWhere: { studyProgramId: number; id?: number; year?: number; isActive?: boolean } = {
+      studyProgramId: tenantId,
+    };
+
+    if (curriculumIdParam && !Number.isNaN(curriculumIdParam)) {
+      curriculumWhere.id = curriculumIdParam;
+    } else if (yearParam && !Number.isNaN(yearParam)) {
+      curriculumWhere.year = yearParam;
+    } else if (!isAll) {
+      curriculumWhere.isActive = true;
+    }
+
     const items = await prisma.curriculumItem.findMany({
-      where: { curriculum: { studyProgramId: tenantId, isActive: true } },
+      where: { curriculum: curriculumWhere },
       orderBy: [{ semesterNumber: 'asc' }, { sortOrder: 'asc' }, { id: 'asc' }],
       select: {
         id: true,

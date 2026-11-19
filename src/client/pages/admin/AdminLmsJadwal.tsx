@@ -24,6 +24,7 @@ import {
   type LmsLecturer,
   type LmsMeeting,
 } from '../../services/lmsAdminApi';
+import { curriculumApi } from '../../services/contentApi';
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -64,6 +65,7 @@ export const AdminLmsJadwal: React.FC = () => {
   const canEdit = has('curriculum.update');
 
   const [selectedSemester, setSelectedSemester] = useState<number | 'all'>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('active');
   const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null);
   const [expandedDosenClassId, setExpandedDosenClassId] = useState<number | null>(null);
 
@@ -71,9 +73,24 @@ export const AdminLmsJadwal: React.FC = () => {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const curriculumsQuery = useQuery({
+    queryKey: ['admin', 'curriculums'],
+    queryFn: () => curriculumApi.list().then((res) => res.data.curriculums),
+  });
+
+  const curriculums = curriculumsQuery.data ?? [];
+
   const coursesQuery = useQuery({
-    queryKey: ['admin', 'lms-courses'],
-    queryFn: () => lmsAdminApi.courses().then((res) => res.data.courses),
+    queryKey: ['admin', 'lms-courses', selectedYear],
+    queryFn: () => {
+      const params: { year?: number; all?: boolean } = {};
+      if (selectedYear !== 'active' && selectedYear !== 'all') {
+        params.year = Number(selectedYear);
+      } else if (selectedYear === 'all') {
+        params.all = true;
+      }
+      return lmsAdminApi.courses(params).then((res) => res.data.courses);
+    },
   });
 
   const lecturersQuery = useQuery({
@@ -166,9 +183,48 @@ export const AdminLmsJadwal: React.FC = () => {
   return (
     <AdminLayout
       title="Perkuliahan & Jadwal LMS"
-      description="Navigasi semester kurikulum aktif, mata kuliah, dosen pengampu, edit jadwal, dan daftar 16 pertemuan LMS."
+      description="Navigasi semester kurikulum, mata kuliah, dosen pengampu, edit jadwal, dan daftar 16 pertemuan LMS."
     >
       <div className="space-y-5">
+        {/* BARIS PILIHAN TAHUN KURIKULUM & INFO */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xs sm:px-4">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-[#1e3a8a]">
+              <CalendarDaysIcon className="h-4 w-4" />
+            </span>
+            <label htmlFor="select-curriculum-year" className="text-xs font-bold text-slate-700 whitespace-nowrap">
+              Tahun Kurikulum:
+            </label>
+            <select
+              id="select-curriculum-year"
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(e.target.value);
+                setSelectedSemester('all');
+                setExpandedCourseId(null);
+                setExpandedDosenClassId(null);
+              }}
+              className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-800 transition focus:border-[#1e3a8a] focus:bg-white focus:outline-none cursor-pointer"
+            >
+              <option value="active">
+                Kurikulum Aktif {curriculums.find((c) => c.isActive) ? `(${curriculums.find((c) => c.isActive)?.year})` : ''}
+              </option>
+              {curriculums.map((c) => (
+                <option key={c.id} value={String(c.year)}>
+                  Tahun {c.year} {c.isActive ? '— Aktif' : ''} ({c.name})
+                </option>
+              ))}
+              <option value="all">Semua Tahun Kurikulum</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+            <span className="rounded-md bg-blue-50 px-2.5 py-1 text-[#1e3a8a]">
+              {courses.length} Penawaran MK
+            </span>
+          </div>
+        </div>
+
         {/* TAB FILTER SEMESTER 1 - 8 */}
         <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xs">
           <button
