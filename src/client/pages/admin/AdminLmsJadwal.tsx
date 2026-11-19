@@ -25,6 +25,7 @@ import {
   type LmsMeeting,
 } from '../../services/lmsAdminApi';
 import { curriculumApi } from '../../services/contentApi';
+import { pickCurrentCurriculum } from '../../../shared/utils/curriculum';
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -65,7 +66,7 @@ export const AdminLmsJadwal: React.FC = () => {
   const canEdit = has('curriculum.update');
 
   const [selectedSemester, setSelectedSemester] = useState<number | 'all'>('all');
-  const [selectedYear, setSelectedYear] = useState<string>('active');
+  const [selectedYear, setSelectedYear] = useState<string>('current');
   const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null);
   const [expandedDosenClassId, setExpandedDosenClassId] = useState<number | null>(null);
 
@@ -83,15 +84,16 @@ export const AdminLmsJadwal: React.FC = () => {
     return [...list].sort((a, b) => b.year - a.year);
   }, [curriculumsQuery.data]);
 
-  const activeCurriculum = useMemo(() => {
-    return curriculums.find((c) => c.isActive) ?? curriculums[0];
-  }, [curriculums]);
+  const currentCurriculum = useMemo(
+    () => pickCurrentCurriculum(curriculums),
+    [curriculums],
+  );
 
   const coursesQuery = useQuery({
     queryKey: ['admin', 'lms-courses', selectedYear],
     queryFn: () => {
       const params: { year?: number; all?: boolean } = {};
-      if (selectedYear !== 'active' && selectedYear !== 'all') {
+      if (selectedYear !== 'current' && selectedYear !== 'all') {
         params.year = Number(selectedYear);
       } else if (selectedYear === 'all') {
         params.all = true;
@@ -204,7 +206,11 @@ export const AdminLmsJadwal: React.FC = () => {
             </label>
             <select
               id="select-curriculum-year"
-              value={selectedYear}
+              value={
+                selectedYear === 'current' && currentCurriculum
+                  ? String(currentCurriculum.year)
+                  : selectedYear
+              }
               onChange={(e) => {
                 setSelectedYear(e.target.value);
                 setSelectedSemester('all');
@@ -213,14 +219,16 @@ export const AdminLmsJadwal: React.FC = () => {
               }}
               className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-800 transition focus:border-[#1e3a8a] focus:bg-white focus:outline-none cursor-pointer"
             >
-              <option value="active">
-                Kurikulum Aktif {activeCurriculum ? `(${activeCurriculum.year}) — Terbaru` : ''}
-              </option>
-              {curriculums.map((c) => (
-                <option key={c.id} value={String(c.year)}>
-                  Tahun {c.year} {c.isActive ? '— Aktif' : ''} ({c.name})
-                </option>
-              ))}
+              {curriculums.length === 0 ? (
+                <option value="current">Tahun Berlaku</option>
+              ) : (
+                curriculums.map((c) => (
+                  <option key={c.id} value={String(c.year)}>
+                    Tahun {c.year} — {c.name}
+                    {currentCurriculum?.id === c.id ? ' (Berlaku)' : ''}
+                  </option>
+                ))
+              )}
               <option value="all">Semua Tahun Kurikulum</option>
             </select>
           </div>

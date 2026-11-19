@@ -9,6 +9,7 @@ import { recordAudit } from '../../services/auditService.js';
 import { idParamSchema } from '../../../shared/schemas/common.js';
 import { config } from '../../config/index.js';
 import { fetchLecturersFromApiHub } from '../../services/lecturerIntegrationService.js';
+import { findCurrentCurriculum } from '../../services/curriculumService.js';
 
 const router = Router();
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Format jam harus HH:MM.');
@@ -100,7 +101,7 @@ async function syncClassroomToLms(classroomId: number, tenantId: number) {
     where: {
       id: classroomId,
       group: 'Utama',
-      curriculumItem: { curriculum: { studyProgramId: tenantId, isActive: true } },
+      curriculumItem: { curriculum: { studyProgramId: tenantId } },
     },
     select: {
       id: true,
@@ -160,7 +161,7 @@ async function syncClassroomToLms(classroomId: number, tenantId: number) {
   }
 }
 
-/** GET /api/v1/admin/lms/courses: seluruh penawaran pada kurikulum aktif atau tahun yang dipilih, dikelompokkan UI berdasarkan semester kurikulum. */
+/** GET /api/v1/admin/lms/courses: seluruh penawaran pada kurikulum berlaku atau tahun yang dipilih, dikelompokkan UI berdasarkan semester kurikulum. */
 router.get(
   '/lms/courses',
   requirePermission('curriculum.view'),
@@ -170,7 +171,7 @@ router.get(
     const curriculumIdParam = req.query.curriculumId ? Number(req.query.curriculumId) : undefined;
     const isAll = req.query.all === 'true' || req.query.all === '1';
 
-    const curriculumWhere: { studyProgramId: number; id?: number; year?: number; isActive?: boolean } = {
+    const curriculumWhere: { studyProgramId: number; id?: number; year?: number } = {
       studyProgramId: tenantId,
     };
 
@@ -179,16 +180,11 @@ router.get(
     } else if (yearParam && !Number.isNaN(yearParam)) {
       curriculumWhere.year = yearParam;
     } else if (!isAll) {
-      const latestActive = await prisma.curriculum.findFirst({
-        where: { studyProgramId: tenantId, isActive: true },
-        orderBy: [{ year: 'desc' }, { id: 'desc' }],
-        select: { id: true },
-      });
-      if (latestActive) {
-        curriculumWhere.id = latestActive.id;
-      } else {
-        curriculumWhere.isActive = true;
+      const current = await findCurrentCurriculum(tenantId);
+      if (!current) {
+        return res.json({ success: true, courses: [] });
       }
+      curriculumWhere.id = current.id;
     }
 
     const items = await prisma.curriculumItem.findMany({
@@ -251,14 +247,18 @@ router.get(
   }),
 );
 
-/** GET /api/v1/admin/lms/classrooms: hanya kelas Utama milik kurikulum aktif. */
+/** GET /api/v1/admin/lms/classrooms: hanya kelas Utama milik kurikulum berlaku. */
 router.get(
   '/lms/classrooms',
   requirePermission('curriculum.view'),
   asyncHandler(async (req, res) => {
     const tenantId = scopedTenantId(req);
+    const current = await findCurrentCurriculum(tenantId);
+    if (!current) {
+      return res.json({ success: true, classrooms: [] });
+    }
     const classrooms = await prisma.lmsClassroom.findMany({
-      where: { group: 'Utama', curriculumItem: { curriculum: { studyProgramId: tenantId, isActive: true } } },
+      where: { group: 'Utama', curriculumItem: { curriculumId: current.id } },
       orderBy: { id: 'asc' },
       include: {
         curriculumItem: {

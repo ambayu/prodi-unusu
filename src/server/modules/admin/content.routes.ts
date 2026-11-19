@@ -311,23 +311,14 @@ router.post(
     }
 
     const newName = body.name?.trim() || `${source.name.replace(/\b\d{4}\b/g, '').trim()} ${body.year}`.trim();
-    const shouldBeActive = body.isActive ?? true;
-
     const cloned = await prisma.$transaction(async (tx) => {
-      if (shouldBeActive) {
-        await tx.curriculum.updateMany({
-          where: { studyProgramId },
-          data: { isActive: false },
-        });
-      }
-
       const createdCurriculum = await tx.curriculum.create({
         data: {
           studyProgramId,
           name: newName,
           year: body.year,
           description: source.description,
-          isActive: shouldBeActive,
+          isActive: body.isActive ?? true,
         },
       });
 

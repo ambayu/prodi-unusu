@@ -1069,7 +1069,10 @@ router.get(
     const yearQuery = req.query.year ? Number(req.query.year) : undefined;
     const semesterQuery = typeof req.query.semester === 'string' ? req.query.semester.trim().toLowerCase() : undefined;
     const searchQuery = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : undefined;
-    const isActiveQuery = req.query.isActive !== undefined ? req.query.isActive === 'true' || req.query.isActive === '1' : true;
+    const isActiveQuery =
+      req.query.isActive !== undefined
+        ? req.query.isActive === 'true' || req.query.isActive === '1'
+        : undefined;
 
     // Filter kurikulum dasar
     const curriculumWhere: any = {};

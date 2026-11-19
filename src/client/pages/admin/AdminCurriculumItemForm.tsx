@@ -22,6 +22,7 @@ import {
 } from '../../services/contentApi';
 import { useSiteStore } from '../../app/siteStore';
 import { firstFieldError, toApiError } from '../../services/api';
+import { pickCurrentCurriculum } from '../../../shared/utils/curriculum';
 interface Draft {
   courseId: string;
   curriculumId: string;
@@ -95,14 +96,15 @@ export const AdminCurriculumItemForm: React.FC = () => {
   const masters: CourseMaster[] = useMemo(() => mastersQuery.data ?? [], [mastersQuery.data]);
   const dosenOptions = useMemo(() => lecturersQuery.data ?? [], [lecturersQuery.data]);
   const items = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data]);
-  // Set default curriculum saat create (ambil kurikulum aktif atau yang pertama)
+  // Set default curriculum saat create (ambil kurikulum tahun berlaku atau yang terbaru)
   useEffect(() => {
     if (!isEdit && curriculums.length > 0 && !draft.curriculumId) {
-      const activeCur = curriculums.find((c) => c.isActive) ?? curriculums[0];
+      const currentCur = pickCurrentCurriculum(curriculums);
+      if (!currentCur) return;
       setDraft((prev) => ({
         ...prev,
-        curriculumId: String(activeCur.id),
-        curriculumYear: String(activeCur.year),
+        curriculumId: String(currentCur.id),
+        curriculumYear: String(currentCur.year),
       }));
     }
   }, [isEdit, curriculums, draft.curriculumId]);

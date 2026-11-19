@@ -1,4 +1,5 @@
 import { prisma } from '../prisma.js';
+import { pickCurrentCurriculum } from '../../shared/utils/curriculum.js';
 
 export interface CurriculumSummary {
   totalSemesters: number;
@@ -7,10 +8,26 @@ export interface CurriculumSummary {
   totalRps: number;
 }
 
-/** Kurikulum aktif tenant dengan semester dan mata kuliahnya, terurut. */
+/**
+ * Kurikulum berlaku untuk satu prodi: tahun terbaru `<= tahun sekarang`,
+ * atau kurikulum terbaru yang ada bila belum ada yang `<= tahun sekarang`.
+ */
+export async function findCurrentCurriculum(studyProgramId: number) {
+  const candidates = await prisma.curriculum.findMany({
+    where: { studyProgramId },
+    orderBy: [{ year: 'desc' }, { id: 'desc' }],
+    select: { id: true, year: true, name: true },
+  });
+  return pickCurrentCurriculum(candidates);
+}
+
+/** Kurikulum berlaku tenant dengan semester dan mata kuliahnya. */
 export async function listPublicCurriculum(studyProgramId: number) {
+  const current = await findCurrentCurriculum(studyProgramId);
+  if (!current) return [];
+
   return prisma.curriculum.findMany({
-    where: { studyProgramId, isActive: true },
+    where: { id: current.id },
     orderBy: [{ year: 'desc' }, { id: 'desc' }],
     include: {
       semesters: {

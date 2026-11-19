@@ -14,6 +14,7 @@ import {
 import { postApi, galleryApi, lecturerApi, curriculumApi, facilityApi, dokumenProdiApi, profileApi } from '../../services/contentApi';
 import { useTenant } from '../../hooks/useSite';
 import { GambarTentang } from '../ui/GambarTentang';
+import { pickCurrentCurriculum } from '../../../shared/utils/curriculum';
 
 interface WidgetInstanceProps {
   widgetCode: string;
@@ -861,7 +862,7 @@ const CurriculumOverviewWidget: React.FC<{ title?: string; primaryColor: string 
   });
 
   const summary = curriculumQuery.data?.summary;
-  const activeCurriculum = curriculumQuery.data?.curriculums?.find((c) => c.isActive) || curriculumQuery.data?.curriculums?.[0];
+  const activeCurriculum = pickCurrentCurriculum(curriculumQuery.data?.curriculums ?? []);
 
   return (
     <section className="py-16 sm:py-20 bg-white border-t border-slate-100">
@@ -947,14 +948,14 @@ const CurriculumOverviewWidget: React.FC<{ title?: string; primaryColor: string 
           </div>
         </div>
 
-        {/* Banner Kurikulum Aktif */}
+        {/* Banner Kurikulum Berlaku */}
         {activeCurriculum && (
           <div className="relative overflow-hidden p-6 rounded-2xl border border-emerald-900/10 bg-gradient-to-r from-emerald-900/5 via-teal-900/5 to-transparent flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
             <div className="space-y-1">
               <div className="inline-flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
                 <span className="text-xs font-black text-emerald-950 uppercase tracking-wider">
-                  Kurikulum Aktif: {activeCurriculum.name} (Tahun {activeCurriculum.year})
+                  Kurikulum Berlaku: {activeCurriculum.name} (Tahun {activeCurriculum.year})
                 </span>
               </div>
               <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">

@@ -37,7 +37,7 @@ router.get(
       unreadMessages,
       mediaAssets,
     ] = await Promise.all([
-      prisma.curriculum.count({ where: { studyProgramId, isActive: true } }),
+      prisma.curriculum.count({ where: { studyProgramId } }),
       prisma.curriculumSemester.count({ where: { curriculum: { studyProgramId } } }),
       prisma.curriculumCourse.count({ where: { semester: { curriculum: { studyProgramId } } } }),
       prisma.lecturer.count({ where: { studyProgramId, isActive: true } }),

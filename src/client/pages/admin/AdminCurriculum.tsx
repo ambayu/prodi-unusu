@@ -28,6 +28,7 @@ import {
 } from '../../services/contentApi';
 import { useSiteStore } from '../../app/siteStore';
 import { firstFieldError, toApiError } from '../../services/api';
+import { pickCurrentCurriculum } from '../../../shared/utils/curriculum';
 
 const SEMESTER_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8];
 
@@ -63,7 +64,6 @@ export const AdminCurriculum: React.FC = () => {
     sourceId: 0,
     year: new Date().getFullYear(),
     name: '',
-    isActive: true,
   });
   const [cloneError, setCloneError] = useState<string | null>(null);
 
@@ -166,7 +166,6 @@ export const AdminCurriculum: React.FC = () => {
       curriculumApi.cloneCurriculum(cloneDraft.sourceId, {
         year: Number(cloneDraft.year),
         name: cloneDraft.name.trim() || undefined,
-        isActive: cloneDraft.isActive,
       }),
     onSuccess: (res) => {
       toast.success(res.data.message || 'Kurikulum berhasil disalin ke tahun baru.');
@@ -180,15 +179,15 @@ export const AdminCurriculum: React.FC = () => {
     },
   });
 
+  const currentCurriculum = useMemo(() => pickCurrentCurriculum(curriculums), [curriculums]);
+
   const handleOpenClone = () => {
-    const active = curriculums.find((c) => c.isActive) ?? curriculums[0];
-    const source = active ?? curriculums[0];
+    const source = currentCurriculum ?? curriculums[0];
     const nextYear = source ? source.year + 2 : new Date().getFullYear();
     setCloneDraft({
       sourceId: source ? source.id : 0,
       year: nextYear,
       name: source ? `${source.name.replace(/\b\d{4}\b/g, '').trim()} ${nextYear}`.trim() : '',
-      isActive: true,
     });
     setCloneError(null);
     setCloneModalOpen(true);
@@ -224,9 +223,6 @@ export const AdminCurriculum: React.FC = () => {
           {item.curriculum?.year ? (
             <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
               Tahun {item.curriculum.year}
-              {item.curriculum.isActive ? (
-                <span className="rounded bg-emerald-100 px-1.5 py-0.2 text-[10px] font-semibold text-emerald-800">Aktif</span>
-              ) : null}
             </span>
           ) : null}
         </div>
@@ -386,7 +382,7 @@ export const AdminCurriculum: React.FC = () => {
                   <option value="all">Semua Kurikulum / Tahun</option>
                   {curriculums.map((c) => (
                     <option key={c.id} value={String(c.id)}>
-                      {c.name} ({c.year}){c.isActive ? ' — Aktif' : ''}
+                      {c.name} ({c.year}){currentCurriculum?.id === c.id ? ' — Berlaku' : ''}
                     </option>
                   ))}
                 </select>
@@ -565,7 +561,7 @@ export const AdminCurriculum: React.FC = () => {
           >
             {curriculums.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name} ({c.year}) {c.isActive ? '— Aktif' : ''}
+                {c.name} ({c.year}){currentCurriculum?.id === c.id ? ' — Berlaku' : ''}
               </option>
             ))}
           </select>
@@ -604,21 +600,6 @@ export const AdminCurriculum: React.FC = () => {
             onChange={(e) => setCloneDraft({ ...cloneDraft, name: e.target.value })}
           />
         </Field>
-
-        <div className="pt-2">
-          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 select-none">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-300 text-[#1e3a8a] focus:ring-[#1e3a8a]"
-              checked={cloneDraft.isActive}
-              onChange={(e) => setCloneDraft({ ...cloneDraft, isActive: e.target.checked })}
-            />
-            <span>Jadikan kurikulum baru ini sebagai Kurikulum Aktif</span>
-          </label>
-          <p className="mt-1 text-[11px] text-slate-500 pl-6">
-            Jika dicentang, kurikulum tahun ini akan langsung menjadi acuan aktif di jadwal LMS dan website.
-          </p>
-        </div>
       </FormModal>
     </AdminLayout>
   );
