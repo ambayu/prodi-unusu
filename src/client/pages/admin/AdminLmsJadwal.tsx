@@ -78,7 +78,14 @@ export const AdminLmsJadwal: React.FC = () => {
     queryFn: () => curriculumApi.list().then((res) => res.data.curriculums),
   });
 
-  const curriculums = curriculumsQuery.data ?? [];
+  const curriculums = useMemo(() => {
+    const list = curriculumsQuery.data ?? [];
+    return [...list].sort((a, b) => b.year - a.year);
+  }, [curriculumsQuery.data]);
+
+  const activeCurriculum = useMemo(() => {
+    return curriculums.find((c) => c.isActive) ?? curriculums[0];
+  }, [curriculums]);
 
   const coursesQuery = useQuery({
     queryKey: ['admin', 'lms-courses', selectedYear],
@@ -207,7 +214,7 @@ export const AdminLmsJadwal: React.FC = () => {
               className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-800 transition focus:border-[#1e3a8a] focus:bg-white focus:outline-none cursor-pointer"
             >
               <option value="active">
-                Kurikulum Aktif {curriculums.find((c) => c.isActive) ? `(${curriculums.find((c) => c.isActive)?.year})` : ''}
+                Kurikulum Aktif {activeCurriculum ? `(${activeCurriculum.year}) — Terbaru` : ''}
               </option>
               {curriculums.map((c) => (
                 <option key={c.id} value={String(c.year)}>

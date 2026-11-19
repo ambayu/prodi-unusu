@@ -179,7 +179,16 @@ router.get(
     } else if (yearParam && !Number.isNaN(yearParam)) {
       curriculumWhere.year = yearParam;
     } else if (!isAll) {
-      curriculumWhere.isActive = true;
+      const latestActive = await prisma.curriculum.findFirst({
+        where: { studyProgramId: tenantId, isActive: true },
+        orderBy: [{ year: 'desc' }, { id: 'desc' }],
+        select: { id: true },
+      });
+      if (latestActive) {
+        curriculumWhere.id = latestActive.id;
+      } else {
+        curriculumWhere.isActive = true;
+      }
     }
 
     const items = await prisma.curriculumItem.findMany({
