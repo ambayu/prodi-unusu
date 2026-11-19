@@ -406,13 +406,14 @@ export const AdminLmsJadwal: React.FC = () => {
                           aria-expanded={meetingsOpen}
                           aria-controls={`pertemuan-kelas-${classroom.id}`}
                           aria-label={meetingsOpen ? 'Tutup 16 pertemuan' : 'Lihat 16 pertemuan'}
-                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
                             meetingsOpen
                               ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white'
                               : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <ClipboardDocumentListIcon className="h-4 w-4" />
+                          <ClipboardDocumentListIcon className="h-3.5 w-3.5" />
+                          Pertemuan
                         </button>
                       ) : null}
                     </div>
