@@ -265,7 +265,7 @@ export const AdminLmsJadwal: React.FC = () => {
             <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200/70 bg-blue-50/80 px-2.5 py-1 text-[#1e3a8a]">
               {courses.length} Penawaran MK
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200/70 bg-emerald-50/80 px-2.5 py-1 text-emerald-700">
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200/70 bg-blue-50/80 px-2.5 py-1 text-[#1e3a8a]">
               {assignedCount} Sudah Ada Dosen
             </span>
           </div>
@@ -373,10 +373,8 @@ export const AdminLmsJadwal: React.FC = () => {
 
                     <div className="flex items-center gap-2.5">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                          hasLecturer
-                            ? 'border border-emerald-200/80 bg-emerald-50 text-emerald-700'
-                            : 'border border-amber-200/80 bg-amber-50 text-amber-700'
+                        className={`inline-flex items-center gap-1.5 rounded-full border border-blue-200/80 bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1e3a8a] ${
+                          hasLecturer ? '' : 'italic'
                         }`}
                       >
                         <AcademicCapIcon className="h-3.5 w-3.5" />
