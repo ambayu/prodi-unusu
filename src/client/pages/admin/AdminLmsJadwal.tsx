@@ -92,18 +92,21 @@ export const AdminLmsJadwal: React.FC = () => {
     [curriculums],
   );
 
+  // Tahun wajib terpilih: default ke kurikulum berlaku begitu daftar tahun tersedia.
+  const effectiveYear = selectedYear || (currentCurriculum ? String(currentCurriculum.year) : '');
+
   const coursesQuery = useQuery({
-    queryKey: ['admin', 'lms-courses', selectedYear],
+    queryKey: ['admin', 'lms-courses', effectiveYear],
     queryFn: () => {
       const params: { year?: number; all?: boolean } = {};
-      if (selectedYear === 'all') {
+      if (effectiveYear === 'all') {
         params.all = true;
-      } else if (selectedYear) {
-        params.year = Number(selectedYear);
+      } else if (effectiveYear) {
+        params.year = Number(effectiveYear);
       }
       return lmsAdminApi.courses(params).then((res) => res.data.courses);
     },
-    enabled: Boolean(selectedYear),
+    enabled: Boolean(effectiveYear),
   });
 
   const lecturersQuery = useQuery({
@@ -241,13 +244,9 @@ export const AdminLmsJadwal: React.FC = () => {
             </label>
             <SearchableSelect
               id="select-curriculum-year"
-              value={
-                selectedYear === 'current' && currentCurriculum
-                  ? String(currentCurriculum.year)
-                  : selectedYear
-              }
+              value={effectiveYear}
               onChange={(val) => {
-                setSelectedYear(val || 'current');
+                setSelectedYear(val);
                 setSelectedSemester('all');
                 setExpandedCourseId(null);
                 setExpandedDosenClassId(null);
