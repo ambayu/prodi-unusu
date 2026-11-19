@@ -27,6 +27,8 @@ import { assertArsipPassword } from './arsipDokumen.routes.js';
  */
 
 const DIR = path.join(process.cwd(), config.upload.dir, 'documents');
+const LEGACY_BAKSI_PREFIX = '/uploads/dokumen/baksi/';
+const LEGACY_BAKSI_DIR = path.join(process.cwd(), config.upload.dir, 'dokumen', 'baksi');
 
 // shortcut: hanya PDF agar pratinjau dan unduhan konsisten; tambah Word/Excel
 // bila kebutuhan nyata muncul beserta cara pratinjaunya.
@@ -55,7 +57,11 @@ const upload = multer({
   },
 });
 
-const berkasPath = (nama: string) => path.join(DIR, path.basename(nama));
+function berkasPath(fileUrl: string) {
+  const filename = path.basename(fileUrl);
+  const directory = fileUrl.startsWith(LEGACY_BAKSI_PREFIX) ? LEGACY_BAKSI_DIR : DIR;
+  return path.join(directory, filename);
+}
 
 /** Kegagalan hapus berkas fisik tidak menggagalkan permintaan. */
 function hapusBerkas(nama: string) {

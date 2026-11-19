@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Bank Dokumen: pratinjau, unduh, dan penghapusan dokumen migrasi BAKSI kini membaca kembali berkas legacy dari `uploads/dokumen/baksi`, sementara unggahan baru tetap memakai `uploads/documents`.
 - Hero Slider: scope fakultas kini menyimpan dan membaca widget `hero_slider` pada halaman fakultas sendiri. Beranda fakultas memakai API hero publik yang sama, sehingga banner editor dan domain fakultas konsisten; gambar bawaan hanya fallback.
 - LMS: kandidat plotting peserta kini diambil dari API ONE UNUSU dengan peran `MAHASISWA`; peserta tetap dipilih dan disimpan per kelas sebelum sinkronisasi ke LMS.
 - LMS: perbaiki validasi parameter ID pada ubah, hapus, dan plotting peserta kelas.

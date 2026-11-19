@@ -66,6 +66,9 @@ Kata sandi dikelola `services/dokumenPasswordService.ts` (hash scrypt).
 - Filter arsip otomatis: `tujuanPublish='prodi'` + `prodiCode` prodi aktif.
 - PDF **tidak** disimpan sebagai base64; LPM/LPPM menyimpan URL bertanda tangan
   ke `uploads/dokumen`.
+- Dokumen hasil migrasi BAKSI dengan prefix `/uploads/dokumen/baksi/` tetap
+  dibaca dari `uploads/dokumen/baksi`; unggahan baru prodi tetap memakai
+  `uploads/documents`.
 
 ## Jangan diubah tanpa keputusan formal
 
