@@ -18,6 +18,18 @@ import { useTenant } from '../../../hooks/useSite';
 import { useSeo } from '../../../hooks/useSeo';
 import type { DirectoryProdi, DirectoryResponse } from '../../../services/directory';
 
+interface HeroSlide {
+  imageUrl: string;
+  alt: string;
+  linkUrl: string;
+}
+
+interface HeroSlidesResponse {
+  slides: HeroSlide[];
+  autoplayMs: number;
+  showDots: boolean;
+}
+
 interface PublikasiItem {
   id: number;
   title: string;
@@ -66,17 +78,33 @@ export const FacultyLandingPage: React.FC = () => {
   const primary = tenant?.theme?.primaryColor ?? '#1e3a8a';
   const accent = tenant?.theme?.accentColor ?? '#fbbf24';
 
-  // ---- Hero slider ----
-  const slides = HERO_IMAGES_BY_FACULTY[tenant?.code ?? ''] ?? HERO_DEFAULT;
+  const heroSlidesQuery = useQuery({
+    queryKey: ['public', 'hero-slides', tenant?.id ?? null],
+    queryFn: () => api.get<HeroSlidesResponse>('/public/hero-slides').then((res) => res.data),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+  const fallbackSlides = (HERO_IMAGES_BY_FACULTY[tenant?.code ?? ''] ?? HERO_DEFAULT).map((imageUrl, index) => ({
+    imageUrl,
+    alt: `${namaFakultas} - gambar ${index + 1}`,
+    linkUrl: '',
+  }));
+  const slides = heroSlidesQuery.data?.slides.length ? heroSlidesQuery.data.slides : fallbackSlides;
   const [slideIdx, setSlideIdx] = useState(0);
+  const autoplayMs = heroSlidesQuery.data?.autoplayMs ?? 6000;
+  const showDots = heroSlidesQuery.data?.showDots ?? true;
+
+  useEffect(() => {
+    setSlideIdx(0);
+  }, [slides.length]);
 
   useEffect(() => {
     if (slides.length <= 1) return;
     const timer = setInterval(() => {
       setSlideIdx((prev) => (prev + 1) % slides.length);
-    }, 6000);
+    }, autoplayMs);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [autoplayMs, slides.length]);
 
   const directoryQuery = useQuery({
     queryKey: ['public', 'directory'],
@@ -139,11 +167,11 @@ export const FacultyLandingPage: React.FC = () => {
       {/* ---------- HERO SLIDER (sama dengan desain website prodi) ---------- */}
       <section className="relative w-full overflow-hidden bg-slate-900 select-none">
         <div className="relative w-full aspect-[21/9] min-h-[300px] sm:min-h-[420px] lg:min-h-[500px] xl:min-h-[540px]">
-          {slides.map((src, idx) => (
+          {slides.map((slide, idx) => (
             <img
-              key={src}
-              src={src}
-              alt={`${namaFakultas} — gambar ${idx + 1}`}
+              key={`${slide.imageUrl}-${idx}`}
+              src={slide.imageUrl}
+              alt={slide.alt || `${namaFakultas} - gambar ${idx + 1}`}
               className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-700 ease-in-out ${
                 idx === slideIdx ? 'opacity-100' : 'opacity-0'
               }`}
@@ -156,11 +184,11 @@ export const FacultyLandingPage: React.FC = () => {
             dot aktif memanjang dan berwarna emas. Gambar tetap bersih tanpa
             judul maupun tombol di atasnya.
           */}
-          {slides.length > 1 && (
+          {showDots && slides.length > 1 && (
             <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center space-x-2 sm:bottom-6">
-              {slides.map((src, idx) => (
+              {slides.map((slide, idx) => (
                 <button
-                  key={src}
+                  key={`${slide.imageUrl}-${idx}`}
                   type="button"
                   onClick={() => setSlideIdx(idx)}
                   aria-label={`Slide ${idx + 1}`}

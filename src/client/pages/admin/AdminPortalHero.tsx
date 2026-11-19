@@ -39,6 +39,7 @@ export const AdminPortalHero: React.FC = () => {
   const { has } = usePermission();
   const { tenant } = useTenant();
   const activeTenantId = useSiteStore((state) => state.activeTenantId);
+  const activeFacultyId = useSiteStore((state) => state.activeFacultyId);
   const portalScope = useSiteStore((state) => state.portalScope);
 
   const [draftSlides, setDraftSlides] = useState<HeroSlide[]>([]);
@@ -61,16 +62,24 @@ export const AdminPortalHero: React.FC = () => {
    * ketiadaan tenant (yang akan membuat Super Admin tanpa penugasan jatuh ke
    * prodi pertama secara tidak terduga).
    */
-  const heroScope: 'portal' | 'prodi' = portalScope || activeTenantId === null ? 'portal' : 'prodi';
+  const heroScope: 'portal' | 'faculty' | 'prodi' = portalScope
+    ? 'portal'
+    : activeFacultyId !== null
+      ? 'faculty'
+      : 'prodi';
   const isPortalHero = heroScope === 'portal';
+  const isFacultyHero = heroScope === 'faculty';
 
-  // Ikut berganti saat tenant aktif berubah -> query otomatis memuat prodi lain.
-  const tenantKey = isPortalHero ? 'portal' : tenant?.id ?? activeTenantId ?? 'none';
+  const tenantKey = isPortalHero
+    ? 'portal'
+    : isFacultyHero
+      ? `faculty-${activeFacultyId}`
+      : tenant?.id ?? activeTenantId ?? 'none';
 
   const heroQuery = useQuery({
     queryKey: ['admin', 'hero-slides', tenantKey],
     queryFn: () => portalApi.heroSlides(heroScope).then((res) => res.data),
-    enabled: isPortalHero || Boolean(tenant?.id ?? activeTenantId),
+    enabled: isPortalHero || isFacultyHero || Boolean(tenant?.id ?? activeTenantId),
   });
 
   // Sinkronkan server -> draft lokal setiap kali data (atau prodi) berganti.
@@ -101,7 +110,9 @@ export const AdminPortalHero: React.FC = () => {
       toast.success(
         isPortalHero
           ? 'Hero slider beranda portal pusat berhasil disimpan.'
-          : `Hero slider ${tenant?.name ?? 'prodi'} berhasil disimpan.`,
+          : isFacultyHero
+            ? `Hero slider ${heroQuery.data?.faculty?.name ?? 'fakultas'} berhasil disimpan.`
+            : `Hero slider ${tenant?.name ?? 'prodi'} berhasil disimpan.`,
       );
       setDirty(false);
       void queryClient.invalidateQueries({ queryKey: ['admin', 'hero-slides'] });
@@ -159,11 +170,13 @@ export const AdminPortalHero: React.FC = () => {
 
   return (
     <AdminLayout
-      title={isPortalHero ? 'Hero Slider Beranda Portal' : 'Hero Slider Program Studi'}
+      title={isPortalHero ? 'Hero Slider Beranda Portal' : isFacultyHero ? 'Hero Slider Fakultas' : 'Hero Slider Program Studi'}
       description={
         isPortalHero
           ? 'Kelola banner gambar yang tampil pada beranda portal pusat (website universitas).'
-          : 'Kelola banner beranda untuk program studi yang sedang aktif. Ganti prodi pada pemilih Program Studi Aktif untuk mengatur banner prodi lain.'
+          : isFacultyHero
+            ? 'Kelola banner beranda untuk fakultas yang sedang aktif.'
+            : 'Kelola banner beranda untuk program studi yang sedang aktif. Ganti prodi pada pemilih Program Studi Aktif untuk mengatur banner prodi lain.'
       }
       actions={
         canEdit ? (
@@ -185,14 +198,18 @@ export const AdminPortalHero: React.FC = () => {
           <BuildingLibraryIcon className="h-5 w-5 shrink-0 text-blue-700" />
           <div>
             <p className="text-[10px] font-black uppercase tracking-wider text-blue-900">
-              {isPortalHero ? 'Banner Beranda Portal Pusat' : 'Banner untuk Program Studi'}
+              {isPortalHero ? 'Banner Beranda Portal Pusat' : isFacultyHero ? 'Banner untuk Fakultas' : 'Banner untuk Program Studi'}
             </p>
             <p className="text-sm font-bold text-slate-900">
               {isPortalHero
                 ? 'Universitas Nahdlatul Ulama Sumatera Utara'
-                : hero?.studyProgram
-                ? `${hero.studyProgram.degree} ${hero.studyProgram.name} (${hero.studyProgram.code})`
-                : tenant?.name ?? 'Belum ada prodi aktif'}
+                : isFacultyHero
+                  ? hero?.faculty
+                    ? `${hero.faculty.name} (${hero.faculty.code})`
+                    : 'Belum ada fakultas aktif'
+                  : hero?.studyProgram
+                    ? `${hero.studyProgram.degree} ${hero.studyProgram.name} (${hero.studyProgram.code})`
+                    : tenant?.name ?? 'Belum ada prodi aktif'}
             </p>
           </div>
         </div>
@@ -207,13 +224,13 @@ export const AdminPortalHero: React.FC = () => {
         )}
       </div>
 
-      {!isPortalHero && !tenant?.id && activeTenantId === null ? (
+      {!isPortalHero && !isFacultyHero && !tenant?.id && activeTenantId === null ? (
         <EmptyState
           title="Belum ada program studi aktif"
           description="Pilih salah satu program studi pada pemilih Program Studi Aktif untuk mengelola banner berandanya."
         />
       ) : heroQuery.isLoading ? (
-        <LoadingState label={isPortalHero ? 'Memuat banner portal' : 'Memuat banner prodi'} />
+        <LoadingState label={isPortalHero ? 'Memuat banner portal' : isFacultyHero ? 'Memuat banner fakultas' : 'Memuat banner prodi'} />
       ) : heroQuery.isError ? (
         <ErrorState
           message={toApiError(heroQuery.error).message}
@@ -278,7 +295,7 @@ export const AdminPortalHero: React.FC = () => {
               <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
                 <PhotoIcon className="mx-auto h-9 w-9 text-slate-300" />
                 <p className="mt-2 text-xs font-bold text-slate-700">
-                  Prodi ini belum punya banner
+                  {isFacultyHero ? 'Fakultas ini belum punya banner' : 'Prodi ini belum punya banner'}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-500">
                   Klik &quot;Tambah Slide&quot; lalu unggah gambar banner beranda prodi.

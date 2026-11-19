@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../../prisma.js';
 import { asyncHandler, getBody, validate } from '../../utils/validation.js';
 import { requirePermission } from '../../middlewares/auth.js';
-import { scopedTenantId } from '../../middlewares/tenantScope.js';
+import { resolveContentOwner, scopedTenantId } from '../../middlewares/tenantScope.js';
 import { recordAudit } from '../../services/auditService.js';
 import { AppError } from '../../utils/errors.js';
 
@@ -51,26 +51,13 @@ async function resolveHeroWidget(studyProgramId: number) {
   const existing = await prisma.sectionWidget.findFirst({
     where: {
       widget: { code: 'hero_slider' },
-      pageSection: { page: { studyProgramId } },
-    },
-    include: { pageSection: { include: { page: true } } },
-    orderBy: [{ pageSection: { page: { slug: 'asc' } } }, { id: 'asc' }],
-  });
-
-  if (existing) {
-    return { widget: existing, created: false as const };
-  }
-
-  // Urutkan agar beranda diprioritaskan: ambil halaman beranda lebih dulu.
-  const berandaFirst = await prisma.sectionWidget.findFirst({
-    where: {
-      widget: { code: 'hero_slider' },
       pageSection: { page: { studyProgramId, slug: 'beranda' } },
     },
     include: { pageSection: { include: { page: true } } },
   });
-  if (berandaFirst) {
-    return { widget: berandaFirst, created: false as const };
+
+  if (existing) {
+    return { widget: existing, created: false as const };
   }
 
   const widgetMaster = await prisma.widget.findUnique({ where: { code: 'hero_slider' } });
@@ -137,6 +124,62 @@ async function resolveHeroWidget(studyProgramId: number) {
   return { widget: created, created: true as const };
 }
 
+async function resolveFacultyHeroWidget(facultyId: number) {
+  const widgetMaster = await prisma.widget.findUnique({ where: { code: 'hero_slider' } });
+  if (!widgetMaster) {
+    throw AppError.badRequest('Widget hero_slider belum terdaftar pada registri widget.');
+  }
+
+  const existing = await prisma.sectionWidget.findFirst({
+    where: {
+      widgetId: widgetMaster.id,
+      pageSection: { page: { facultyId, slug: 'beranda' } },
+    },
+    include: { pageSection: { include: { page: true } } },
+  });
+  if (existing) return { widget: existing, created: false as const };
+
+  let page = await prisma.page.findFirst({ where: { facultyId, slug: 'beranda' } });
+  if (!page) {
+    page = await prisma.page.create({
+      data: {
+        facultyId,
+        slug: 'beranda',
+        title: 'Beranda',
+        layout: 'default',
+        isPublished: true,
+        isSystem: true,
+      },
+    });
+  }
+
+  let section = await prisma.pageSection.findFirst({
+    where: { pageId: page.id, sectionKey: 'hero' },
+  });
+  if (!section) {
+    section = await prisma.pageSection.create({
+      data: {
+        pageId: page.id,
+        sectionKey: 'hero',
+        title: 'Hero Slider',
+        sortOrder: 0,
+      },
+    });
+  }
+
+  const widget = await prisma.sectionWidget.create({
+    data: {
+      pageSectionId: section.id,
+      widgetId: widgetMaster.id,
+      sortOrder: 1,
+      isActive: true,
+      configJson: JSON.stringify({ slides: [], autoplayMs: 6000, showDots: true }),
+    },
+    include: { pageSection: { include: { page: true } } },
+  });
+  return { widget, created: true as const };
+}
+
 function parseHeroConfig(configJson: string | null): HeroConfig {
   try {
     const parsed = JSON.parse(configJson ?? '{}');
@@ -157,8 +200,9 @@ const PORTAL_HERO_PAGE_SLUG = '__portal_hero__';
 const PORTAL_HERO_SECTION_KEY = 'hero';
 
 /** Apakah request meminta banner Portal Pusat (`?scope=portal`). */
-function isPortalHeroRequest(req: { query: Record<string, unknown> }): boolean {
-  return String(req.query.scope ?? '').toLowerCase() === 'portal';
+function heroScope(req: { query: Record<string, unknown> }): 'portal' | 'faculty' | 'prodi' {
+  const scope = String(req.query.scope ?? '').toLowerCase();
+  return scope === 'portal' || scope === 'faculty' ? scope : 'prodi';
 }
 
 /**
@@ -253,8 +297,8 @@ router.get(
   '/portal/hero-slides',
   requirePermission('website.view'),
   asyncHandler(async (req, res) => {
-    // --- Banner Portal Pusat (tanpa tenant) ---
-    if (isPortalHeroRequest(req)) {
+    const scope = heroScope(req);
+    if (scope === 'portal') {
       assertPortalHeroAllowed(req);
       const { widget } = await resolvePortalHeroWidget();
       const config = parseHeroConfig(widget.configJson);
@@ -263,7 +307,35 @@ router.get(
         success: true,
         scope: 'portal',
         studyProgram: null,
+        faculty: null,
         page: null,
+        config: {
+          slides: Array.isArray(config.slides) ? config.slides : [],
+          autoplayMs: typeof config.autoplayMs === 'number' ? config.autoplayMs : 6000,
+          showDots: config.showDots !== false,
+        },
+      });
+      return;
+    }
+
+    if (scope === 'faculty') {
+      const owner = await resolveContentOwner(req);
+      if (!owner.facultyId) {
+        throw AppError.badRequest('Pilih fakultas aktif sebelum mengelola banner.');
+      }
+      const faculty = await prisma.faculty.findUnique({
+        where: { id: owner.facultyId },
+        select: { id: true, code: true, name: true },
+      });
+      if (!faculty) throw AppError.notFound('Fakultas aktif tidak ditemukan.');
+      const { widget } = await resolveFacultyHeroWidget(faculty.id);
+      const config = parseHeroConfig(widget.configJson);
+      res.json({
+        success: true,
+        scope: 'faculty',
+        studyProgram: null,
+        faculty,
+        page: { id: widget.pageSection.page.id, slug: widget.pageSection.page.slug },
         config: {
           slides: Array.isArray(config.slides) ? config.slides : [],
           autoplayMs: typeof config.autoplayMs === 'number' ? config.autoplayMs : 6000,
@@ -290,6 +362,7 @@ router.get(
       success: true,
       scope: 'prodi',
       studyProgram,
+      faculty: null,
       page: { id: widget.pageSection.page.id, slug: widget.pageSection.page.slug },
       config: {
         slides: Array.isArray(config.slides) ? config.slides : [],
@@ -313,6 +386,7 @@ router.put(
   validate({ body: slidesPayloadSchema }),
   asyncHandler(async (req, res) => {
     const body = getBody<z.infer<typeof slidesPayloadSchema>>(req);
+    const scope = heroScope(req);
 
     const normalizedSlides = body.slides.map((slide) => ({
       imageUrl: slide.imageUrl,
@@ -320,8 +394,7 @@ router.put(
       linkUrl: slide.linkUrl?.trim() || '',
     }));
 
-    // --- Banner Portal Pusat (tanpa tenant) ---
-    if (isPortalHeroRequest(req)) {
+    if (scope === 'portal') {
       assertPortalHeroAllowed(req);
       const { widget } = await resolvePortalHeroWidget();
       const config = parseHeroConfig(widget.configJson);
@@ -352,6 +425,44 @@ router.put(
         success: true,
         message: `Hero slider beranda portal berhasil disimpan (${normalizedSlides.length} slide).`,
         widgetId: updated.id,
+        slides: normalizedSlides,
+      });
+      return;
+    }
+
+    if (scope === 'faculty') {
+      const owner = await resolveContentOwner(req);
+      if (!owner.facultyId) {
+        throw AppError.badRequest('Pilih fakultas aktif sebelum mengelola banner.');
+      }
+      const { widget } = await resolveFacultyHeroWidget(owner.facultyId);
+      const config = parseHeroConfig(widget.configJson);
+      const nextConfig: HeroConfig = {
+        ...config,
+        slides: normalizedSlides,
+        ...(body.autoplayMs !== undefined ? { autoplayMs: body.autoplayMs } : {}),
+        ...(body.showDots !== undefined ? { showDots: body.showDots } : {}),
+      };
+      await prisma.sectionWidget.update({
+        where: { id: widget.id },
+        data: { configJson: JSON.stringify(nextConfig) },
+      });
+      await recordAudit({
+        req,
+        action: 'UPDATE',
+        module: 'NAVIGATION',
+        targetType: 'faculty_hero_slider',
+        targetId: widget.id,
+        studyProgramId: null,
+        details: {
+          scope: 'faculty',
+          facultyId: owner.facultyId,
+          slideCount: normalizedSlides.length,
+        },
+      });
+      res.json({
+        success: true,
+        message: `Hero slider fakultas berhasil disimpan (${normalizedSlides.length} slide).`,
         slides: normalizedSlides,
       });
       return;

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Hero Slider: scope fakultas kini menyimpan dan membaca widget `hero_slider` pada halaman fakultas sendiri. Beranda fakultas memakai API hero publik yang sama, sehingga banner editor dan domain fakultas konsisten; gambar bawaan hanya fallback.
 - LMS: kandidat plotting peserta kini diambil dari API ONE UNUSU dengan peran `MAHASISWA`; peserta tetap dipilih dan disimpan per kelas sebelum sinkronisasi ke LMS.
 - LMS: perbaiki validasi parameter ID pada ubah, hapus, dan plotting peserta kelas.
 - LMS: sederhanakan halaman Jadwal & Kelas dengan menghapus tindakan sinkronisasi dan generate kelas massal dari antarmuka; kelas paralel kini dilabeli sebagai rombel.

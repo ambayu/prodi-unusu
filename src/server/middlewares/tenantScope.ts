@@ -155,6 +155,47 @@ declare global {
   }
 }
 
+/**
+ * Menentukan unit pemilik konten: program studi atau fakultas.
+ *
+ * Mengikuti pola tenancy ganda yang diperkenalkan untuk website fakultas:
+ * bila request membawa header `X-Faculty-Id`, targetnya adalah dekanat. Bila
+ * tidak, targetnya adalah program studi aktif (`scopedTenantId`).
+ */
+export async function resolveContentOwner(
+  req: Request,
+): Promise<{ studyProgramId: number | null; facultyId: number | null }> {
+  const user = req.authUser;
+  if (!user) throw AppError.unauthorized();
+
+  const rawFaculty = req.headers['x-faculty-id'];
+  const facultyHeader = Array.isArray(rawFaculty) ? rawFaculty[0] : rawFaculty;
+
+  if (facultyHeader) {
+    const facultyId = Number(facultyHeader);
+    if (!Number.isInteger(facultyId) || facultyId <= 0) {
+      throw AppError.badRequest('Unit fakultas tidak valid.', 'FACULTY_ID_INVALID');
+    }
+
+    const allowed = user.facultyTenantIds ?? [];
+    if (!user.isSuperAdmin && !allowed.includes(facultyId)) {
+      throw AppError.forbidden(
+        'Anda tidak berwenang mengelola fakultas tersebut.',
+        'FACULTY_SCOPE_DENIED',
+      );
+    }
+
+    const exists = await prisma.faculty.count({ where: { id: facultyId } });
+    if (exists === 0) {
+      throw AppError.notFound('Fakultas yang diminta tidak ditemukan.', 'FACULTY_NOT_FOUND');
+    }
+
+    return { studyProgramId: null, facultyId };
+  }
+
+  return { studyProgramId: scopedTenantId(req), facultyId: null };
+}
+
 /** Mengambil tenant terpilih yang sudah dihitung middleware. */
 export function scopedTenantId(req: Request): number {
   if (!req.scopedTenantId) {

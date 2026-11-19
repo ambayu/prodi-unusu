@@ -154,19 +154,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
+    organizationApi
+      .faculties()
+      .then((res) => setAvailableFaculties(res.data.faculties.filter((f) => f.isActive)))
+      .catch(() => {});
+
     if (isSuperAdmin) {
       organizationApi.studyPrograms().then((res) => {
         setAvailablePrograms(res.data.studyPrograms);
       }).catch(() => {});
-      /*
-       * Daftar fakultas dimuat terpisah karena `studyPrograms()` hanya membawa
-       * `faculty: { name }` tanpa id — id itulah yang dibutuhkan `setActiveFaculty`
-       * untuk masuk ke scope website fakultas.
-       */
-      organizationApi
-        .faculties()
-        .then((res) => setAvailableFaculties(res.data.faculties.filter((f) => f.isActive)))
-        .catch(() => {});
     }
   }, [isSuperAdmin]);
   const [collapsed, setCollapsed] = useState(false);
@@ -283,6 +279,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const activeScopeLabel = (() => {
     if (menuScope === 'portal') return 'Portal Utama';
     if (menuScope === 'faculty') {
+      const fac = availableFaculties.find((f) => f.id === activeFacultyId);
+      if (fac) return fac.name;
       return activeFacultyId ? `Fakultas #${activeFacultyId}` : 'Fakultas';
     }
     const program = availablePrograms.find((p) => p.id === activeTenantId);

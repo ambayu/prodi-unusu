@@ -177,26 +177,20 @@ export interface HeroSliderConfig {
 }
 
 export interface HeroSliderResponse {
-  /** `null` saat yang dikelola adalah banner Portal Pusat (bukan prodi). */
   studyProgram: { id: number; code: string; name: string; degree: string } | null;
-  /** `null` saat scope portal, karena halaman portal tidak berasal dari Page Builder. */
+  faculty: { id: number; code: string; name: string } | null;
   page: { id: number; slug: string } | null;
   config: HeroSliderConfig;
 }
 
-/** Pilihan banner hero: milik Portal Pusat atau milik satu program studi. */
-export type HeroScope = 'portal' | 'prodi';
+/** Pilihan banner hero: milik Portal Pusat, fakultas, atau program studi. */
+export type HeroScope = 'portal' | 'faculty' | 'prodi';
 
 export const portalApi = {
-  /**
-   * Slide hero milik scope terpilih.
-   *
-   * `scope=portal` membaca banner beranda portal pusat; `scope=prodi` membaca
-   * banner prodi aktif (tenant ditentukan header/interceptor).
-   */
+  /** Slide hero milik scope terpilih. Scope fakultas ditentukan header aktif. */
   heroSlides: (scope: HeroScope = 'prodi') =>
     api.get<HeroSliderResponse>('/admin/portal/hero-slides', {
-      params: scope === 'portal' ? { scope: 'portal' } : {},
+      params: scope === 'prodi' ? {} : { scope },
     }),
   /** Menyimpan seluruh daftar slide sekaligus. */
   saveHeroSlides: (
@@ -206,7 +200,7 @@ export const portalApi = {
     api.put<{ slides: HeroSlide[] }>(
       '/admin/portal/hero-slides',
       payload,
-      { params: scope === 'portal' ? { scope: 'portal' } : {} },
+      { params: scope === 'prodi' ? {} : { scope } },
     ),
 };
 
@@ -499,13 +493,25 @@ const CATALOG_FACULTY: MenuEntry[] = [
     scopeType: 'faculty',
   },
   {
+    menuKey: 'faculty.documents',
+    label: 'Bank Dokumen',
+    desc: 'Arsip surat dan dokumen fakultas',
+    route: '/admin/dokumen',
+    icon: 'FolderOpenIcon',
+    parentKey: null,
+    sortOrder: 13,
+    section: 'KONTEN',
+    requiredPermission: 'documents.view',
+    scopeType: 'faculty',
+  },
+  {
     menuKey: 'faculty.galleries',
     label: 'Galeri Fakultas',
     desc: 'Dokumentasi foto kegiatan dekanat',
     route: '/admin/galeri',
     icon: 'PhotoIcon',
     parentKey: null,
-    sortOrder: 13,
+    sortOrder: 14,
     section: 'KONTEN',
     requiredPermission: 'galleries.view',
     scopeType: 'faculty',
@@ -517,7 +523,7 @@ const CATALOG_FACULTY: MenuEntry[] = [
     route: '/admin/kontak',
     icon: 'PhoneIcon',
     parentKey: null,
-    sortOrder: 14,
+    sortOrder: 15,
     section: 'KONTEN',
     requiredPermission: 'contacts.view',
     scopeType: 'faculty',
@@ -529,7 +535,7 @@ const CATALOG_FACULTY: MenuEntry[] = [
     route: '/admin/pesan',
     icon: 'InboxIcon',
     parentKey: null,
-    sortOrder: 15,
+    sortOrder: 16,
     section: 'KONTEN',
     requiredPermission: 'contact_messages.view',
     scopeType: 'faculty',

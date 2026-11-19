@@ -983,25 +983,45 @@ router.get(
   '/hero-slides',
   asyncHandler(async (req, res) => {
     const widget = await prisma.sectionWidget.findFirst({
-      where: req.tenant
+      where: req.tenant?.tenantType === 'faculty'
         ? {
             widget: { code: 'hero_slider' },
-            pageSection: { page: { studyProgramId: req.tenant.id } },
+            pageSection: { page: { facultyId: req.tenant.id, slug: 'beranda' } },
           }
-        : {
-            widget: { code: 'hero_slider' },
-            pageSection: { page: { studyProgramId: null, slug: '__portal_hero__' } },
-          },
+        : req.tenant
+          ? {
+              widget: { code: 'hero_slider' },
+              pageSection: { page: { studyProgramId: req.tenant.id } },
+            }
+          : {
+              widget: { code: 'hero_slider' },
+              pageSection: { page: { studyProgramId: null, slug: '__portal_hero__' } },
+            },
       orderBy: { id: 'asc' },
       select: { configJson: true },
     });
 
     let slides: Array<{ imageUrl: string; alt: string; linkUrl: string }> = [];
+    let autoplayMs = 6000;
+    let showDots = true;
     if (widget?.configJson) {
       try {
         const config = JSON.parse(widget.configJson) as {
           slides?: Array<{ imageUrl?: string; alt?: string; linkUrl?: string }>;
+          autoplayMs?: unknown;
+          showDots?: unknown;
         };
+        if (
+          typeof config.autoplayMs === 'number' &&
+          Number.isInteger(config.autoplayMs) &&
+          config.autoplayMs >= 1000 &&
+          config.autoplayMs <= 60000
+        ) {
+          autoplayMs = config.autoplayMs;
+        }
+        if (typeof config.showDots === 'boolean') {
+          showDots = config.showDots;
+        }
         if (Array.isArray(config.slides)) {
           slides = config.slides
             .filter((slide) => typeof slide?.imageUrl === 'string' && slide.imageUrl.trim())
@@ -1018,9 +1038,12 @@ router.get(
 
     res.json({
       success: true,
-      scope: req.tenant ? 'prodi' : 'portal',
-      studyProgramId: req.tenant?.id ?? null,
+      scope: req.tenant?.tenantType === 'faculty' ? 'faculty' : req.tenant ? 'prodi' : 'portal',
+      studyProgramId: req.tenant?.tenantType === 'faculty' ? null : req.tenant?.id ?? null,
+      facultyId: req.tenant?.tenantType === 'faculty' ? req.tenant.id : null,
       slides,
+      autoplayMs,
+      showDots,
     });
   }),
 );
