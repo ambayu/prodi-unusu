@@ -10,6 +10,8 @@ import {
   UserGroupIcon,
   CheckCircleIcon,
   XCircleIcon,
+  ClipboardDocumentListIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
@@ -323,6 +325,7 @@ export const AdminLmsJadwal: React.FC = () => {
               const dosenName = cleanLecturerName(classroom?.lecturerName);
               const hasClassroom = Boolean(classroom);
               const hasLecturer = Boolean(classroom?.lecturerNidn || classroom?.lecturerName);
+              const meetingsOpen = Boolean(classroom) && expandedDosenClassId === classroom?.id;
 
               return (
                 <div
@@ -380,6 +383,41 @@ export const AdminLmsJadwal: React.FC = () => {
                         <AcademicCapIcon className="h-3.5 w-3.5" />
                         {hasLecturer ? dosenName : 'Belum ada dosen'}
                       </span>
+
+                      {isExpanded && canEdit ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openEditModal(course);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 hover:text-slate-900"
+                        >
+                          <PencilSquareIcon className="h-3.5 w-3.5" />
+                          Jadwal
+                        </button>
+                      ) : null}
+
+                      {isExpanded && classroom ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleDosenMeetings(classroom.id);
+                          }}
+                          title={meetingsOpen ? 'Tutup 16 pertemuan' : 'Lihat 16 pertemuan'}
+                          aria-expanded={meetingsOpen}
+                          aria-controls={`pertemuan-kelas-${classroom.id}`}
+                          aria-label={meetingsOpen ? 'Tutup 16 pertemuan' : 'Lihat 16 pertemuan'}
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                            meetingsOpen
+                              ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white'
+                              : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <ClipboardDocumentListIcon className="h-4 w-4" />
+                        </button>
+                      ) : null}
                     </div>
                   </div>
 
@@ -417,99 +455,69 @@ export const AdminLmsJadwal: React.FC = () => {
                               </span>
                             </div>
                           </div>
-
-                          <div className="flex flex-wrap items-center gap-2">
-                            {canEdit ? (
-                              <button
-                                type="button"
-                                onClick={() => openEditModal(course)}
-                                className="btn-secondary text-xs py-1.5"
-                              >
-                                Edit Jadwal & Dosen
-                              </button>
-                            ) : null}
-
-                            {classroom ? (
-                              <button
-                                type="button"
-                                onClick={() => toggleDosenMeetings(classroom.id)}
-                                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                  expandedDosenClassId === classroom.id
-                                    ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white'
-                                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-                                }`}
-                              >
-                                <ClockIcon className="h-3.5 w-3.5" />
-                                {expandedDosenClassId === classroom.id
-                                  ? 'Tutup 16 Pertemuan'
-                                  : 'Lihat 16 Pertemuan LMS'}
-                              </button>
-                            ) : (
-                              <span className="text-xs italic text-slate-400">
-                                Atur jadwal dulu untuk generate 16 pertemuan
-                              </span>
-                            )}
-                          </div>
                         </div>
-
-                        {/* LEVEL 4: DAFTAR 16 PERTEMUAN LMS */}
-                        {expandedDosenClassId === classroom?.id && (
-                          <div className="mt-5 border-t border-slate-100 pt-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                                <ClockIcon className="h-4 w-4 text-[#1e3a8a]" />
-                                Rincian 16 Pertemuan Perkuliahan (LMS)
-                              </h5>
-                              <span className="text-[11px] text-slate-500">
-                                Standar 16 Pertemuan Semester
-                              </span>
-                            </div>
-
-                            {meetingsQuery.isLoading ? (
-                              <div className="py-4 text-center text-xs text-slate-500">
-                                Memuat daftar pertemuan dari LMS...
-                              </div>
-                            ) : (meetingsQuery.data ?? []).length === 0 ? (
-                              <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500 italic">
-                                Belum ada daftar pertemuan. Simpan jadwal ulang untuk menyinkronkan 16 pertemuan ke LMS.
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                                {(meetingsQuery.data ?? []).map((m: LmsMeeting) => (
-                                  <div
-                                    key={m.id}
-                                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 text-xs"
-                                  >
-                                    <div className="min-w-0">
-                                      <p className="font-bold text-slate-800">
-                                        Pertemuan {m.number}
-                                      </p>
-                                      <p className="truncate text-[11px] text-slate-500" title={m.title}>
-                                        {m.title}
-                                      </p>
-                                    </div>
-                                    <span
-                                      className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-                                        m.status === 'completed'
-                                          ? 'bg-emerald-100 text-emerald-800'
-                                          : m.status === 'ongoing'
-                                          ? 'bg-blue-100 text-blue-800'
-                                          : 'bg-slate-200 text-slate-700'
-                                      }`}
-                                    >
-                                      {m.status === 'completed'
-                                        ? 'Selesai'
-                                        : m.status === 'ongoing'
-                                        ? 'Berjalan'
-                                        : 'Rencana'}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
+
+                      {/* LEVEL 4: DAFTAR 16 PERTEMUAN LMS */}
+                      {expandedDosenClassId === classroom?.id && (
+                        <div
+                          id={`pertemuan-kelas-${classroom.id}`}
+                          className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                              <ClockIcon className="h-4 w-4 text-[#1e3a8a]" />
+                              Rincian 16 Pertemuan Perkuliahan (LMS)
+                            </h5>
+                            <span className="text-[11px] text-slate-500">
+                              Standar 16 Pertemuan Semester
+                            </span>
+                          </div>
+
+                          {meetingsQuery.isLoading ? (
+                            <div className="py-4 text-center text-xs text-slate-500">
+                              Memuat daftar pertemuan dari LMS...
+                            </div>
+                          ) : (meetingsQuery.data ?? []).length === 0 ? (
+                            <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500 italic">
+                              Belum ada daftar pertemuan. Simpan jadwal ulang untuk menyinkronkan 16 pertemuan ke LMS.
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                              {(meetingsQuery.data ?? []).map((m: LmsMeeting) => (
+                                <div
+                                  key={m.id}
+                                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 text-xs"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-slate-800">
+                                      Pertemuan {m.number}
+                                    </p>
+                                    <p className="truncate text-[11px] text-slate-500" title={m.title}>
+                                      {m.title}
+                                    </p>
+                                  </div>
+                                  <span
+                                    className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
+                                      m.status === 'completed'
+                                        ? 'bg-emerald-100 text-emerald-800'
+                                        : m.status === 'ongoing'
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : 'bg-slate-200 text-slate-700'
+                                    }`}
+                                  >
+                                    {m.status === 'completed'
+                                      ? 'Selesai'
+                                      : m.status === 'ongoing'
+                                      ? 'Berjalan'
+                                      : 'Rencana'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
