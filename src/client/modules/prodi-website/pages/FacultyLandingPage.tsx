@@ -7,6 +7,8 @@ import {
   ArrowTopRightOnSquareIcon,
   BookOpenIcon,
   BuildingOffice2Icon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   EnvelopeIcon,
   GlobeAltIcon,
   MapPinIcon,
@@ -163,10 +165,10 @@ export const FacultyLandingPage: React.FC = () => {
   const kontak = tenant?.contact;
 
   return (
-    <div className="bg-white">
-      {/* ---------- HERO SLIDER (sama dengan desain website prodi) ---------- */}
+    <div className="bg-[#FCFDFA]">
+      {/* ---------- HERO SLIDER ---------- */}
       <section className="relative w-full overflow-hidden bg-slate-900 select-none">
-        <div className="relative w-full aspect-[21/9] min-h-[300px] sm:min-h-[420px] lg:min-h-[500px] xl:min-h-[540px]">
+        <div className="relative w-full aspect-[21/9] min-h-[320px] sm:min-h-[440px] lg:min-h-[520px] xl:min-h-[560px]">
           {slides.map((slide, idx) => (
             <img
               key={`${slide.imageUrl}-${idx}`}
@@ -179,21 +181,37 @@ export const FacultyLandingPage: React.FC = () => {
             />
           ))}
 
-          {/*
-            Titik navigasi mengikuti hero slider program studi: dot putih tipis,
-            dot aktif memanjang dan berwarna emas. Gambar tetap bersih tanpa
-            judul maupun tombol di atasnya.
-          */}
+          {slides.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setSlideIdx((idx) => (idx - 1 + slides.length) % slides.length)}
+                aria-label="Slide sebelumnya"
+                className="absolute left-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/60 bg-slate-950/65 text-white shadow-lg backdrop-blur-sm transition-all hover:bg-slate-950/90 sm:left-6 sm:h-14 sm:w-14"
+              >
+                <ChevronLeftIcon className="h-7 w-7 stroke-[2.5]" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSlideIdx((idx) => (idx + 1) % slides.length)}
+                aria-label="Slide berikutnya"
+                className="absolute right-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/60 bg-slate-950/65 text-white shadow-lg backdrop-blur-sm transition-all hover:bg-slate-950/90 sm:right-6 sm:h-14 sm:w-14"
+              >
+                <ChevronRightIcon className="h-7 w-7 stroke-[2.5]" />
+              </button>
+            </>
+          )}
+
           {showDots && slides.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center space-x-2 sm:bottom-6">
+            <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-slate-950/55 px-4 py-2 backdrop-blur-sm">
               {slides.map((slide, idx) => (
                 <button
                   key={`${slide.imageUrl}-${idx}`}
                   type="button"
                   onClick={() => setSlideIdx(idx)}
                   aria-label={`Slide ${idx + 1}`}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    idx === slideIdx ? 'w-8 bg-[#fbbf24] shadow-sm' : 'w-2 bg-white/50 hover:bg-white/80'
+                  className={`h-3 rounded-full transition-all duration-300 ${
+                    idx === slideIdx ? 'w-10 bg-[#fbbf24] shadow-sm' : 'w-3 bg-white/75 hover:bg-white'
                   }`}
                 />
               ))}
@@ -203,31 +221,31 @@ export const FacultyLandingPage: React.FC = () => {
       </section>
 
       {/* ---------- TENTANG FAKULTAS ---------- */}
-      <section className="bg-gradient-to-b from-slate-50 via-white to-white px-4 py-16 lg:py-20">
+      <section className="bg-editorial-paper px-4 py-16 lg:py-24">
         <div className="mx-auto max-w-7xl">
           <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-14">
             {/* Teks */}
-            <div className="space-y-5 lg:col-span-7">
-              <div className="space-y-2">
+            <div className="space-y-6 lg:col-span-7">
+              <div className="space-y-3">
                 <span
-                  className="inline-block rounded-full px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-widest"
+                  className="inline-block rounded-full px-4 py-1.5 text-[13px] font-extrabold uppercase tracking-widest"
                   style={{ backgroundColor: `${primary}15`, color: primary }}
                 >
                   Tentang Fakultas
                 </span>
-                <h2 className="text-2xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+                <h2 className="font-display text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-950 sm:text-4xl lg:text-[42px]">
                   {namaFakultas}
                 </h2>
               </div>
 
               {tentangQuery.isLoading ? (
                 <div className="space-y-3">
-                  <div className="h-4 w-full animate-pulse rounded bg-slate-200" />
-                  <div className="h-4 w-11/12 animate-pulse rounded bg-slate-200" />
-                  <div className="h-4 w-9/12 animate-pulse rounded bg-slate-200" />
+                  <div className="h-5 w-full animate-pulse rounded bg-slate-200" />
+                  <div className="h-5 w-11/12 animate-pulse rounded bg-slate-200" />
+                  <div className="h-5 w-9/12 animate-pulse rounded bg-slate-200" />
                 </div>
               ) : (
-                <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
+                <p className="text-[16px] sm:text-[17px] leading-[1.8] text-slate-800 font-medium">
                   {overview ??
                     `${namaFakultas} merupakan bagian dari Universitas Nahdlatul Ulama Sumatera Utara yang ` +
                       'menyelenggarakan pendidikan tinggi berbasis nilai Ahlussunnah wal Jama’ah An-Nahdliyah, ' +
@@ -237,46 +255,42 @@ export const FacultyLandingPage: React.FC = () => {
 
               {/* Ringkasan angka */}
               <dl className="flex flex-wrap gap-4 pt-2">
-                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-                  <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Program Studi</dt>
-                  <dd className="text-xl font-extrabold" style={{ color: primary }}>
+                <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-xs">
+                  <dt className="text-[13px] font-extrabold uppercase tracking-wider text-slate-700">
+                    Program Studi
+                  </dt>
+                  <dd className="font-display text-3xl font-extrabold mt-1" style={{ color: primary }}>
                     {directoryQuery.isLoading ? '—' : prodis.length}
                   </dd>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-                  <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jenjang</dt>
-                  <dd className="text-xl font-extrabold" style={{ color: primary }}>
+                <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-xs">
+                  <dt className="text-[13px] font-extrabold uppercase tracking-wider text-slate-700">
+                    Jenjang Pendidikan
+                  </dt>
+                  <dd className="font-display text-3xl font-extrabold mt-1" style={{ color: primary }}>
                     {prodis.length > 0 ? [...new Set(prodis.map((p) => p.degree))].join(', ') : 'S1'}
                   </dd>
                 </div>
               </dl>
 
-              <div className="pt-1">
+              <div className="pt-2">
                 <Link
                   to="/profil"
-                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-xs font-extrabold text-white shadow-md transition-all hover:shadow-lg"
+                  className="inline-flex min-h-[52px] items-center gap-2.5 rounded-xl px-7 py-3 text-[15px] font-extrabold text-white shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5"
                   style={{ backgroundColor: primary }}
                 >
                   Lihat Profil Lengkap
-                  <ArrowRightIcon className="h-4 w-4" />
+                  <ArrowRightIcon className="h-5 w-5" />
                 </Link>
               </div>
             </div>
 
-            {/*
-              Gambar profil tanpa bingkai kartu.
-              
-              Dulu gambar dibatasi `rounded-3xl` + border putih + rasio tetap,
-              sehingga terasa seperti kotak kecil di samping teks. Sekarang
-              dibiarkan mengalir bebas mengikuti tinggi kolomnya, dengan sudut
-              membulat tipis saja agar tetap menyatu dengan tata letak.
-            */}
             <div className="relative lg:col-span-5">
-              <div className="relative overflow-hidden rounded-2xl bg-slate-100">
+              <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-lg">
                 <GambarTentang
                   src={heroGambar}
                   alt={`Gambar ${namaFakultas}`}
-                  className="h-72 w-full object-cover object-center sm:h-96 lg:h-full lg:min-h-[480px]"
+                  className="h-80 w-full object-cover object-center sm:h-96 lg:h-full lg:min-h-[460px]"
                 />
               </div>
             </div>
@@ -285,19 +299,19 @@ export const FacultyLandingPage: React.FC = () => {
       </section>
 
       {/* ---------- PROGRAM STUDI ---------- */}
-      <section className="mx-auto max-w-7xl px-4 py-16 lg:py-20">
+      <section className="mx-auto max-w-7xl px-4 py-16 lg:py-22">
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
           <div className="max-w-2xl">
             <p
-              className="inline-block rounded-full px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-widest"
-              style={{ backgroundColor: `${accent}25`, color: primary }}
+              className="inline-block rounded-full px-4 py-1.5 text-[13px] font-extrabold uppercase tracking-widest"
+              style={{ backgroundColor: `${primary}15`, color: primary }}
             >
               Program Studi
             </p>
-            <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-              Yang diselenggarakan {namaFakultas}
+            <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+              Yang Diselenggarakan {namaFakultas}
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+            <p className="mt-3 text-[16px] leading-relaxed text-slate-800 font-medium">
               {directoryQuery.isLoading
                 ? 'Memuat daftar program studi…'
                 : `${prodis.length} program studi aktif, masing-masing memiliki website resmi sendiri.`}
@@ -305,10 +319,10 @@ export const FacultyLandingPage: React.FC = () => {
           </div>
           <Link
             to="/prodi"
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-extrabold text-slate-700 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-50 active:scale-95"
+            className="inline-flex min-h-[48px] shrink-0 items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-5 text-[15px] font-extrabold text-slate-900 shadow-xs transition-all hover:border-slate-500 hover:bg-slate-50 active:scale-95"
           >
-            Lihat semua
-            <ArrowRightIcon className="h-4 w-4" />
+            Lihat Semua
+            <ArrowRightIcon className="h-5 w-5" />
           </Link>
         </div>
 
@@ -319,7 +333,7 @@ export const FacultyLandingPage: React.FC = () => {
             ))}
           </div>
         ) : prodis.length === 0 ? (
-          <p className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+          <p className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-[16px] text-slate-700">
             Belum ada program studi aktif pada fakultas ini.
           </p>
         ) : (
@@ -330,14 +344,8 @@ export const FacultyLandingPage: React.FC = () => {
               return (
                 <article
                   key={prodi.id}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl"
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl"
                 >
-                  {/*
-                    Gambar penutup kartu. Sumbernya `study_programs.logo_url` yang
-                    diunggah admin lewat menu Struktur Organisasi. Bila belum ada,
-                    ditampilkan bidang gradien warna tema fakultas dengan huruf kode
-                    prodi, agar kartu tetap rapi tanpa gambar rusak.
-                  */}
                   <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
                     {prodi.logoUrl ? (
                       <img
@@ -354,57 +362,53 @@ export const FacultyLandingPage: React.FC = () => {
                         }}
                       >
                         <div className="text-center">
-                          <AcademicCapIcon className="mx-auto h-11 w-11 text-white/90" />
-                          <p className="mt-2 text-lg font-black uppercase tracking-[0.25em] text-white">
+                          <AcademicCapIcon className="mx-auto h-12 w-12 text-white/90" />
+                          <p className="mt-2 text-xl font-black uppercase tracking-[0.25em] text-white">
                             {prodi.code}
                           </p>
                         </div>
                       </div>
                     )}
 
-                    {/* Gradien tipis di bawah agar label selalu terbaca */}
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
 
-                    {/* Jenjang menempel di sudut kiri atas */}
                     <span
-                      className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-sm ring-1 ring-black/5"
+                      className="absolute left-3.5 top-3.5 rounded-lg px-3 py-1 text-[12px] font-black uppercase tracking-wider text-slate-950 shadow-sm ring-1 ring-black/10"
                       style={{ backgroundColor: accent }}
                     >
                       {prodi.degree}
                     </span>
 
-                    {/* Kode prodi di sudut kanan atas */}
-                    <span className="absolute right-3 top-3 rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white ring-1 ring-white/25 backdrop-blur-sm">
+                    <span className="absolute right-3.5 top-3.5 rounded-lg bg-slate-950/75 px-3 py-1 text-[12px] font-black uppercase tracking-wider text-white ring-1 ring-white/25 backdrop-blur-sm">
                       {prodi.code}
                     </span>
 
-                    {/* Nama prodi di atas gambar */}
-                    <h3 className="absolute bottom-0 left-0 right-0 px-4 pb-3 text-base font-extrabold leading-snug text-white drop-shadow-sm">
+                    <h3 className="absolute bottom-0 left-0 right-0 px-5 pb-4 text-[19px] font-extrabold leading-snug text-white drop-shadow-sm">
                       {prodi.name}
                     </h3>
                   </div>
 
                   <div className="flex flex-1 flex-col p-5">
-                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                      <BuildingOffice2Icon className="h-3.5 w-3.5 shrink-0" />
+                    <p className="flex items-center gap-2 text-[14px] font-semibold text-slate-700">
+                      <BuildingOffice2Icon className="h-4 w-4 shrink-0 text-slate-600" />
                       <span className="truncate">{namaFakultas}</span>
                     </p>
 
-                    <div className="mt-auto pt-4">
+                    <div className="mt-auto pt-5">
                       {url ? (
                         <a
                           href={url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[13px] font-bold text-white shadow-sm transition-all hover:brightness-110 hover:shadow-md active:scale-[0.98]"
-                          style={{ backgroundColor: accent }}
+                          className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-[15px] font-extrabold text-white shadow-sm transition-all hover:brightness-110 hover:shadow-md active:scale-[0.98]"
+                          style={{ backgroundColor: primary }}
                         >
-                          Kunjungi Website
-                          <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                          Kunjungi Website Prodi
+                          <ArrowTopRightOnSquareIcon className="h-5 w-5" />
                         </a>
                       ) : (
-                        <span className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-semibold text-slate-400">
-                          <GlobeAltIcon className="h-4 w-4" />
+                        <span className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-[14px] font-bold text-slate-600">
+                          <GlobeAltIcon className="h-5 w-5" />
                           Website belum tersedia
                         </span>
                       )}
@@ -418,68 +422,78 @@ export const FacultyLandingPage: React.FC = () => {
       </section>
 
       {/* ---------- BERITA FAKULTAS ---------- */}
-      <section className="border-t border-slate-200 bg-slate-50 px-4 py-16">
+      <section className="border-t border-slate-200 bg-slate-50 px-4 py-16 lg:py-22">
         <div className="mx-auto max-w-7xl">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-5">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: primary }}>
-                Warta
+              <p className="text-[13px] font-extrabold uppercase tracking-[0.2em]" style={{ color: primary }}>
+                Warta Fakultas
               </p>
-              <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+              <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
                 Berita Fakultas
               </h2>
             </div>
             <Link
               to="/berita"
-              className="inline-flex items-center gap-1.5 text-xs font-bold"
+              className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-5 text-[15px] font-extrabold transition-colors hover:border-slate-500"
               style={{ color: primary }}
             >
-              Semua berita
-              <ArrowRightIcon className="h-4 w-4" />
+              Semua Berita
+              <ArrowRightIcon className="h-5 w-5" />
             </Link>
           </div>
 
           {beritaQuery.isLoading ? (
-            <div className="mt-8 grid gap-5 sm:grid-cols-3">
+            <div className="mt-8 grid gap-6 sm:grid-cols-3">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-52 animate-pulse rounded-2xl bg-slate-200/60" />
+                <div key={i} className="h-60 animate-pulse rounded-2xl bg-slate-200/60" />
               ))}
             </div>
           ) : (beritaQuery.data ?? []).length === 0 ? (
-            <p className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
+            <p className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-[16px] text-slate-700">
               Belum ada berita yang diterbitkan fakultas ini.
             </p>
           ) : (
-            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {(beritaQuery.data ?? []).map((post) => (
-                <article
+                <Link
                   key={post.id}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-lg"
+                  to={`/berita/${post.slug}`}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs transition-all hover:-translate-y-1 hover:shadow-xl"
                 >
                   {post.thumbnailUrl ? (
                     <img
                       src={post.thumbnailUrl}
                       alt={post.title}
-                      className="h-40 w-full object-cover"
+                      className="h-48 w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
                     />
                   ) : (
                     <div
-                      className="flex h-40 w-full items-center justify-center"
-                      style={{ backgroundColor: `${primary}10` }}
+                      className="flex h-48 w-full items-center justify-center"
+                      style={{ backgroundColor: `${primary}12` }}
                     >
-                      <BookOpenIcon className="h-8 w-8" style={{ color: primary }} />
+                      <BookOpenIcon className="h-10 w-10" style={{ color: primary }} />
                     </div>
                   )}
-                  <div className="p-5">
-                    <h3 className="line-clamp-2 text-sm font-extrabold leading-snug text-slate-900">
+                  <div className="flex flex-1 flex-col p-6">
+                    <h3 className="line-clamp-2 text-[18px] font-extrabold leading-snug text-slate-950 group-hover:underline">
                       {post.title}
                     </h3>
                     {post.excerpt ? (
-                      <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-slate-600">{post.excerpt}</p>
+                      <p className="mt-2.5 line-clamp-3 text-[15px] leading-relaxed text-slate-800">
+                        {post.excerpt}
+                      </p>
                     ) : null}
+                    <span
+                      className="mt-auto pt-4 inline-flex items-center gap-1.5 text-[14px] font-extrabold"
+                      style={{ color: primary }}
+                    >
+                      Baca Selengkapnya
+                      <ArrowRightIcon className="h-4 w-4" />
+                    </span>
                   </div>
-                </article>
+                </Link>
               ))}
             </div>
           )}
@@ -487,49 +501,63 @@ export const FacultyLandingPage: React.FC = () => {
       </section>
 
       {/* ---------- KONTAK ---------- */}
-      <section className="mx-auto max-w-7xl px-4 py-16">
-        <div className="rounded-3xl px-6 py-12 text-white sm:px-12" style={{ backgroundColor: primary }}>
-          <div className="grid gap-10 lg:grid-cols-2">
+      <section className="mx-auto max-w-7xl px-4 py-16 lg:py-20">
+        <div
+          className="relative overflow-hidden rounded-3xl px-6 py-12 text-white shadow-xl sm:px-12 sm:py-14"
+          style={{
+            backgroundColor: primary,
+            backgroundImage: 'url(/assets/visual/campus-cta-backdrop.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(135deg, ${primary}eb 0%, #0f172ad9 100%)`,
+            }}
+          />
+          <div className="relative z-10 grid gap-10 lg:grid-cols-2 items-center">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: accent }}>
-                Sekretariat
+              <p className="text-[13px] font-extrabold uppercase tracking-[0.2em]" style={{ color: accent }}>
+                Sekretariat Fakultas
               </p>
-              <h2 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
                 Hubungi {namaFakultas}
               </h2>
-              <p className="mt-3 max-w-md text-sm leading-relaxed text-white/80">
+              <p className="mt-4 max-w-md text-[16px] leading-relaxed text-slate-100 font-medium">
                 Silakan hubungi sekretariat fakultas untuk informasi akademik, kerja sama, maupun
-                layanan administrasi.
+                layanan administrasi mahasiswa dan orang tua.
               </p>
               <Link
                 to="/kontak"
-                className="mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold text-slate-950 shadow-md transition-all hover:brightness-105 active:scale-95"
+                className="mt-7 inline-flex min-h-[52px] items-center gap-2.5 rounded-xl px-7 py-3 text-[15px] font-extrabold text-slate-950 shadow-md transition-all hover:brightness-105 active:scale-95"
                 style={{ backgroundColor: accent }}
               >
-                Buka halaman kontak
-                <ArrowRightIcon className="h-4 w-4" />
+                Buka Halaman Kontak
+                <ArrowRightIcon className="h-5 w-5" />
               </Link>
             </div>
 
-            <ul className="space-y-4 text-sm">
-              <li className="flex items-start gap-3">
-                <MapPinIcon className="mt-0.5 h-5 w-5 shrink-0" style={{ color: accent }} />
-                <span className="text-white/85">
+            <ul className="space-y-4 text-[16px] font-medium">
+              <li className="flex items-start gap-3.5">
+                <MapPinIcon className="mt-1 h-6 w-6 shrink-0" style={{ color: accent }} />
+                <span className="text-white leading-relaxed">
                   {kontak?.address ??
                     'Gedung Fakultas, Kampus UNUSU, Jl. H.A. Manaf Lubis No.2, Gaperta Ujung, Helvetia, Medan'}
                 </span>
               </li>
-              <li className="flex items-center gap-3">
-                <EnvelopeIcon className="h-5 w-5 shrink-0" style={{ color: accent }} />
-                <span className="text-white/85">{kontak?.email ?? '—'}</span>
+              <li className="flex items-center gap-3.5">
+                <EnvelopeIcon className="h-6 w-6 shrink-0" style={{ color: accent }} />
+                <span className="text-white">{kontak?.email ?? '—'}</span>
               </li>
-              <li className="flex items-center gap-3">
-                <PhoneIcon className="h-5 w-5 shrink-0" style={{ color: accent }} />
-                <span className="text-white/85">{kontak?.phone ?? '—'}</span>
+              <li className="flex items-center gap-3.5">
+                <PhoneIcon className="h-6 w-6 shrink-0" style={{ color: accent }} />
+                <span className="text-white">{kontak?.phone ?? '—'}</span>
               </li>
-              <li className="flex items-center gap-3">
-                <BuildingOffice2Icon className="h-5 w-5 shrink-0" style={{ color: accent }} />
-                <span className="text-white/85">
+              <li className="flex items-center gap-3.5">
+                <BuildingOffice2Icon className="h-6 w-6 shrink-0" style={{ color: accent }} />
+                <span className="text-white">
                   {tenant?.websiteSetting?.univName ?? 'Universitas Nahdlatul Ulama Sumatera Utara'}
                 </span>
               </li>

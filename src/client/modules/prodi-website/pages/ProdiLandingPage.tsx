@@ -55,7 +55,7 @@ export const ProdiLandingPage: React.FC = () => {
   if (!page || sections.length === 0) {
     // Default fallback bila prodi baru belum menyusun seksi di Page Builder
     return (
-      <div className="pb-16 font-sans bg-white">
+      <div className="pb-16 font-sans bg-[#FCFDFA]">
         <WidgetRenderer
           widgetCode="hero_slider"
           config={{
@@ -91,7 +91,7 @@ export const ProdiLandingPage: React.FC = () => {
 
   // Render Section & Widget MURNI berdasarkan urutan di Page Builder!
   return (
-    <div className="pb-12 font-sans bg-white">
+    <div className="pb-12 font-sans bg-[#FCFDFA]">
       {sections.map((section) => {
         const sortedWidgets = (section.widgets ?? [])
           .slice()

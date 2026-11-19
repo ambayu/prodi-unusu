@@ -64,15 +64,17 @@ const PanelFakultas: React.FC<{
 }> = ({ faculty, facultyImg }) => (
   <>
     {/* Header Panel Kiri: Badge Kode & Nama Fakultas */}
-    <div className="relative z-10 space-y-2">
-      <span className="inline-flex items-center rounded-md bg-amber-400 px-2.5 py-0.5 text-[11px] font-black tracking-wider text-slate-950 shadow-xs">
+    <div className="relative z-10 space-y-2.5">
+      <span className="inline-flex items-center rounded-lg bg-amber-400 px-3 py-1 text-[13px] font-black tracking-wider text-slate-950 shadow-xs">
         {faculty.code}
       </span>
-      <h3 className="text-base font-black leading-tight text-white drop-shadow-xs">{faculty.name}</h3>
+      <h3 className="font-display text-lg font-extrabold leading-snug text-white drop-shadow-xs">
+        {faculty.name}
+      </h3>
     </div>
 
     {/* Foto Ilustrasi Representatif Fakultas */}
-    <div className="relative z-0 -mx-4 -mb-4 -mt-3 h-20 sm:h-24 w-[calc(100%+2rem)] overflow-hidden bg-[#166534]">
+    <div className="relative z-0 -mx-5 -mb-5 -mt-2 h-24 sm:h-28 w-[calc(100%+2.5rem)] overflow-hidden bg-[#166534]">
       <img
         src={facultyImg}
         alt={faculty.name}
@@ -265,31 +267,50 @@ export const MainLandingPage: React.FC = () => {
             return <React.Fragment key={slide.id}>{image}</React.Fragment>;
           })}
 
-          {/* Panah kiri */}
+          {/* Panah kiri — besar & kontras tinggi untuk semua pengguna */}
           <button
             type="button"
             onClick={prev}
             aria-label="Slide sebelumnya"
-            className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-4 sm:h-12 sm:w-12"
+            className="absolute left-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/60 bg-slate-950/65 text-white shadow-lg backdrop-blur-sm transition-all hover:scale-105 hover:bg-slate-950/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 sm:left-6 sm:h-14 sm:w-14"
           >
-            <ChevronLeftIcon className="h-6 w-6" />
+            <ChevronLeftIcon className="h-7 w-7 stroke-[2.5]" />
           </button>
 
-          {/* Panah kanan */}
+          {/* Panah kanan — besar & kontras tinggi */}
           <button
             type="button"
             onClick={next}
             aria-label="Slide berikutnya"
-            className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-4 sm:h-12 sm:w-12"
+            className="absolute right-3 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/60 bg-slate-950/65 text-white shadow-lg backdrop-blur-sm transition-all hover:scale-105 hover:bg-slate-950/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 sm:right-6 sm:h-14 sm:w-14"
           >
-            <ChevronRightIcon className="h-6 w-6" />
+            <ChevronRightIcon className="h-7 w-7 stroke-[2.5]" />
           </button>
+
+          {/* Indikator slide bawah yang lega dan mudah ditekan */}
+          {totalSlides > 1 && (
+            <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-slate-950/55 px-4 py-2 backdrop-blur-sm">
+              {slides.map((slide, idx) => (
+                <button
+                  key={slide.id}
+                  type="button"
+                  onClick={() => goTo(idx)}
+                  aria-label={`Pilih slide ${idx + 1}`}
+                  className={`h-3 rounded-full transition-all duration-300 ${
+                    idx === currentSlide
+                      ? 'w-10 bg-amber-400 shadow-sm'
+                      : 'w-3 bg-white/75 hover:bg-white'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* 2. Sekilas Tentang Program Studi di UNUSU (Sesuai Referensi Gambar) */}
-      <section className="relative mx-auto max-w-7xl px-4 pt-10 sm:pt-14 lg:pt-16 sm:px-6 pb-12 sm:pb-16 lg:pb-20">
-        <div className="relative bg-gradient-to-r from-white via-[#F0FDF4]/85 to-white px-6 pt-2 pb-6 sm:px-10 sm:pt-3 sm:pb-8 lg:px-12 lg:pt-3 lg:pb-10 text-slate-900">
+      {/* 2. Sekilas Tentang Program Studi di UNUSU */}
+      <section className="relative mx-auto max-w-7xl px-4 pt-12 sm:pt-16 lg:pt-20 sm:px-6 pb-14 sm:pb-18 lg:pb-22">
+        <div className="relative bg-editorial-paper rounded-3xl border border-emerald-900/10 px-6 pt-6 pb-8 sm:px-10 sm:pt-8 sm:pb-10 lg:px-12 lg:pt-10 lg:pb-12 text-slate-950 shadow-xs">
           {/* Latar Belakang 1: Halftone Dot Matrix di belakang duo mahasiswa & kanan */}
           <div
             className="absolute inset-0 pointer-events-none opacity-40 select-none"
@@ -358,36 +379,26 @@ export const MainLandingPage: React.FC = () => {
             {/* Kolom 1 (Kiri): Judul & Deskripsi */}
             <div className="relative z-40 space-y-6 lg:col-span-4 xl:col-span-4">
               <Reveal direction="right" delayMs={100}>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3.5 py-1 text-xs font-bold text-emerald-800">
-                  <ShieldCheckIcon className="h-4 w-4 text-emerald-700" />
+                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 border border-emerald-200 px-4 py-1.5 text-[13px] font-extrabold text-emerald-950">
+                  <ShieldCheckIcon className="h-5 w-5 text-emerald-800" />
                   <span>PROGRAM STUDI TERAKREDITASI</span>
                 </span>
               </Reveal>
 
               <Reveal direction="up" delayMs={200}>
-                <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-black tracking-tight text-slate-900 leading-[1.2] !mb-14">
+                <h2 className="font-display text-3xl sm:text-4xl lg:text-[44px] font-extrabold tracking-tight text-slate-950 leading-[1.15] !mb-8">
                   Tentang Program Studi <br className="hidden sm:inline" />
-                  <span className="text-emerald-700">di UNUSU</span>
+                  <span className="text-[#166534]">di UNUSU</span>
                 </h2>
               </Reveal>
 
               <Reveal direction="right" delayMs={250}>
-                <div className="w-16 h-1 bg-emerald-600 rounded-full !mb-6" />
+                <div className="w-20 h-1.5 bg-amber-400 rounded-full !mb-6" />
               </Reveal>
 
               <Reveal direction="up" delayMs={300}>
-                <div className="relative">
-                  {/* Soft White Radial Glow Backdrop */}
-                  <div
-                    aria-hidden="true"
-                    className="absolute -inset-6 -z-10 rounded-3xl pointer-events-none select-none backdrop-blur-[1px]"
-                    style={{
-                      background: 'radial-gradient(ellipse at 40% 50%, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.8) 35%, rgba(255,255,255,0.35) 65%, transparent 100%)',
-                      maskImage: 'radial-gradient(ellipse at 40% 50%, black 30%, rgba(0,0,0,0.5) 60%, transparent 95%)',
-                      WebkitMaskImage: 'radial-gradient(ellipse at 40% 50%, black 30%, rgba(0,0,0,0.5) 60%, transparent 95%)',
-                    }}
-                  />
-                  <p className="relative text-xs sm:text-[13px] leading-relaxed text-slate-800 font-medium">
+                <div className="relative rounded-2xl bg-white/95 p-5 border border-emerald-900/10 shadow-xs">
+                  <p className="relative text-[16px] leading-[1.75] text-slate-900 font-medium">
                     Universitas Nahdlatul Ulama Sumatera Utara (UNUSU) menaungi 14 program studi unggulan
                     pada 6 fakultas. Setiap program studi dirancang memadukan keilmuan modern,
                     teknologi tepat guna, serta pondasi nilai keislaman Ahlussunnah wal Jama&apos;ah
@@ -420,22 +431,21 @@ export const MainLandingPage: React.FC = () => {
               </Reveal>
             </div>
 
-            {/* Kolom 3 (Kanan): 3 Kartu Vertikal */}
-            <div className="relative z-40 flex flex-col gap-2.5 lg:col-span-3 xl:col-span-3 max-w-[270px] sm:max-w-none lg:max-w-[260px] lg:ml-auto w-full">
+            {/* Kolom 3 (Kanan): 3 Kartu Vertikal — Teks Besar & Tajam */}
+            <div className="relative z-40 flex flex-col gap-3.5 lg:col-span-3 xl:col-span-3 max-w-none lg:max-w-[290px] lg:ml-auto w-full">
               {/* Kartu 1: Kurikulum MBKM */}
               <Reveal direction="left" delayMs={200}>
-                <div className="rounded-2xl bg-white/95 backdrop-blur-sm p-4 shadow-sm hover:shadow-md transition-all">
+                <div className="rounded-2xl border border-emerald-900/15 bg-white p-5 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
-                      Kurikulum <br />
-                      MBKM
+                    <h3 className="font-display text-lg font-extrabold text-slate-950 leading-snug">
+                      Kurikulum MBKM
                     </h3>
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
-                      <AcademicCapIcon className="h-5 w-5" />
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-900">
+                      <AcademicCapIcon className="h-6 w-6" />
                     </div>
                   </div>
-                  <div className="my-2 h-0.5 w-6 rounded-full bg-emerald-500" />
-                  <p className="text-xs leading-relaxed text-slate-600">
+                  <div className="my-2.5 h-1 w-8 rounded-full bg-emerald-600" />
+                  <p className="text-[14px] leading-relaxed text-slate-800 font-medium">
                     Adaptif dengan kebutuhan industri dan kewirausahaan modern.
                   </p>
                 </div>
@@ -443,18 +453,17 @@ export const MainLandingPage: React.FC = () => {
 
               {/* Kartu 2: Dosen Berkualitas */}
               <Reveal direction="left" delayMs={350}>
-                <div className="rounded-2xl bg-white/95 backdrop-blur-sm p-4 shadow-sm hover:shadow-md transition-all">
+                <div className="rounded-2xl border border-amber-900/15 bg-white p-5 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
-                      Dosen <br />
-                      Berkualitas
+                    <h3 className="font-display text-lg font-extrabold text-slate-950 leading-snug">
+                      Dosen Berkualitas
                     </h3>
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-900">
-                      <UserGroupIcon className="h-5 w-5" />
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-950">
+                      <UserGroupIcon className="h-6 w-6" />
                     </div>
                   </div>
-                  <div className="my-2 h-0.5 w-6 rounded-full bg-emerald-500" />
-                  <p className="text-xs leading-relaxed text-slate-600">
+                  <div className="my-2.5 h-1 w-8 rounded-full bg-amber-500" />
+                  <p className="text-[14px] leading-relaxed text-slate-800 font-medium">
                     Praktisi dan akademisi berpengalaman di bidangnya.
                   </p>
                 </div>
@@ -462,18 +471,17 @@ export const MainLandingPage: React.FC = () => {
 
               {/* Kartu 3: Website Mandiri */}
               <Reveal direction="left" delayMs={500}>
-                <div className="rounded-2xl bg-white/95 backdrop-blur-sm p-4 shadow-sm hover:shadow-md transition-all">
+                <div className="rounded-2xl border border-emerald-900/15 bg-white p-5 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
-                      Website <br />
-                      Mandiri
+                    <h3 className="font-display text-lg font-extrabold text-slate-950 leading-snug">
+                      Website Mandiri
                     </h3>
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
-                      <BookOpenIcon className="h-5 w-5" />
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-900">
+                      <BookOpenIcon className="h-6 w-6" />
                     </div>
                   </div>
-                  <div className="my-2 h-0.5 w-6 rounded-full bg-emerald-500" />
-                  <p className="text-xs leading-relaxed text-slate-600">
+                  <div className="my-2.5 h-1 w-8 rounded-full bg-emerald-600" />
+                  <p className="text-[14px] leading-relaxed text-slate-800 font-medium">
                     14 portal independen dengan pembaruan informasi berkala.
                   </p>
                 </div>
@@ -555,25 +563,25 @@ export const MainLandingPage: React.FC = () => {
 
           <div className="grid grid-cols-1 items-end gap-6 lg:grid-cols-12">
             {/* Teks di Sisi Kiri */}
-            <div className="z-10 space-y-3 pb-8 lg:col-span-6 xl:col-span-7">
+            <div className="z-10 space-y-4 pb-8 lg:col-span-6 xl:col-span-7">
               <Reveal direction="right" delayMs={100}>
                 <div className="flex items-center gap-3">
-                  <span className="h-0.5 w-7 rounded-full bg-[#166534]" />
-                  <span className="text-xs font-black uppercase tracking-widest text-[#166534]">
+                  <span className="h-1 w-8 rounded-full bg-[#166534]" />
+                  <span className="text-[13px] font-black uppercase tracking-widest text-[#166534]">
                     EKOSISTEM WEBSITE MULTI-PRODI
                   </span>
-                  <span className="h-0.5 w-7 rounded-full bg-[#166534]" />
+                  <span className="h-1 w-8 rounded-full bg-[#166534]" />
                 </div>
               </Reveal>
               <Reveal direction="up" delayMs={200}>
-                <h2 className="text-2xl font-black tracking-tight text-slate-900 sm:text-4xl lg:leading-tight">
+                <h2 className="font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-[42px] lg:leading-[1.15]">
                   Fakultas &amp; Portal Mandiri Program Studi
                 </h2>
               </Reveal>
               <Reveal direction="up" delayMs={300}>
-                <p className="max-w-xl text-xs leading-relaxed text-slate-600 sm:text-sm">
+                <p className="max-w-xl text-[16px] leading-relaxed text-slate-800 font-medium">
                   Masing-masing program studi UNUSU memiliki identitas website independen dengan domain
-                  terpisah.
+                  resmi terpisah untuk memudahkan akses informasi akademik.
                 </p>
               </Reveal>
             </div>
@@ -598,16 +606,16 @@ export const MainLandingPage: React.FC = () => {
         </div>
 
         {/* Header Seksi Daftar: "Daftar Fakultas & Program Studi" */}
-        <div id="daftar-fakultas" className="mb-10 text-center scroll-mt-24">
-          <div className="flex items-center justify-center gap-3">
-            <span className="h-0.5 w-10 rounded-full bg-[#166534]" />
-            <h2 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+        <div id="daftar-fakultas" className="mb-12 text-center scroll-mt-24">
+          <div className="flex items-center justify-center gap-3.5">
+            <span className="h-1 w-10 rounded-full bg-[#166534]" />
+            <h2 className="font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
               Daftar Fakultas &amp; Program Studi
             </h2>
-            <span className="h-0.5 w-10 rounded-full bg-[#166534]" />
+            <span className="h-1 w-10 rounded-full bg-[#166534]" />
           </div>
-          <p className="mt-2 text-xs text-slate-500 sm:text-sm">
-            Pilih fakultas untuk melihat program studi dan mengakses portal mandirinya.
+          <p className="mt-3 text-[16px] text-slate-800 font-medium">
+            Pilih fakultas atau klik nama program studi untuk membuka website resminya.
           </p>
         </div>
 
@@ -646,51 +654,52 @@ export const MainLandingPage: React.FC = () => {
                 <div className="group flex flex-col flex-1 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg">
                   {/* Bagian Atas: 2 Kolom (Kiri: Panel Hijau Foto | Kanan: Daftar List Prodi) */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 flex-1">
-                    {/* Kolom Kiri Card: Panel Hijau Tua Navbar (#166534) dengan Gambar Menjorok Halus ke Bawah Teks */}
+                    {/* Kolom Kiri Card: Panel Hijau Tua Navbar (#166534) */}
                     {domainFakultas ? (
                       <a
                         href={domainFakultas}
                         target="_blank"
                         rel="noopener noreferrer"
                         title={`Buka website ${faculty.name}`}
-                        className="relative flex flex-col justify-between overflow-hidden bg-[#166534] p-4 text-white sm:col-span-5 min-h-[165px] sm:min-h-[175px] transition-colors hover:bg-[#124f28]"
+                        className="relative flex flex-col justify-between overflow-hidden bg-[#166534] p-5 text-white sm:col-span-5 min-h-[195px] transition-colors hover:bg-[#124f28]"
                       >
                         <PanelFakultas faculty={faculty} facultyImg={facultyImg} />
                       </a>
                     ) : (
-                      <div className="relative flex flex-col justify-between overflow-hidden bg-[#166534] p-4 text-white sm:col-span-5 min-h-[165px] sm:min-h-[175px]">
+                      <div className="relative flex flex-col justify-between overflow-hidden bg-[#166534] p-5 text-white sm:col-span-5 min-h-[195px]">
                         <PanelFakultas faculty={faculty} facultyImg={facultyImg} />
                       </div>
                     )}
 
                     {/* Kolom Kanan Card: Header "Program Studi" + List Bullet Prodi + Tombol "Lihat Detail Fakultas" */}
-                    <div className="flex flex-col justify-between p-4 sm:col-span-7 bg-white">
+                    <div className="flex flex-col justify-between p-5 sm:col-span-7 bg-white">
                       <div>
                         {/* Sub-Header Program Studi */}
-                        <div className="flex items-center gap-1.5 text-xs font-extrabold text-slate-900 mb-2.5">
-                          <AcademicCapIcon className="h-3.5 w-3.5 text-[#166534]" />
+                        <div className="flex items-center gap-2 text-[14px] font-extrabold text-slate-950 mb-3">
+                          <AcademicCapIcon className="h-5 w-5 text-[#166534]" />
                           <span>Program Studi</span>
                         </div>
 
                         {/* List Program Studi dengan Bullet Point Hijau */}
-                        <ul className="space-y-1.5">
+                        <ul className="space-y-2.5">
                           {faculty.prodis.map((prodi) => {
                             const href = prodi.primaryHostname ? `https://${prodi.primaryHostname}/` : null;
                             return (
-                              <li key={prodi.id} className="flex items-start gap-1.5 text-[11px] text-slate-700">
-                                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />
+                              <li key={prodi.id} className="flex items-start gap-2 text-[14px] leading-snug text-slate-900">
+                                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-700" />
                                 {href ? (
                                   <a
                                     href={href}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="font-medium text-slate-800 hover:text-emerald-700 hover:underline transition-colors"
+                                    className="font-semibold text-slate-950 hover:text-[#166534] hover:underline transition-colors"
                                     title={`Buka portal ${prodi.name}`}
                                   >
-                                    {prodi.name} <span className="font-semibold text-slate-500">({prodi.degree})</span>
+                                    {prodi.name}{' '}
+                                    <span className="font-bold text-slate-700">({prodi.degree})</span>
                                   </a>
                                 ) : (
-                                  <span className="font-medium text-slate-600">
+                                  <span className="font-semibold text-slate-800">
                                     {prodi.name} ({prodi.degree})
                                   </span>
                                 )}
@@ -701,13 +710,13 @@ export const MainLandingPage: React.FC = () => {
                       </div>
 
                       {/* Tombol Aksi di Bawah: "Lihat Detail Fakultas" */}
-                      <div className="mt-4 pt-2.5 border-t border-slate-100">
+                      <div className="mt-5 pt-3 border-t border-slate-200/80">
                         <Link
                           to={detailHref}
-                          className="inline-flex w-full items-center justify-between rounded-lg bg-emerald-50/80 px-3 py-1.5 text-[11px] font-bold text-emerald-800 transition-all hover:bg-emerald-100/90 group-hover:bg-[#166534] group-hover:text-white"
+                          className="inline-flex min-h-[44px] w-full items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[14px] font-extrabold text-emerald-950 transition-all hover:bg-emerald-100 group-hover:border-[#166534] group-hover:bg-[#166534] group-hover:text-white"
                         >
                           <span>Lihat Detail Fakultas</span>
-                          <ArrowRightIcon className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                          <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Link>
                       </div>
                     </div>
@@ -720,17 +729,17 @@ export const MainLandingPage: React.FC = () => {
       </section>
 
       {/* 3. Berita terbaru dari seluruh program studi */}
-      <section className="mx-auto max-w-7xl px-4 pt-16 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <section className="mx-auto max-w-7xl px-4 pt-20 sm:px-6">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
           <Reveal direction="up" delayMs={50}>
             <div>
-              <p className="mb-1 text-xs font-bold uppercase tracking-wider text-emerald-800">
+              <p className="mb-1.5 text-[13px] font-extrabold uppercase tracking-widest text-[#166534]">
                 KABAR KAMPUS
               </p>
-              <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
+              <h2 className="font-display text-3xl font-extrabold text-slate-950 sm:text-4xl">
                 Berita Terbaru Program Studi
               </h2>
-              <p className="mt-2 max-w-2xl text-xs text-slate-500 sm:text-sm">
+              <p className="mt-2 max-w-2xl text-[16px] text-slate-800 font-medium">
                 Kegiatan, prestasi, dan pengumuman terbaru yang dikirim dari website setiap program
                 studi.
               </p>
@@ -739,10 +748,10 @@ export const MainLandingPage: React.FC = () => {
           <Reveal direction="left" delayMs={150}>
             <Link
               to="/berita"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition-colors hover:border-emerald-600 hover:text-emerald-800"
+              className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-5 text-[15px] font-extrabold text-slate-900 transition-colors hover:border-[#166534] hover:text-[#166534]"
             >
               Lihat Selengkapnya
-              <ArrowRightIcon className="h-4 w-4" />
+              <ArrowRightIcon className="h-5 w-5" />
             </Link>
           </Reveal>
         </div>
@@ -761,9 +770,9 @@ export const MainLandingPage: React.FC = () => {
 
         {newsQuery.isSuccess && news.length === 0 && (
           <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-            <NewspaperIcon className="mx-auto h-8 w-8 text-slate-300" />
-            <p className="mt-3 text-sm font-bold text-slate-700">Belum ada berita terbit</p>
-            <p className="mt-1 text-xs text-slate-500">
+            <NewspaperIcon className="mx-auto h-10 w-10 text-slate-400" />
+            <p className="mt-3 text-base font-bold text-slate-900">Belum ada berita terbit</p>
+            <p className="mt-1 text-[15px] text-slate-700">
               Berita yang dipublikasikan dari website prodi akan tampil di sini.
             </p>
           </div>
@@ -771,7 +780,7 @@ export const MainLandingPage: React.FC = () => {
 
         {newsQuery.isSuccess && news.length > 0 && (
           <>
-            <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {news.map((item, idx) => {
                 const detailHref = item.url;
                 const Card: React.ElementType = detailHref ? 'a' : 'div';
@@ -789,7 +798,7 @@ export const MainLandingPage: React.FC = () => {
                   <Reveal key={item.id} direction="up" delayMs={delay} className="flex">
                     <Card
                       {...cardProps}
-                      className="group flex flex-1 min-h-[44px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:-translate-y-0.5 hover:border-emerald-600 hover:shadow-lg"
+                      className="group flex flex-1 min-h-[48px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs transition-all hover:-translate-y-1 hover:border-[#166534] hover:shadow-lg"
                     >
                       <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-100">
                         {item.thumbnailUrl ? (
@@ -801,37 +810,37 @@ export const MainLandingPage: React.FC = () => {
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100">
-                            <NewspaperIcon className="h-10 w-10 text-emerald-700/30" />
+                            <NewspaperIcon className="h-12 w-12 text-emerald-700/40" />
                           </div>
                         )}
 
-                        <span className="absolute left-3 top-3 rounded-full bg-emerald-700 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-sm">
+                        <span className="absolute left-3.5 top-3.5 rounded-lg bg-[#166534] px-3 py-1 text-[12px] font-extrabold uppercase tracking-wide text-white shadow-md">
                           {item.studyProgramCode}
                         </span>
                       </div>
 
-                      <div className="flex flex-1 flex-col p-5">
-                        <p className="text-[11px] font-bold text-emerald-800">
+                      <div className="flex flex-1 flex-col p-6">
+                        <p className="text-[13px] font-extrabold text-[#166534]">
                           {item.studyProgramName}
                         </p>
 
-                        <h3 className="mt-1.5 line-clamp-2 text-sm font-bold leading-snug text-slate-900 transition-colors group-hover:text-emerald-800">
+                        <h3 className="mt-2 line-clamp-2 text-[18px] font-extrabold leading-snug text-slate-950 transition-colors group-hover:text-[#166534]">
                           {item.title}
                         </h3>
 
                         {item.excerpt && (
-                          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500">
+                          <p className="mt-2.5 line-clamp-3 text-[15px] leading-relaxed text-slate-800">
                             {item.excerpt}
                           </p>
                         )}
 
-                        <div className="mt-auto flex items-center gap-3 pt-4 text-[11px] font-medium text-slate-400">
-                          <span className="inline-flex items-center gap-1">
-                            <CalendarDaysIcon className="h-3.5 w-3.5" />
+                        <div className="mt-auto flex items-center gap-4 pt-5 border-t border-slate-100 text-[13px] font-semibold text-slate-700">
+                          <span className="inline-flex items-center gap-1.5">
+                            <CalendarDaysIcon className="h-4 w-4 text-emerald-700" />
                             {formatTanggalIndonesia(item.publishedAt)}
                           </span>
-                          <span className="inline-flex items-center gap-1">
-                            <EyeIcon className="h-3.5 w-3.5" />
+                          <span className="inline-flex items-center gap-1.5">
+                            <EyeIcon className="h-4 w-4 text-emerald-700" />
                             {item.views.toLocaleString('id-ID')}
                           </span>
                         </div>
@@ -842,18 +851,13 @@ export const MainLandingPage: React.FC = () => {
               })}
             </div>
 
-            {/*
-              "Lihat selengkapnya" bukan pembuka detail berita — detail dibuka
-              dengan mengklik kartunya. Tautan ini membawa pengunjung ke berita
-              lainnya di halaman arsip portal.
-            */}
-            <div className="mt-8 flex justify-center">
+            <div className="mt-10 flex justify-center">
               <Link
                 to="/berita"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-emerald-700 px-6 text-sm font-bold text-white transition-colors hover:bg-emerald-800"
+                className="inline-flex min-h-[52px] items-center gap-2.5 rounded-xl bg-[#166534] px-8 text-[16px] font-extrabold text-white shadow-md transition-all hover:bg-[#124f28] hover:shadow-lg"
               >
-                Lihat Selengkapnya
-                <ArrowRightIcon className="h-4 w-4" />
+                Lihat Semua Berita
+                <ArrowRightIcon className="h-5 w-5" />
               </Link>
             </div>
           </>

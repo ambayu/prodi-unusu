@@ -351,19 +351,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         {!isCollapsedView && (
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-1">
-              <span className="truncate leading-snug text-slate-900 text-[14px] font-bold">
+              <span className="truncate leading-snug text-slate-950 text-[15px] font-bold">
                 {item.label}
               </span>
               {isSelected && (
-                <div className="w-1.5 h-1.5 rounded-full bg-[#1e3a8a] shrink-0" />
+                <div className="w-2 h-2 rounded-full bg-[#1e3a8a] shrink-0" />
               )}
             </div>
             {item.desc && (
-              /* slate-600, bukan slate-500: pada latar #F0F4FA dan #DBEAFE
-                 kontrasnya 6.87:1 dan 6.21:1 sehingga lolos WCAG AA. */
               <p
-                className={`text-[12px] font-normal leading-snug truncate mt-0.5 ${
-                  isSelected ? 'text-[#1e3a8a]' : 'text-slate-600'
+                className={`text-[13px] font-medium leading-snug truncate mt-0.5 ${
+                  isSelected ? 'text-[#1e3a8a]' : 'text-slate-700'
                 }`}
               >
                 {item.desc}
@@ -605,7 +603,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             type="button"
             onClick={() => setCollapsed(!collapsed)}
             title={collapsed ? 'Perluas Menu' : 'Perkecil Menu'}
-            className="hidden lg:flex w-full min-h-[44px] items-center justify-center gap-2 rounded-[10px] border border-[#CBD5E1] bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors text-[12px] font-bold shadow-2xs"
+            className="hidden lg:flex w-full min-h-[46px] items-center justify-center gap-2 rounded-[10px] border border-[#CBD5E1] bg-white text-slate-800 hover:bg-slate-100 hover:text-slate-950 transition-colors text-[13px] font-bold shadow-2xs"
           >
             {collapsed ? (
               <ChevronDoubleRightIcon className="w-4 h-4 text-[#1e3a8a]" />
@@ -668,19 +666,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             </button>
 
             {/* Breadcrumb Path */}
-            <div className="flex items-center gap-2 text-[13px] font-semibold overflow-hidden">
+            <div className="flex items-center gap-2 text-[14px] font-semibold overflow-hidden">
               <Link
                 to={menuScope === 'portal' ? '/admin/portal-utama' : '/admin'}
                 className="flex items-center gap-1.5 text-slate-700 hover:text-[#1e3a8a] transition-colors p-1 rounded-md"
                 title={menuScope === 'portal' ? 'Dashboard Portal' : 'Dashboard Prodi'}
               >
-                <HomeIcon className="w-[18px] h-[18px] text-slate-600" />
+                <HomeIcon className="w-5 h-5 text-slate-600" />
                 <span className="hidden sm:inline">
                   {menuScope === 'portal' ? 'Portal Utama' : 'Portal Admin'}
                 </span>
               </Link>
               <ChevronRightIcon className="w-4 h-4 text-slate-400 shrink-0" />
-              <span className="px-1 py-1 text-slate-900 font-bold truncate max-w-[180px] sm:max-w-[280px]">
+              <span className="px-1 py-1 text-slate-950 font-extrabold truncate max-w-[180px] sm:max-w-[320px]">
                 {title}
               </span>
             </div>
@@ -715,10 +713,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <AcademicCapIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" />
                   )}
                   <span className="min-w-0 hidden lg:block">
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 leading-none">
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 leading-none">
                       {menuScope === 'portal' ? 'Unit' : menuScope === 'faculty' ? 'Fakultas' : 'Prodi'}
                     </span>
-                    <span className="mt-1 block max-w-[190px] truncate text-[12px] font-bold text-slate-900 leading-none">
+                    <span className="mt-1 block max-w-[190px] truncate text-[13px] font-bold text-slate-950 leading-none">
                       {activeScopeLabel}
                     </span>
                   </span>
