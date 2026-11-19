@@ -159,6 +159,8 @@ export const curriculumApi = {
   courses: () => api.get<{ courses: CourseRow[] }>('/admin/courses'),
   createCurriculum: (data: { name: string; year: number; description?: string | null; isActive?: boolean }) =>
     api.post('/admin/curriculums', data),
+  cloneCurriculum: (id: number, data: { year: number; name?: string; isActive?: boolean }) =>
+    api.post<{ success: boolean; message: string; curriculum: Curriculum }>(`/admin/curriculums/${id}/clone`, data),
   updateCurriculum: (id: number, data: Record<string, unknown>) => api.put(`/admin/curriculums/${id}`, data),
   deleteCurriculum: (id: number) => api.delete(`/admin/curriculums/${id}`),
   createSemester: (data: { curriculumId: number; semesterNumber: number; title: string }) =>

@@ -10,6 +10,12 @@ export const createCurriculumSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+export const cloneCurriculumSchema = z.object({
+  year: z.number().int().min(1990).max(2100),
+  name: z.string().trim().min(3).max(200).optional(),
+  isActive: z.boolean().default(true),
+});
+
 export const updateCurriculumSchema = createCurriculumSchema.partial();
 
 export const createAcademicSemesterSchema = z.object({

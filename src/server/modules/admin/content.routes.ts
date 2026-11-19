@@ -10,6 +10,7 @@ import { fetchLecturersFromApiHub } from '../../services/lecturerIntegrationServ
 import {
   createAcademicSemesterSchema,
   createCurriculumSchema,
+  cloneCurriculumSchema,
   createSemesterSchema,
   createCourseSchema,
   createCourseMasterSchema,
@@ -274,6 +275,105 @@ router.delete(
     await prisma.curriculum.delete({ where: { id } });
     await recordAudit({ req, action: 'DELETE', module: 'CURRICULUM', targetType: 'curriculum', targetId: id });
     res.json({ success: true, message: 'Kurikulum berhasil dihapus.' });
+  }),
+);
+
+/** POST /api/v1/admin/curriculums/:id/clone: menyalin seluruh mata kuliah & RPS kurikulum ke tahun baru. */
+router.post(
+  '/curriculums/:id/clone',
+  requirePermission('curriculum.create'),
+  validate({ params: idParamSchema, body: cloneCurriculumSchema }),
+  asyncHandler(async (req, res) => {
+    const studyProgramId = scopedTenantId(req);
+    const { id } = getParams<{ id: number }>(req);
+    const body = getBody<{ year: number; name?: string; isActive?: boolean }>(req);
+
+    const source = await prisma.curriculum.findFirst({
+      where: { id, studyProgramId },
+      include: {
+        items: {
+          include: {
+            rpsDocuments: true,
+          },
+        },
+      },
+    });
+
+    if (!source) {
+      throw AppError.notFound('Kurikulum sumber tidak ditemukan pada program studi ini.');
+    }
+
+    const existingYear = await prisma.curriculum.findUnique({
+      where: { studyProgramId_year: { studyProgramId, year: body.year } },
+    });
+    if (existingYear) {
+      throw AppError.conflict(`Kurikulum untuk tahun ${body.year} sudah ada.`);
+    }
+
+    const newName = body.name?.trim() || `${source.name.replace(/\b\d{4}\b/g, '').trim()} ${body.year}`.trim();
+    const shouldBeActive = body.isActive ?? true;
+
+    const cloned = await prisma.$transaction(async (tx) => {
+      if (shouldBeActive) {
+        await tx.curriculum.updateMany({
+          where: { studyProgramId },
+          data: { isActive: false },
+        });
+      }
+
+      const createdCurriculum = await tx.curriculum.create({
+        data: {
+          studyProgramId,
+          name: newName,
+          year: body.year,
+          description: source.description,
+          isActive: shouldBeActive,
+        },
+      });
+
+      for (const item of source.items) {
+        const clonedItem = await tx.curriculumItem.create({
+          data: {
+            curriculumId: createdCurriculum.id,
+            courseId: item.courseId,
+            semesterNumber: item.semesterNumber,
+            credits: item.credits,
+            description: item.description,
+            lecturersData: item.lecturersData ?? undefined,
+            sortOrder: item.sortOrder,
+            academicSemesterId: item.academicSemesterId,
+          },
+        });
+
+        if (item.rpsDocuments && item.rpsDocuments.length > 0) {
+          await tx.curriculumRps.createMany({
+            data: item.rpsDocuments.map((rps) => ({
+              curriculumItemId: clonedItem.id,
+              title: rps.title,
+              fileUrl: rps.fileUrl,
+              revision: rps.revision,
+              isPublic: rps.isPublic,
+            })),
+          });
+        }
+      }
+
+      return createdCurriculum;
+    });
+
+    await recordAudit({
+      req,
+      action: 'CREATE',
+      module: 'CURRICULUM',
+      targetType: 'curriculum',
+      targetId: cloned.id,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Kurikulum berhasil disalin ke tahun ${body.year} (${source.items.length} mata kuliah).`,
+      curriculum: cloned,
+    });
   }),
 );
 

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  DocumentDuplicateIcon,
   DocumentTextIcon,
   ExclamationTriangleIcon,
   FunnelIcon,
@@ -13,6 +14,7 @@ import {
 import { AdminLayout } from '../../components/AdminLayout';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Field, FormModal } from '../../components/ui/FormModal';
 import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/RowActions';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
@@ -25,7 +27,7 @@ import {
   type CurriculumItem,
 } from '../../services/contentApi';
 import { useSiteStore } from '../../app/siteStore';
-import { toApiError } from '../../services/api';
+import { firstFieldError, toApiError } from '../../services/api';
 
 const SEMESTER_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8];
 
@@ -55,6 +57,15 @@ export const AdminCurriculum: React.FC = () => {
   const [semesterFilter, setSemesterFilter] = useState<number | 'all'>('all');
   const [curriculumFilter, setCurriculumFilter] = useState<string>('all');
   const [deleteTarget, setDeleteTarget] = useState<CurriculumItem | null>(null);
+
+  const [cloneModalOpen, setCloneModalOpen] = useState(false);
+  const [cloneDraft, setCloneDraft] = useState({
+    sourceId: 0,
+    year: new Date().getFullYear(),
+    name: '',
+    isActive: true,
+  });
+  const [cloneError, setCloneError] = useState<string | null>(null);
 
   const itemsQuery = useQuery({
     queryKey: ['admin', 'curriculum-items'],
@@ -149,6 +160,39 @@ export const AdminCurriculum: React.FC = () => {
     },
     onError: (error) => toast.error(toApiError(error).message),
   });
+
+  const cloneMutation = useMutation({
+    mutationFn: () =>
+      curriculumApi.cloneCurriculum(cloneDraft.sourceId, {
+        year: Number(cloneDraft.year),
+        name: cloneDraft.name.trim() || undefined,
+        isActive: cloneDraft.isActive,
+      }),
+    onSuccess: (res) => {
+      toast.success(res.data.message || 'Kurikulum berhasil disalin ke tahun baru.');
+      setCloneModalOpen(false);
+      invalidate();
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'lms-courses'] });
+    },
+    onError: (err) => {
+      const apiErr = toApiError(err);
+      setCloneError(firstFieldError(apiErr) ?? apiErr.message ?? 'Gagal menyalin kurikulum.');
+    },
+  });
+
+  const handleOpenClone = () => {
+    const active = curriculums.find((c) => c.isActive) ?? curriculums[0];
+    const source = active ?? curriculums[0];
+    const nextYear = source ? source.year + 2 : new Date().getFullYear();
+    setCloneDraft({
+      sourceId: source ? source.id : 0,
+      year: nextYear,
+      name: source ? `${source.name.replace(/\b\d{4}\b/g, '').trim()} ${nextYear}`.trim() : '',
+      isActive: true,
+    });
+    setCloneError(null);
+    setCloneModalOpen(true);
+  };
 
   const columns: Array<DataTableColumn<CurriculumItem>> = [
     {
@@ -289,10 +333,22 @@ export const AdminCurriculum: React.FC = () => {
       description={`${items.length} penawaran mata kuliah • ${totalCredits} SKS`}
       actions={
         has('curriculum.create') ? (
-          <Link to="/admin/kurikulum/baru" className="btn-primary">
-            <PlusIcon className="h-4 w-4" />
-            Tambah Kurikulum
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {curriculums.length > 0 ? (
+              <button
+                type="button"
+                onClick={handleOpenClone}
+                className="btn-secondary gap-1.5"
+              >
+                <DocumentDuplicateIcon className="h-4 w-4 text-[#1e3a8a]" />
+                Salin ke Tahun Baru
+              </button>
+            ) : null}
+            <Link to="/admin/kurikulum/baru" className="btn-primary">
+              <PlusIcon className="h-4 w-4" />
+              Tambah Kurikulum
+            </Link>
+          </div>
         ) : null
       }
     >
@@ -467,6 +523,103 @@ export const AdminCurriculum: React.FC = () => {
         }}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      <FormModal
+        open={cloneModalOpen}
+        title="Salin Kurikulum ke Tahun Baru"
+        busy={cloneMutation.isPending}
+        error={cloneError}
+        onClose={() => setCloneModalOpen(false)}
+        onSubmit={(e) => {
+          e.preventDefault();
+          setCloneError(null);
+          if (!cloneDraft.sourceId) {
+            setCloneError('Pilih kurikulum sumber yang ingin disalin.');
+            return;
+          }
+          if (!cloneDraft.year || cloneDraft.year < 1990 || cloneDraft.year > 2100) {
+            setCloneError('Tahun kurikulum baru harus antara 1990 s/d 2100.');
+            return;
+          }
+          cloneMutation.mutate();
+        }}
+      >
+        <p className="text-xs text-slate-600 leading-relaxed mb-4">
+          Menyalin seluruh struktur mata kuliah, pembagian semester 1–8, bobot SKS, dosen pengampu, dan berkas RPS dari kurikulum sumber ke tahun kurikulum baru secara otomatis.
+        </p>
+
+        <Field label="Kurikulum Sumber" htmlFor="clone-source" required hint="Kurikulum yang datanya akan disalin.">
+          <select
+            id="clone-source"
+            className="field-input cursor-pointer"
+            value={String(cloneDraft.sourceId)}
+            onChange={(e) => {
+              const srcId = Number(e.target.value);
+              const found = curriculums.find((c) => c.id === srcId);
+              setCloneDraft((prev) => ({
+                ...prev,
+                sourceId: srcId,
+                name: found ? `${found.name.replace(/\b\d{4}\b/g, '').trim()} ${prev.year}`.trim() : prev.name,
+              }));
+            }}
+          >
+            {curriculums.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.year}) {c.isActive ? '— Aktif' : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Tahun Kurikulum Baru" htmlFor="clone-year" required hint="Contoh: 2026">
+          <input
+            id="clone-year"
+            type="number"
+            min={1990}
+            max={2100}
+            className="field-input"
+            value={cloneDraft.year}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setCloneDraft((prev) => {
+                const found = curriculums.find((c) => c.id === prev.sourceId);
+                return {
+                  ...prev,
+                  year: val,
+                  name: found ? `${found.name.replace(/\b\d{4}\b/g, '').trim()} ${val}`.trim() : prev.name,
+                };
+              });
+            }}
+            required
+          />
+        </Field>
+
+        <Field label="Nama Kurikulum Baru" htmlFor="clone-name" hint="Dapat disesuaikan jika ingin nama khusus.">
+          <input
+            id="clone-name"
+            type="text"
+            className="field-input"
+            placeholder="Contoh: Kurikulum Sistem Informasi 2026"
+            value={cloneDraft.name}
+            onChange={(e) => setCloneDraft({ ...cloneDraft, name: e.target.value })}
+          />
+        </Field>
+
+        <div className="pt-2">
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 select-none">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300 text-[#1e3a8a] focus:ring-[#1e3a8a]"
+              checked={cloneDraft.isActive}
+              onChange={(e) => setCloneDraft({ ...cloneDraft, isActive: e.target.checked })}
+            />
+            <span>Jadikan kurikulum baru ini sebagai Kurikulum Aktif</span>
+          </label>
+          <p className="mt-1 text-[11px] text-slate-500 pl-6">
+            Jika dicentang, kurikulum tahun ini akan langsung menjadi acuan aktif di jadwal LMS dan website.
+          </p>
+        </div>
+      </FormModal>
     </AdminLayout>
   );
 };
