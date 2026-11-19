@@ -94,11 +94,12 @@ Urutan menu terkait: `Mata Kuliah` (9.7) → `Kurikulum` (10) → `Dosen` (11).
 
 ### Halaman Kurikulum
 
-1. Tombol **"Tambah Mata Kuliah"** membuka `FormModal` lebar.
-2. Dua filter: pencarian kode/nama, dan pilihan kurikulum.
-3. **Tabel**: Kode, Nama Mata Kuliah, Kurikulum, SKS, Semester, Keterangan, Dosen
-   Pengampu, RPS, Aksi.
-4. Ringkasan "Menampilkan N dari M penawaran • X SKS".
+1. Tombol **"Tambah Kurikulum"** membuka formulir penawaran pada rute tersendiri.
+2. Panel filter: pencarian kode/nama dan kartu **Semua** serta Semester 1 sampai 8.
+3. Daftar dikelompokkan per semester. Setiap kelompok menampilkan jumlah mata kuliah,
+   total SKS, dan jumlah RPS.
+4. **Tabel setiap semester**: Kode, Nama Mata Kuliah, Kurikulum, SKS, Keterangan,
+   Dosen Pengampu, RPS, Aksi.
 
 Isi `FormModal` halaman Kurikulum:
 
