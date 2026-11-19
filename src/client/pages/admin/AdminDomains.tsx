@@ -6,6 +6,7 @@ import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
 import { DeleteRowButton, RowActions } from '../../components/ui/RowActions';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { organizationApi } from '../../services/adminApi';
@@ -272,19 +273,23 @@ export const AdminDomains: React.FC = () => {
         }}
       >
         <Field label="Program studi" htmlFor="domain-program" required>
-          <select
+          <SearchableSelect
             id="domain-program"
-            className="field-input"
-            required
-            value={draft.studyProgramId}
-            onChange={(event) => setDraft({ ...draft, studyProgramId: Number(event.target.value) })}
-          >
-            {(programsQuery.data ?? []).map((program) => (
-              <option key={program.id} value={program.id}>
-                {program.code} — {program.name}
-              </option>
-            ))}
-          </select>
+            value={draft.studyProgramId ? String(draft.studyProgramId) : ''}
+            onChange={(val) => {
+              const id = Number(val);
+              if (!Number.isNaN(id)) setDraft({ ...draft, studyProgramId: id });
+            }}
+            clearable={false}
+            placeholder="Pilih program studi..."
+            searchPlaceholder="Cari kode atau nama prodi..."
+            options={(programsQuery.data ?? []).map((program) => ({
+              value: String(program.id),
+              label: program.name,
+              meta: program.code,
+              keywords: `${program.code} ${program.name}`,
+            }))}
+          />
         </Field>
 
         <Field

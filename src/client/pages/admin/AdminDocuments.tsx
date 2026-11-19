@@ -16,6 +16,7 @@ import { DataTable } from '../../components/ui/DataTable';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
 import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/RowActions';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { DokumenPreviewModal } from '../../components/DokumenPreviewModal';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
@@ -496,32 +497,35 @@ export const AdminDocuments: React.FC = () => {
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
-        <select
-          className="field-select sm:w-56"
+        <SearchableSelect
+          className="sm:w-56"
           value={kategoriFilter}
-          onChange={(event) => setKategoriFilter(event.target.value)}
+          onChange={(val) => setKategoriFilter(val)}
+          clearable={false}
+          searchPlaceholder="Cari kategori..."
+          dropdownMinWidth={240}
           aria-label="Saring kategori dokumen"
-        >
-          <option value="">Semua kategori</option>
-          {daftarKategori.map((kategori) => (
-            <option key={kategori.kunci} value={kategori.kunci}>
-              {kategori.label} ({kategori.jumlah})
-            </option>
-          ))}
-        </select>
-        <select
-          className="field-select sm:w-48"
+          options={[
+            { value: '', label: 'Semua kategori' },
+            ...daftarKategori.map((kategori) => ({
+              value: kategori.kunci,
+              label: kategori.label,
+              meta: String(kategori.jumlah),
+            })),
+          ]}
+        />
+        <SearchableSelect
+          className="sm:w-48"
           value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
+          onChange={(val) => setStatusFilter(val)}
+          clearable={false}
+          searchPlaceholder="Cari status..."
           aria-label="Saring status dokumen"
-        >
-          <option value="">Semua status</option>
-          {daftarStatus.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: '', label: 'Semua status' },
+            ...daftarStatus.map((status) => ({ value: status, label: status })),
+          ]}
+        />
       </div>
 
       {pusatQuery.isError ? (
@@ -718,15 +722,17 @@ export const AdminDocuments: React.FC = () => {
             />
           </Field>
           <Field label="Status" htmlFor="dok-status" required>
-            <select
+            <SearchableSelect
               id="dok-status"
-              className="field-select"
               value={form.isPublic ? 'publish' : 'draft'}
-              onChange={(event) => setForm({ ...form, isPublic: event.target.value === 'publish' })}
-            >
-              <option value="publish">Publish — tampil di halaman publik</option>
-              <option value="draft">Draft — hanya terlihat pengelola</option>
-            </select>
+              onChange={(val) => setForm({ ...form, isPublic: val === 'publish' })}
+              clearable={false}
+              searchable={false}
+              options={[
+                { value: 'publish', label: 'Publish', description: 'Tampil di halaman publik' },
+                { value: 'draft', label: 'Draft', description: 'Hanya terlihat pengelola' },
+              ]}
+            />
           </Field>
         </div>
 

@@ -31,6 +31,20 @@
     @apply w-full rounded-[10px] border border-[#CBD5E1] bg-white px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100 transition-colors shadow-xs;
   }
 
+  .select2-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .select2-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .select2-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+  }
+  .select2-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
   .field-textarea {
     @apply field-input min-h-[96px] resize-y leading-relaxed;
   }

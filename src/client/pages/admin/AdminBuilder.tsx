@@ -27,6 +27,7 @@ import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { WidgetLibrary } from '../../components/builder/WidgetLibrary';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission, useTenant } from '../../hooks/useSite';
@@ -1966,12 +1967,14 @@ export const AdminBuilder: React.FC = () => {
           required
           hint="Konten bertanda (Konten & Akademik) otomatis mengambil data dari menu sidebar terkait; konten lain diisi langsung di sini."
         >
-          <select
+          <SearchableSelect
             id="section-widget-select"
-            className="field-input font-medium"
             value={sectionDraft.widgetCode}
-            onChange={(event) => {
-              const code = event.target.value;
+            clearable={false}
+            placeholder="Pilih jenis konten..."
+            searchPlaceholder="Cari jenis konten atau widget..."
+            onChange={(code) => {
+              if (!code) return;
               const found = (widgetsQuery.data ?? []).find((w) => w.code === code);
               setSectionDraft({
                 ...sectionDraft,
@@ -1982,17 +1985,18 @@ export const AdminBuilder: React.FC = () => {
                   : sectionDraft.title,
               });
             }}
-          >
-            {(widgetsQuery.data ?? []).map((widget) => {
+            options={(widgetsQuery.data ?? []).map((widget) => {
               const origin = getWidgetOriginMeta(widget.code);
               const prefix = origin.type === 'dynamic' ? 'Konten & Akademik' : 'Kustom / Media';
-              return (
-                <option key={widget.code} value={widget.code}>
-                  [{prefix}] — {getWidgetDisplayName(widget.code, widget.name)}
-                </option>
-              );
+              const displayName = getWidgetDisplayName(widget.code, widget.name);
+              return {
+                value: widget.code,
+                label: displayName,
+                description: prefix,
+                keywords: `${prefix} ${displayName} ${widget.code}`,
+              };
             })}
-          </select>
+          />
         </Field>
 
         {(() => {
@@ -2083,24 +2087,27 @@ export const AdminBuilder: React.FC = () => {
           required
           hint="Konten bertanda (Konten & Akademik) otomatis mengambil data dari menu sidebar terkait."
         >
-          <select
+          <SearchableSelect
             id="widget-code"
-            className="field-input"
             value={widgetDraft.widgetCode}
-            onChange={(event) =>
-              setWidgetDraft({ ...widgetDraft, widgetCode: event.target.value, variantCode: '' })
-            }
-          >
-            {(widgetsQuery.data ?? []).map((widget) => {
+            clearable={false}
+            placeholder="Pilih tipe widget..."
+            searchPlaceholder="Cari tipe widget..."
+            onChange={(code) => {
+              if (code) setWidgetDraft({ ...widgetDraft, widgetCode: code, variantCode: '' });
+            }}
+            options={(widgetsQuery.data ?? []).map((widget) => {
               const origin = getWidgetOriginMeta(widget.code);
               const prefix = origin.type === 'dynamic' ? 'Konten & Akademik' : 'Kustom / Media';
-              return (
-                <option key={widget.code} value={widget.code}>
-                  [{prefix}] — {getWidgetDisplayName(widget.code, widget.name)}
-                </option>
-              );
+              const displayName = getWidgetDisplayName(widget.code, widget.name);
+              return {
+                value: widget.code,
+                label: displayName,
+                description: prefix,
+                keywords: `${prefix} ${displayName} ${widget.code}`,
+              };
             })}
-          </select>
+          />
         </Field>
 
         {(() => {
@@ -2165,19 +2172,20 @@ export const AdminBuilder: React.FC = () => {
 
         {selectedWidgetDefinition?.variants.length ? (
           <Field label="Varian tampilan" htmlFor="widget-variant">
-            <select
+            <SearchableSelect
               id="widget-variant"
-              className="field-input"
               value={widgetDraft.variantCode}
-              onChange={(event) => setWidgetDraft({ ...widgetDraft, variantCode: event.target.value })}
-            >
-              <option value="">Varian bawaan</option>
-              {selectedWidgetDefinition.variants.map((variant) => (
-                <option key={variant.code} value={variant.code}>
-                  {variant.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setWidgetDraft({ ...widgetDraft, variantCode: val })}
+              clearable={false}
+              searchable={false}
+              options={[
+                { value: '', label: 'Varian bawaan' },
+                ...selectedWidgetDefinition.variants.map((variant) => ({
+                  value: variant.code,
+                  label: variant.name,
+                })),
+              ]}
+            />
           </Field>
         ) : null}
       </FormModal>

@@ -248,45 +248,52 @@ export const NotifierProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             aria-labelledby="notifier-title"
             aria-describedby="notifier-message"
             aria-busy={busy}
-            className="relative w-full max-w-md rounded-[16px] border border-[#CBD5E1] bg-white p-6 shadow-xl"
+            className="relative w-full max-w-md overflow-hidden rounded-[16px] border border-slate-200/95 bg-white shadow-[0_24px_60px_-15px_rgba(15,23,42,0.28)]"
           >
-            <div className="flex items-start gap-4">
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${block.badge}`}>
-                <Icon className={`h-6 w-6 ${busy ? 'animate-pulse' : ''}`} />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 select-none bg-cover bg-right-bottom opacity-45"
+              style={{ backgroundImage: "url('/assets/admin-card-texture.png')" }}
+            />
+            <div className="relative p-6">
+              <div className="flex items-start gap-4">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] ring-1 ring-inset ring-black/5 ${block.badge}`}>
+                  <Icon className={`h-6 w-6 ${busy ? 'animate-pulse' : ''}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 id="notifier-title" className="text-base font-bold tracking-tight text-slate-900">
+                    {active.title ?? block.title}
+                  </h2>
+                  <p
+                    id="notifier-message"
+                    className="mt-1.5 whitespace-pre-line break-words text-sm leading-relaxed text-slate-600"
+                  >
+                    {active.message}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 id="notifier-title" className="text-base font-bold text-slate-900">
-                  {active.title ?? block.title}
-                </h2>
-                <p
-                  id="notifier-message"
-                  className="mt-1.5 whitespace-pre-line break-words text-sm leading-relaxed text-slate-600"
-                >
-                  {active.message}
-                </p>
-              </div>
-            </div>
 
-            <div className="mt-6 flex justify-end gap-2">
-              {active.variant === 'confirm' && !busy ? (
-                <button
-                  type="button"
-                  onClick={() => answer(false)}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  {active.cancelLabel ?? 'Batal'}
-                </button>
-              ) : null}
-              {busy ? null : (
-                <button
-                  ref={confirmRef}
-                  type="button"
-                  onClick={() => answer(true)}
-                  className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors focus:outline-none focus:ring-2 ${confirmStyle}`}
-                >
-                  {active.confirmLabel ?? (active.variant === 'confirm' ? 'Ya, Lanjutkan' : 'Mengerti')}
-                </button>
-              )}
+              <div className="mt-6 flex justify-end gap-2">
+                {active.variant === 'confirm' && !busy ? (
+                  <button
+                    type="button"
+                    onClick={() => answer(false)}
+                    className="btn-secondary"
+                  >
+                    {active.cancelLabel ?? 'Batal'}
+                  </button>
+                ) : null}
+                {busy ? null : (
+                  <button
+                    ref={confirmRef}
+                    type="button"
+                    onClick={() => answer(true)}
+                    className={`inline-flex min-h-[44px] items-center justify-center rounded-[10px] px-4 py-2.5 text-[13px] font-bold text-white shadow-xs transition-colors focus:outline-none focus:ring-2 ${confirmStyle}`}
+                  >
+                    {active.confirmLabel ?? (active.variant === 'confirm' ? 'Ya, Lanjutkan' : 'Mengerti')}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

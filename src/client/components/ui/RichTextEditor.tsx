@@ -8,6 +8,7 @@ import {
 import { mediaApi } from '../../services/adminApi';
 import { toApiError } from '../../services/api';
 import { useToast } from './Toast';
+import { SearchableSelect } from './SearchableSelect';
 
 interface RichTextEditorProps {
   value: string;
@@ -91,22 +92,26 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       {/* Toolbar Atas */}
       <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50/80 px-3 py-2 text-slate-700">
         {/* Dropdown Format Heading */}
-        <select
-          onChange={(e) => {
-            exec('formatBlock', e.target.value);
-            e.target.value = '';
+        <SearchableSelect
+          value=""
+          onChange={(val) => {
+            if (val) exec('formatBlock', val);
           }}
-          defaultValue=""
-          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none hover:bg-slate-50 cursor-pointer"
-          title="Format Paragraf & Judul"
-        >
-          <option value="" disabled>Format...</option>
-          <option value="p">Paragraf Normal</option>
-          <option value="h2">Heading 2 (Sub-bab)</option>
-          <option value="h3">Heading 3 (Poin Penting)</option>
-          <option value="h4">Heading 4</option>
-          <option value="blockquote">Kutipan (Quote)</option>
-        </select>
+          placeholder="Format..."
+          clearable={false}
+          searchable={false}
+          size="sm"
+          dropdownMinWidth={190}
+          className="w-32"
+          aria-label="Format Paragraf dan Judul"
+          options={[
+            { value: 'p', label: 'Paragraf Normal' },
+            { value: 'h2', label: 'Heading 2 (Sub-bab)' },
+            { value: 'h3', label: 'Heading 3 (Poin Penting)' },
+            { value: 'h4', label: 'Heading 4' },
+            { value: 'blockquote', label: 'Kutipan (Quote)' },
+          ]}
+        />
 
         <span className="h-4 w-px bg-slate-300 mx-1" />
 

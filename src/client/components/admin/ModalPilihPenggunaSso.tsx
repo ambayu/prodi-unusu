@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { userApi, type KandidatOneUnusu } from '../../services/adminApi';
 import { DataTable, type DataTableColumn } from '../ui/DataTable';
+import { SearchableSelect } from '../ui/SearchableSelect';
 
 const LABEL_PERAN: Record<string, string> = {
   SUPERADMIN: 'Super Admin',
@@ -306,38 +307,44 @@ export const ModalPilihPenggunaSso: React.FC<ModalPilihPenggunaSsoProps> = ({
               />
             </div>
 
-            <select
+            <SearchableSelect
               value={filterPeran}
-              onChange={(e) => setFilterPeran(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
-            >
-              <option value="">Semua Peran SSO</option>
-              {opsiPeran.map((kode) => (
-                <option key={kode} value={kode}>{LABEL_PERAN[kode] ?? kode}</option>
-              ))}
-            </select>
+              onChange={(val) => setFilterPeran(val)}
+              clearable={false}
+              size="sm"
+              searchPlaceholder="Cari peran SSO..."
+              options={[
+                { value: '', label: 'Semua Peran SSO' },
+                ...opsiPeran.map((kode) => ({ value: kode, label: LABEL_PERAN[kode] ?? kode })),
+              ]}
+              aria-label="Filter peran SSO"
+            />
 
-            <select
+            <SearchableSelect
               value={filterFakultas}
-              onChange={(e) => setFilterFakultas(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
-            >
-              <option value="">Semua Fakultas</option>
-              {opsiFakultas.map((f) => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
+              onChange={(val) => setFilterFakultas(val)}
+              clearable={false}
+              size="sm"
+              searchPlaceholder="Cari fakultas..."
+              options={[
+                { value: '', label: 'Semua Fakultas' },
+                ...opsiFakultas.map((f) => ({ value: f, label: f })),
+              ]}
+              aria-label="Filter fakultas"
+            />
 
-            <select
+            <SearchableSelect
               value={filterProdi}
-              onChange={(e) => setFilterProdi(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
-            >
-              <option value="">Semua Program Studi</option>
-              {opsiProdi.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+              onChange={(val) => setFilterProdi(val)}
+              clearable={false}
+              size="sm"
+              searchPlaceholder="Cari program studi..."
+              options={[
+                { value: '', label: 'Semua Program Studi' },
+                ...opsiProdi.map((p) => ({ value: p, label: p })),
+              ]}
+              aria-label="Filter program studi"
+            />
           </div>
 
           {galat && (

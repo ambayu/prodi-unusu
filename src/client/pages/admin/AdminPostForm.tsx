@@ -6,6 +6,7 @@ import { AdminLayout } from '../../components/AdminLayout';
 import { FormPageTemplate, type FormSection } from '../../components/ui/FormPageTemplate';
 import { Field } from '../../components/ui/FormModal';
 import { RichTextEditor } from '../../components/ui/RichTextEditor';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { LoadingState, ErrorState } from '../../components/ui/States';
 import { useToast } from '../../components/ui/Toast';
 import { postApi } from '../../services/contentApi';
@@ -191,16 +192,18 @@ export const AdminPostForm: React.FC = () => {
             </div>
           </Field>
           <Field label="Status Publikasi" htmlFor="post-status">
-            <select
+            <SearchableSelect
               id="post-status"
-              className="field-select"
               value={draft.status}
-              onChange={(event) => setDraft({ ...draft, status: event.target.value })}
-            >
-              <option value="draft">Draft (disimpan)</option>
-              <option value="published">Terbit (dapat dibaca publik)</option>
-              <option value="archived">Arsip</option>
-            </select>
+              onChange={(val) => setDraft({ ...draft, status: val || 'draft' })}
+              clearable={false}
+              searchable={false}
+              options={[
+                { value: 'draft', label: 'Draft', description: 'Disimpan sebagai draf internal' },
+                { value: 'published', label: 'Terbit', description: 'Dapat dibaca publik' },
+                { value: 'archived', label: 'Arsip', description: 'Disembunyikan dari halaman publik' },
+              ]}
+            />
           </Field>
         </div>
       ),

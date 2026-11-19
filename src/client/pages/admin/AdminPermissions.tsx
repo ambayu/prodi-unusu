@@ -6,6 +6,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { rbacApi, type RolePermission } from '../../services/rbacApi';
 import { toApiError } from '../../services/api';
 
@@ -98,18 +99,24 @@ export const AdminPermissions: React.FC = () => {
 
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs font-semibold text-slate-500 hidden sm:inline">Modul:</span>
-            <select
+            <SearchableSelect
               value={selectedModule}
-              onChange={(e) => setSelectedModule(e.target.value)}
-              className="rounded-[8px] border border-[#CBD5E1] bg-white px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#1e3a8a]"
-            >
-              <option value="ALL">Semua Modul ({allPermissions.length})</option>
-              {modules.map((m) => (
-                <option key={m.module} value={m.module}>
-                  {m.module} ({m.count})
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedModule(val || 'ALL')}
+              clearable={false}
+              size="sm"
+              className="w-52"
+              dropdownMinWidth={220}
+              searchPlaceholder="Cari modul izin..."
+              aria-label="Saring modul izin"
+              options={[
+                { value: 'ALL', label: 'Semua Modul', meta: String(allPermissions.length) },
+                ...modules.map((m) => ({
+                  value: m.module,
+                  label: m.module,
+                  meta: String(m.count),
+                })),
+              ]}
+            />
           </div>
         </div>
 

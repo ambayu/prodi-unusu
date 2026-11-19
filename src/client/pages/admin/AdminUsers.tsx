@@ -14,6 +14,7 @@ import { ModalPilihPenggunaSso } from '../../components/admin/ModalPilihPengguna
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { useSiteStore } from '../../app/siteStore';
@@ -567,22 +568,30 @@ export const AdminUsers: React.FC = () => {
           required
           hint="Pilih peran administrasi yang sesuai untuk pengguna."
         >
-          <select
+          <SearchableSelect
             id="role-code"
-            className="field-input"
             value={roleDraft.roleCode}
-            onChange={(event) => setRoleDraft({ ...roleDraft, roleCode: event.target.value })}
-          >
-            {ASSIGNABLE_ROLE_CODES.map((code) => (
-              <option key={code} value={code}>
-                {code === 'SUPER_ADMIN'
-                  ? 'Admin Utama (seluruh program studi)'
+            onChange={(val) => {
+              if (val) setRoleDraft({ ...roleDraft, roleCode: val });
+            }}
+            clearable={false}
+            searchable={false}
+            options={ASSIGNABLE_ROLE_CODES.map((code) => ({
+              value: code,
+              label:
+                code === 'SUPER_ADMIN'
+                  ? 'Admin Utama'
                   : code === 'ADMIN_FAKULTAS'
-                  ? 'Admin Fakultas (mengelola prodi di fakultasnya)'
-                  : 'Admin Prodi (satu program studi)'}
-              </option>
-            ))}
-          </select>
+                  ? 'Admin Fakultas'
+                  : 'Admin Prodi',
+              description:
+                code === 'SUPER_ADMIN'
+                  ? 'Mengelola seluruh program studi'
+                  : code === 'ADMIN_FAKULTAS'
+                  ? 'Mengelola prodi di fakultasnya'
+                  : 'Mengelola satu program studi',
+            }))}
+          />
         </Field>
 
         {roleDraft.roleCode === 'ADMIN_FAKULTAS' ? (
@@ -592,20 +601,19 @@ export const AdminUsers: React.FC = () => {
             required
             hint="Pengguna akan mengelola seluruh program studi di bawah fakultas ini."
           >
-            <select
+            <SearchableSelect
               id="role-faculty"
-              className="field-input"
-              required
               value={roleDraft.facultyId}
-              onChange={(event) => setRoleDraft({ ...roleDraft, facultyId: event.target.value })}
-            >
-              <option value="">— Pilih fakultas —</option>
-              {(facultiesQuery.data ?? []).map((fac) => (
-                <option key={fac.id} value={String(fac.id)}>
-                  {fac.name} ({fac.code})
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setRoleDraft({ ...roleDraft, facultyId: val })}
+              placeholder="Pilih fakultas..."
+              searchPlaceholder="Cari nama atau kode fakultas..."
+              options={(facultiesQuery.data ?? []).map((fac) => ({
+                value: String(fac.id),
+                label: fac.name,
+                meta: fac.code,
+                keywords: `${fac.name} ${fac.code}`,
+              }))}
+            />
           </Field>
         ) : null}
 
@@ -616,39 +624,38 @@ export const AdminUsers: React.FC = () => {
             required
             hint="Pengguna hanya dapat mengelola data program studi ini."
           >
-            <select
+            <SearchableSelect
               id="role-prodi"
-              className="field-input"
-              required
               value={roleDraft.studyProgramId}
-              onChange={(event) => setRoleDraft({ ...roleDraft, studyProgramId: event.target.value })}
-            >
-              <option value="">— Pilih program studi —</option>
-              {(prodisQuery.data ?? []).map((prodi) => (
-                <option key={prodi.id} value={String(prodi.id)}>
-                  {prodi.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setRoleDraft({ ...roleDraft, studyProgramId: val })}
+              placeholder="Pilih program studi..."
+              searchPlaceholder="Cari program studi..."
+              options={(prodisQuery.data ?? []).map((prodi) => ({
+                value: String(prodi.id),
+                label: prodi.name,
+              }))}
+            />
           </Field>
         ) : null}
 
         {/* Grup izin hanya relevan bila kelak Editor diaktifkan kembali. */}
         {roleDraft.roleCode === 'EDITOR' ? (
           <Field label="Grup izin editor" htmlFor="role-group">
-            <select
+            <SearchableSelect
               id="role-group"
-              className="field-input"
               value={roleDraft.permissionGroupCode}
-              onChange={(event) => setRoleDraft({ ...roleDraft, permissionGroupCode: event.target.value })}
-            >
-              <option value="">Tanpa grup</option>
-              {editorGroups.map((group) => (
-                <option key={group.code} value={group.code}>
-                  {group.name} ({group.items.length} izin)
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setRoleDraft({ ...roleDraft, permissionGroupCode: val })}
+              clearable={false}
+              searchPlaceholder="Cari grup izin..."
+              options={[
+                { value: '', label: 'Tanpa grup' },
+                ...editorGroups.map((group) => ({
+                  value: group.code,
+                  label: group.name,
+                  meta: `${group.items.length} izin`,
+                })),
+              ]}
+            />
           </Field>
         ) : null}
 

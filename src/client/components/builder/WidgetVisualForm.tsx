@@ -10,6 +10,7 @@ import { mediaApi } from '../../services/adminApi';
 import { toApiError } from '../../services/api';
 import { useToast } from '../ui/Toast';
 import { RichTextEditor } from '../ui/RichTextEditor';
+import { SearchableSelect } from '../ui/SearchableSelect';
 
 /** Format berkas gambar yang diterima seluruh unggahan gambar di panel admin. */
 const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/svg+xml';
@@ -62,14 +63,16 @@ export const WidgetVisualForm: React.FC<WidgetVisualFormProps> = ({
           </div>
           <div>
             <label className="field-label">Posisi Gambar</label>
-            <select
-              className="field-input"
+            <SearchableSelect
               value={config.alignment || 'left'}
-              onChange={(e) => onChange({ ...config, alignment: e.target.value })}
-            >
-              <option value="left">Kiri (Gambar di Kiri, Teks di Kanan)</option>
-              <option value="right">Kanan (Teks di Kiri, Gambar di Kanan)</option>
-            </select>
+              onChange={(val) => onChange({ ...config, alignment: val || 'left' })}
+              clearable={false}
+              searchable={false}
+              options={[
+                { value: 'left', label: 'Kiri (Gambar di Kiri, Teks di Kanan)' },
+                { value: 'right', label: 'Kanan (Teks di Kiri, Gambar di Kanan)' },
+              ]}
+            />
           </div>
         </div>
 
@@ -175,27 +178,31 @@ export const WidgetVisualForm: React.FC<WidgetVisualFormProps> = ({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="field-label">Durasi Putar Otomatis (Autoplay)</label>
-            <select
-              className="field-input"
-              value={config.autoplayMs || 6000}
-              onChange={(e) => onChange({ ...config, autoplayMs: Number(e.target.value) })}
-            >
-              <option value={3000}>3 Detik (Cepat)</option>
-              <option value={5000}>5 Detik (Sedang)</option>
-              <option value={6000}>6 Detik (Rekomendasi Standar)</option>
-              <option value={8000}>8 Detik (Lambat)</option>
-            </select>
+            <SearchableSelect
+              value={String(config.autoplayMs || 6000)}
+              onChange={(val) => onChange({ ...config, autoplayMs: Number(val) || 6000 })}
+              clearable={false}
+              searchable={false}
+              options={[
+                { value: '3000', label: '3 Detik (Cepat)' },
+                { value: '5000', label: '5 Detik (Sedang)' },
+                { value: '6000', label: '6 Detik (Rekomendasi Standar)' },
+                { value: '8000', label: '8 Detik (Lambat)' },
+              ]}
+            />
           </div>
           <div>
             <label className="field-label">Indikator Titik (Dots)</label>
-            <select
-              className="field-input"
+            <SearchableSelect
               value={config.showDots === false ? 'false' : 'true'}
-              onChange={(e) => onChange({ ...config, showDots: e.target.value === 'true' })}
-            >
-              <option value="true">Tampilkan Titik Navigasi</option>
-              <option value="false">Sembunyikan</option>
-            </select>
+              onChange={(val) => onChange({ ...config, showDots: val === 'true' })}
+              clearable={false}
+              searchable={false}
+              options={[
+                { value: 'true', label: 'Tampilkan Titik Navigasi' },
+                { value: 'false', label: 'Sembunyikan' },
+              ]}
+            />
           </div>
         </div>
 
@@ -391,14 +398,16 @@ export const WidgetVisualForm: React.FC<WidgetVisualFormProps> = ({
       <div className="space-y-4">
         <div>
           <label className="field-label">Tata Letak (Layout)</label>
-          <select
-            className="field-input"
+          <SearchableSelect
             value={config.layout || 'four-columns'}
-            onChange={(e) => onChange({ ...config, layout: e.target.value })}
-          >
-            <option value="four-columns">Grid 4 Kolom Kotak</option>
-            <option value="strip">Pita Horizontal (Strip Memanjang)</option>
-          </select>
+            onChange={(val) => onChange({ ...config, layout: val || 'four-columns' })}
+            clearable={false}
+            searchable={false}
+            options={[
+              { value: 'four-columns', label: 'Grid 4 Kolom Kotak' },
+              { value: 'strip', label: 'Pita Horizontal (Strip Memanjang)' },
+            ]}
+          />
         </div>
 
         <div>
@@ -436,19 +445,24 @@ export const WidgetVisualForm: React.FC<WidgetVisualFormProps> = ({
                     onChange={(e) => updateItem(idx, { value: Number(e.target.value) })}
                   />
                 </div>
-                <div className="w-32">
+                <div className="w-36">
                   <span className="text-[10px] font-semibold text-slate-500">Ikon</span>
-                  <select
-                    className="field-input mt-0.5 text-xs"
+                  <SearchableSelect
                     value={item.icon || 'academic-cap'}
-                    onChange={(e) => updateItem(idx, { icon: e.target.value })}
-                  >
-                    <option value="academic-cap">Topi Sarjana</option>
-                    <option value="users">Grup Orang</option>
-                    <option value="building-office">Gedung / Lab</option>
-                    <option value="trophy">Piala / Prestasi</option>
-                    <option value="book-open">Buku / Jurnal</option>
-                  </select>
+                    onChange={(val) => updateItem(idx, { icon: val || 'academic-cap' })}
+                    clearable={false}
+                    searchable={false}
+                    size="sm"
+                    className="mt-0.5"
+                    dropdownMinWidth={170}
+                    options={[
+                      { value: 'academic-cap', label: 'Topi Sarjana' },
+                      { value: 'users', label: 'Grup Orang' },
+                      { value: 'building-office', label: 'Gedung / Lab' },
+                      { value: 'trophy', label: 'Piala / Prestasi' },
+                      { value: 'book-open', label: 'Buku / Jurnal' },
+                    ]}
+                  />
                 </div>
                 <button
                   type="button"

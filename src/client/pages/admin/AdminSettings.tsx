@@ -4,6 +4,7 @@ import { ArrowUpTrayIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outli
 import { AdminLayout } from '../../components/AdminLayout';
 import { ErrorState, LoadingState } from '../../components/ui/States';
 import { Field } from '../../components/ui/FormModal';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { mediaApi, settingsApi, type Theme, type WebsiteSetting } from '../../services/adminApi';
@@ -360,43 +361,49 @@ export const AdminSettings: React.FC = () => {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <Field label="Sudut lengkung" htmlFor="theme-radius">
-                  <select
+                  <SearchableSelect
                     id="theme-radius"
-                    className="field-input"
                     value={theme.radius ?? '0.75rem'}
-                    onChange={(event) => setTheme({ ...theme, radius: event.target.value })}
-                  >
-                    <option value="0">Tanpa lengkung</option>
-                    <option value="0.25rem">Kecil</option>
-                    <option value="0.5rem">Sedang</option>
-                    <option value="0.75rem">Besar</option>
-                    <option value="1rem">Sangat besar</option>
-                  </select>
+                    onChange={(val) => setTheme({ ...theme, radius: val || '0.75rem' })}
+                    clearable={false}
+                    searchable={false}
+                    options={[
+                      { value: '0', label: 'Tanpa lengkung' },
+                      { value: '0.25rem', label: 'Kecil' },
+                      { value: '0.5rem', label: 'Sedang' },
+                      { value: '0.75rem', label: 'Besar' },
+                      { value: '1rem', label: 'Sangat besar' },
+                    ]}
+                  />
                 </Field>
                 <Field label="Gaya tombol" htmlFor="theme-button">
-                  <select
+                  <SearchableSelect
                     id="theme-button"
-                    className="field-input"
                     value={theme.buttonStyle ?? 'solid'}
-                    onChange={(event) => setTheme({ ...theme, buttonStyle: event.target.value })}
-                  >
-                    <option value="solid">Solid</option>
-                    <option value="outline">Outline</option>
-                    <option value="soft">Soft</option>
-                  </select>
+                    onChange={(val) => setTheme({ ...theme, buttonStyle: val || 'solid' })}
+                    clearable={false}
+                    searchable={false}
+                    options={[
+                      { value: 'solid', label: 'Solid' },
+                      { value: 'outline', label: 'Outline' },
+                      { value: 'soft', label: 'Soft' },
+                    ]}
+                  />
                 </Field>
                 <Field label="Lebar konten" htmlFor="theme-width">
-                  <select
+                  <SearchableSelect
                     id="theme-width"
-                    className="field-input"
                     value={theme.containerWidth ?? '1280px'}
-                    onChange={(event) => setTheme({ ...theme, containerWidth: event.target.value })}
-                  >
-                    <option value="1140px">1140px</option>
-                    <option value="1200px">1200px</option>
-                    <option value="1280px">1280px</option>
-                    <option value="1440px">1440px</option>
-                  </select>
+                    onChange={(val) => setTheme({ ...theme, containerWidth: val || '1280px' })}
+                    clearable={false}
+                    searchable={false}
+                    options={[
+                      { value: '1140px', label: '1140px' },
+                      { value: '1200px', label: '1200px' },
+                      { value: '1280px', label: '1280px' },
+                      { value: '1440px', label: '1440px' },
+                    ]}
+                  />
                 </Field>
               </div>
 

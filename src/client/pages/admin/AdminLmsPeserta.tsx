@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PlusIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, MagnifyingGlassIcon, TrashIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
+import { SearchableSelect, type SearchableOption } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { toApiError } from '../../services/api';
@@ -123,23 +124,29 @@ export const AdminLmsPeserta: React.FC = () => {
             <section className="card p-5">
               <label
                 htmlFor="lms-kelas"
-                className="block text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-500"
               >
-                Kelas
+                Pilih Kelas Perkuliahan
               </label>
-              <select
+              <SearchableSelect
                 id="lms-kelas"
-                className="field-input mt-1.5"
-                value={classroomId ?? ''}
-                onChange={(event) => setClassroomId(Number(event.target.value))}
-              >
-                {classrooms.map((kelas) => (
-                  <option key={kelas.id} value={kelas.id}>
-                    {kelas.curriculumItem.course.code} — {kelas.curriculumItem.course.name} · {kelas.group} ·{' '}
-                    {kelas._count.students} peserta
-                  </option>
-                ))}
-              </select>
+                value={classroomId ? String(classroomId) : ''}
+                onChange={(val) => {
+                  const nextId = Number(val);
+                  if (!Number.isNaN(nextId) && nextId > 0) setClassroomId(nextId);
+                }}
+                clearable={false}
+                placeholder="Pilih kelas..."
+                searchPlaceholder="Cari kode atau nama mata kuliah..."
+                icon={<AcademicCapIcon className="h-4 w-4" />}
+                options={classrooms.map((kelas) => ({
+                  value: String(kelas.id),
+                  label: `${kelas.curriculumItem.course.code} — ${kelas.curriculumItem.course.name}`,
+                  description: `Grup ${kelas.group}`,
+                  meta: `${kelas._count.students} mhs`,
+                  keywords: `${kelas.curriculumItem.course.code} ${kelas.curriculumItem.course.name} ${kelas.group}`,
+                }))}
+              />
             </section>
 
             {canEdit ? (

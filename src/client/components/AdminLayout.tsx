@@ -169,6 +169,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const [profileOpen, setProfileOpen] = useState(false);
   /** Dropdown pemilih unit/prodi di topbar kanan. */
   const [prodiOpen, setProdiOpen] = useState(false);
+  const [prodiSearch, setProdiSearch] = useState('');
   const [menu, setMenu] = useState<AdminMenuItem[]>(() => adminMenuApi.getCachedMenu(menuScope) ?? []);
   const [menuLoading, setMenuLoading] = useState(() => !adminMenuApi.getCachedMenu(menuScope));
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -654,7 +655,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         }`}
       >
         {/* Topbar Header (Tinggi 88px sesuai standar UNUSU) */}
-        <header className="sticky top-0 z-30 bg-white border-b border-[#CBD5E1] h-[88px] px-4 sm:px-6 lg:px-8 flex items-center justify-between shadow-2xs">
+        <header className="sticky top-0 z-30 flex h-[88px] items-center justify-between border-b border-slate-200/90 bg-white/95 px-4 shadow-[0_2px_10px_-6px_rgba(15,23,42,0.08)] backdrop-blur-md sm:px-6 lg:px-8">
           {/* Sisi Kiri: Toggle Mobile & Breadcrumb */}
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button
@@ -692,8 +693,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               <div className="relative hidden sm:block" ref={prodiDropdownRef}>
                 <button
                   type="button"
-                  onClick={() => setProdiOpen((prev) => !prev)}
-                  className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-left transition-colors hover:bg-slate-100 focus:outline-none min-h-[44px]"
+                  onClick={() => {
+                    setProdiOpen((prev) => {
+                      const next = !prev;
+                      if (!next) setProdiSearch('');
+                      return next;
+                    });
+                  }}
+                  className={`flex min-h-[44px] items-center gap-2 rounded-[11px] border px-2.5 py-1.5 text-left transition-all focus:outline-none ${
+                    prodiOpen
+                      ? 'border-[#1e3a8a] bg-blue-50/50 ring-2 ring-blue-100'
+                      : 'border-slate-200/90 bg-slate-50/70 hover:border-slate-300 hover:bg-white'
+                  }`}
                   aria-expanded={prodiOpen}
                   aria-haspopup="true"
                   title="Ganti unit / program studi aktif"
@@ -711,121 +722,174 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                       {activeScopeLabel}
                     </span>
                   </span>
-                  <ChevronDownIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                  <ChevronDownIcon
+                    className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-150 ${
+                      prodiOpen ? 'rotate-180 text-[#1e3a8a]' : ''
+                    }`}
+                  />
                 </button>
 
-                {prodiOpen && (
-                  <div className="absolute right-0 mt-2 w-[320px] rounded-[14px] border border-[#CBD5E1] bg-white py-2 shadow-xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                    <p className="px-4 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                      Pilih Unit
-                    </p>
+                {prodiOpen && (() => {
+                  const keyword = prodiSearch.trim().toLowerCase();
+                  const cocokPortal = !keyword || 'portal utama universitas'.includes(keyword);
+                  const fakultasTersaring = availableFaculties
+                    .map((fakultas) => {
+                      const semuaProdi = availablePrograms.filter(
+                        (program) => program.faculty?.id === fakultas.id,
+                      );
+                      const fakultasCocok =
+                        !keyword ||
+                        fakultas.name.toLowerCase().includes(keyword) ||
+                        (fakultas.code ?? '').toLowerCase().includes(keyword);
+                      const prodiCocok = fakultasCocok
+                        ? semuaProdi
+                        : semuaProdi.filter(
+                            (p) =>
+                              p.name.toLowerCase().includes(keyword) ||
+                              p.code.toLowerCase().includes(keyword),
+                          );
+                      return { fakultas, prodiCocok, tampil: fakultasCocok || prodiCocok.length > 0 };
+                    })
+                    .filter((item) => item.tampil);
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        enterPortalScope();
-                        adminMenuApi.clearCache();
-                        setProdiOpen(false);
-                        navigate('/admin/portal-utama');
-                      }}
-                      className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px] transition-colors hover:bg-slate-100 ${
-                        menuScope === 'portal' ? 'bg-slate-50 font-bold text-[#1e3a8a]' : 'text-slate-700'
-                      }`}
-                    >
-                      <BuildingLibraryIcon className="h-4 w-4 shrink-0 text-slate-500" />
-                      <span className="min-w-0 flex-1 truncate">Portal Utama</span>
-                      {menuScope === 'portal' ? <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" /> : null}
-                    </button>
+                  const tanpaFakultas = availablePrograms.filter(
+                    (program) =>
+                      (!program.faculty?.id ||
+                        !availableFaculties.some((f) => f.id === program.faculty?.id)) &&
+                      (!keyword ||
+                        program.name.toLowerCase().includes(keyword) ||
+                        program.code.toLowerCase().includes(keyword)),
+                  );
 
-                    <div className="my-1 border-t border-[#CBD5E1]/70" />
+                  const adaHasil = cocokPortal || fakultasTersaring.length > 0 || tanpaFakultas.length > 0;
 
-                    <div className="max-h-[340px] overflow-y-auto">
-                      {/*
-                       * Program studi dikelompokkan per fakultas. Sejak scope
-                       * website fakultas tersedia, nama fakultas bukan lagi
-                       * sekadar label statis: ia menjadi tombol untuk masuk ke
-                       * panel fakultas tersebut, lalu program studinya
-                       * ditampilkan di bawahnya.
-                       */}
-                      {availableFaculties.map((fakultas) => {
-                        const programFakultas = availablePrograms.filter(
-                          (program) => program.faculty?.id === fakultas.id,
-                        );
-                        const fakultasAktif = activeFacultyId === fakultas.id;
-                        return (
-                          <div key={fakultas.id}>
+                  return (
+                    <div className="absolute right-0 z-50 mt-2 w-[340px] overflow-hidden rounded-[14px] border border-slate-200/95 bg-white shadow-[0_20px_50px_-15px_rgba(15,23,42,0.22)] ring-1 ring-slate-900/5 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="border-b border-slate-100 bg-slate-50/80 p-2.5">
+                        <div className="relative">
+                          <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="text"
+                            autoFocus
+                            value={prodiSearch}
+                            onChange={(e) => setProdiSearch(e.target.value)}
+                            placeholder="Cari fakultas atau program studi..."
+                            className="w-full rounded-[9px] border border-slate-200 bg-white py-1.5 pl-8 pr-7 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#1e3a8a] focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          />
+                          {prodiSearch ? (
+                            <button
+                              type="button"
+                              onClick={() => setProdiSearch('')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                              aria-label="Hapus kata kunci unit"
+                            >
+                              <XMarkIcon className="h-3.5 w-3.5" />
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="select2-scroll max-h-[340px] overflow-y-auto py-1.5">
+                        {!adaHasil ? (
+                          <p className="px-4 py-6 text-center text-xs text-slate-500">
+                            Tidak ditemukan unit yang cocok dengan &ldquo;{prodiSearch}&rdquo;.
+                          </p>
+                        ) : null}
+
+                        {cocokPortal ? (
+                          <>
+                            <p className="px-4 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                              Portal Universitas
+                            </p>
                             <button
                               type="button"
                               onClick={() => {
+                                enterPortalScope();
                                 adminMenuApi.clearCache();
                                 setProdiOpen(false);
-                                void setActiveFaculty(fakultas.id);
-                                navigate('/admin');
+                                setProdiSearch('');
+                                navigate('/admin/portal-utama');
                               }}
-                              title={`Kelola website ${fakultas.name}`}
-                              className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-[12px] font-bold uppercase tracking-wide transition-colors hover:bg-blue-50 ${
-                                fakultasAktif ? 'bg-slate-50 text-[#1e3a8a]' : 'text-slate-600'
+                              className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-[13px] transition-colors hover:bg-slate-100 ${
+                                menuScope === 'portal' ? 'bg-blue-50/70 font-bold text-[#1e3a8a]' : 'text-slate-700'
                               }`}
                             >
-                              <BuildingOfficeIcon
-                                className={`h-4 w-4 shrink-0 ${
-                                  fakultasAktif ? 'text-[#1e3a8a]' : 'text-slate-400'
-                                }`}
-                              />
-                              <span className="min-w-0 flex-1 truncate">{fakultas.name}</span>
-                              <span className="shrink-0 text-[11px] font-semibold normal-case tracking-normal text-slate-500">
-                                {programFakultas.length} prodi
-                              </span>
-                              {fakultasAktif ? (
-                                <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" />
-                              ) : null}
+                              <BuildingLibraryIcon className="h-4 w-4 shrink-0 text-slate-500" />
+                              <span className="min-w-0 flex-1 truncate">Portal Utama</span>
+                              {menuScope === 'portal' ? <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" /> : null}
                             </button>
+                            {(fakultasTersaring.length > 0 || tanpaFakultas.length > 0) ? (
+                              <div className="my-1.5 border-t border-slate-100" />
+                            ) : null}
+                          </>
+                        ) : null}
 
-                            {programFakultas.map((program) => {
-                              const active = activeTenantId === program.id && menuScope === 'prodi';
-                              return (
-                                <button
-                                  key={program.id}
-                                  type="button"
-                                  onClick={() => {
-                                    adminMenuApi.clearCache();
-                                    setProdiOpen(false);
-                                    void setActiveTenant(program.id);
-                                  }}
-                                  className={`flex w-full items-center gap-2.5 py-2 pl-9 pr-4 text-left text-[13px] transition-colors hover:bg-slate-100 ${
-                                    active ? 'bg-slate-50 font-bold text-[#1e3a8a]' : 'text-slate-700'
+                        {fakultasTersaring.map(({ fakultas, prodiCocok }) => {
+                          const fakultasAktif = activeFacultyId === fakultas.id;
+                          return (
+                            <div key={fakultas.id}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  adminMenuApi.clearCache();
+                                  setProdiOpen(false);
+                                  setProdiSearch('');
+                                  void setActiveFaculty(fakultas.id);
+                                  navigate('/admin');
+                                }}
+                                title={`Kelola website ${fakultas.name}`}
+                                className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-[12px] font-bold uppercase tracking-wide transition-colors hover:bg-blue-50 ${
+                                  fakultasAktif ? 'bg-blue-50/70 text-[#1e3a8a]' : 'text-slate-600'
+                                }`}
+                              >
+                                <BuildingOfficeIcon
+                                  className={`h-4 w-4 shrink-0 ${
+                                    fakultasAktif ? 'text-[#1e3a8a]' : 'text-slate-400'
                                   }`}
-                                >
-                                  <AcademicCapIcon
-                                    className={`h-4 w-4 shrink-0 ${active ? 'text-[#1e3a8a]' : 'text-slate-400'}`}
-                                  />
-                                  <span className="w-12 shrink-0 font-mono text-xs font-bold text-slate-500">
-                                    {program.code}
-                                  </span>
-                                  <span className="min-w-0 flex-1 truncate">{program.name}</span>
-                                  {active ? <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" /> : null}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
+                                />
+                                <span className="min-w-0 flex-1 truncate">{fakultas.name}</span>
+                                <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-slate-500">
+                                  {prodiCocok.length} prodi
+                                </span>
+                                {fakultasAktif ? (
+                                  <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" />
+                                ) : null}
+                              </button>
 
-                      {/*
-                       * Program studi yang fakultasnya tidak ikut termuat (mis.
-                       * fakultas nonaktif) tetap ditampilkan agar tidak ada
-                       * prodi yang hilang dari pemilih.
-                       */}
-                      {(() => {
-                        const tanpaFakultas = availablePrograms.filter(
-                          (program) =>
-                            !program.faculty?.id ||
-                            !availableFaculties.some((f) => f.id === program.faculty?.id),
-                        );
-                        if (tanpaFakultas.length === 0) return null;
-                        return (
+                              {prodiCocok.map((program) => {
+                                const active = activeTenantId === program.id && menuScope === 'prodi';
+                                return (
+                                  <button
+                                    key={program.id}
+                                    type="button"
+                                    onClick={() => {
+                                      adminMenuApi.clearCache();
+                                      setProdiOpen(false);
+                                      setProdiSearch('');
+                                      void setActiveTenant(program.id);
+                                    }}
+                                    className={`flex w-full items-center gap-2.5 py-2 pl-9 pr-4 text-left text-[13px] transition-colors hover:bg-slate-100 ${
+                                      active ? 'bg-blue-50/70 font-bold text-[#1e3a8a]' : 'text-slate-700'
+                                    }`}
+                                  >
+                                    <AcademicCapIcon
+                                      className={`h-4 w-4 shrink-0 ${active ? 'text-[#1e3a8a]' : 'text-slate-400'}`}
+                                    />
+                                    <span className="w-12 shrink-0 font-mono text-xs font-bold text-slate-500">
+                                      {program.code}
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate">{program.name}</span>
+                                    {active ? <CheckIcon className="h-4 w-4 shrink-0 text-[#1e3a8a]" /> : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+
+                        {tanpaFakultas.length > 0 ? (
                           <div>
-                            <p className="px-4 py-1.5 text-[12px] font-bold uppercase tracking-wide text-slate-500">
+                            <p className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">
                               Fakultas lain
                             </p>
                             {tanpaFakultas.map((program) => {
@@ -837,10 +901,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                                   onClick={() => {
                                     adminMenuApi.clearCache();
                                     setProdiOpen(false);
+                                    setProdiSearch('');
                                     void setActiveTenant(program.id);
                                   }}
                                   className={`flex w-full items-center gap-2.5 py-2 pl-9 pr-4 text-left text-[13px] transition-colors hover:bg-slate-100 ${
-                                    active ? 'bg-slate-50 font-bold text-[#1e3a8a]' : 'text-slate-700'
+                                    active ? 'bg-blue-50/70 font-bold text-[#1e3a8a]' : 'text-slate-700'
                                   }`}
                                 >
                                   <AcademicCapIcon
@@ -855,11 +920,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                               );
                             })}
                           </div>
-                        );
-                      })()}
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 
@@ -901,31 +966,38 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               </button>
 
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-[300px] rounded-[14px] border border-[#CBD5E1] bg-white py-2 shadow-xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                  {/* Identitas akun: tanpa banner abu, mengikuti gaya ONE UNUSU */}
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e3a8a] text-xs font-bold text-white">
-                      {initials}
+                <div className="absolute right-0 z-50 mt-2 w-[300px] overflow-hidden rounded-[14px] border border-slate-200/95 bg-white pb-2 shadow-[0_20px_50px_-15px_rgba(15,23,42,0.22)] ring-1 ring-slate-900/5 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="relative overflow-hidden border-b border-slate-100 bg-slate-50/70 px-4 py-3">
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 select-none bg-cover bg-right opacity-55"
+                      style={{ backgroundImage: "url('/assets/admin-header-texture.png')" }}
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/95 via-white/85 to-transparent"
+                    />
+                    <div className="relative flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1e3a8a] text-xs font-bold text-white ring-2 ring-blue-100">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-bold text-slate-900">
+                          {user?.name ?? 'Pengguna'}
+                        </p>
+                        <p className="truncate text-[11px] text-slate-500">
+                          {user?.email ?? ''}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-bold text-slate-900">
-                        {user?.name ?? 'Pengguna'}
-                      </p>
-                      <p className="truncate text-[11px] text-slate-500">
-                        {user?.email ?? ''}
-                      </p>
+                    <div className="relative mt-2">
+                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 ring-1 ring-inset ring-emerald-200/80">
+                        {isSuperAdmin
+                          ? 'Super Administrator'
+                          : user?.roles?.map((r) => r.roleName).join(', ') || 'Admin Prodi'}
+                      </span>
                     </div>
                   </div>
-
-                  <div className="px-4 pb-2">
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                      {isSuperAdmin
-                        ? 'Super Administrator'
-                        : user?.roles?.map((r) => r.roleName).join(', ') || 'Admin Prodi'}
-                    </span>
-                  </div>
-
-                  <div className="my-1 border-t border-[#CBD5E1]/70" />
 
                   <div className="py-1 text-[13px] font-semibold text-slate-700">
                     <Link

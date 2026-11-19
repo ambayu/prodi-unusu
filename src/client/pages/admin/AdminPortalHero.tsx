@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission, useTenant } from '../../hooks/useSite';
 import { mediaApi, portalApi, type HeroSlide } from '../../services/adminApi';
@@ -242,35 +243,42 @@ export const AdminPortalHero: React.FC = () => {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="field-label">Durasi Putar Otomatis</label>
-              <select
-                className="field-input"
-                value={autoplayMs}
+              <SearchableSelect
+                value={String(autoplayMs)}
                 disabled={!canEdit}
-                onChange={(event) => {
-                  setAutoplayMs(Number(event.target.value));
-                  setDirty(true);
+                clearable={false}
+                searchable={false}
+                onChange={(val) => {
+                  const next = Number(val);
+                  if (!Number.isNaN(next) && next > 0) {
+                    setAutoplayMs(next);
+                    setDirty(true);
+                  }
                 }}
-              >
-                <option value={3000}>3 Detik (Cepat)</option>
-                <option value={5000}>5 Detik (Sedang)</option>
-                <option value={6000}>6 Detik (Rekomendasi)</option>
-                <option value={8000}>8 Detik (Lambat)</option>
-              </select>
+                options={[
+                  { value: '3000', label: '3 Detik (Cepat)' },
+                  { value: '5000', label: '5 Detik (Sedang)' },
+                  { value: '6000', label: '6 Detik (Rekomendasi)' },
+                  { value: '8000', label: '8 Detik (Lambat)' },
+                ]}
+              />
             </div>
             <div>
               <label className="field-label">Indikator Titik</label>
-              <select
-                className="field-input"
+              <SearchableSelect
                 value={showDots ? 'true' : 'false'}
                 disabled={!canEdit}
-                onChange={(event) => {
-                  setShowDots(event.target.value === 'true');
+                clearable={false}
+                searchable={false}
+                onChange={(val) => {
+                  setShowDots(val === 'true');
                   setDirty(true);
                 }}
-              >
-                <option value="true">Tampilkan Titik Navigasi</option>
-                <option value="false">Sembunyikan</option>
-              </select>
+                options={[
+                  { value: 'true', label: 'Tampilkan Titik Navigasi' },
+                  { value: 'false', label: 'Sembunyikan' },
+                ]}
+              />
             </div>
           </div>
 

@@ -120,19 +120,30 @@ export const FormPageTemplate: React.FC<FormPageTemplateProps> = ({
         <section
           key={section.id}
           id={section.id}
-          className="rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs"
+          className="overflow-hidden rounded-[15px] border border-[#CBD5E1] bg-white shadow-[0_2px_10px_-4px_rgba(15,23,42,0.06)]"
         >
-          <div className="border-b border-[#CBD5E1]/70 px-5 py-3.5 rounded-t-[14px]">
-            <h2 className="text-sm font-bold text-slate-800">{section.title}</h2>
-            {section.description ? (
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{section.description}</p>
-            ) : null}
+          <div className="relative overflow-hidden border-b border-slate-200/80 bg-slate-50/70 px-5 py-3.5">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 select-none bg-cover bg-right opacity-45"
+              style={{ backgroundImage: "url('/assets/admin-header-texture.png')" }}
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/95 via-white/85 to-transparent"
+            />
+            <div className="relative">
+              <h2 className="text-sm font-bold tracking-tight text-slate-900">{section.title}</h2>
+              {section.description ? (
+                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{section.description}</p>
+              ) : null}
+            </div>
           </div>
-          <div className="px-5 py-4 space-y-4">{section.content}</div>
+          <div className="space-y-4 px-5 py-4">{section.content}</div>
         </section>
       ))}
 
-      <div className="flex flex-wrap items-center justify-end gap-2 rounded-[14px] border border-[#CBD5E1] bg-white px-5 py-3.5 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-end gap-2.5 rounded-[15px] border border-[#CBD5E1] bg-white px-5 py-3.5 shadow-[0_2px_10px_-4px_rgba(15,23,42,0.06)]">
         {cancelTo ? (
           <Link to={cancelTo} className="btn-secondary">
             {cancelLabel}

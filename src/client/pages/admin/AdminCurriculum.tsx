@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  CalendarDaysIcon,
   DocumentDuplicateIcon,
   DocumentTextIcon,
   ExclamationTriangleIcon,
@@ -16,6 +17,7 @@ import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
 import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/RowActions';
+import { SearchableSelect, type SearchableOption } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import {
@@ -180,6 +182,30 @@ export const AdminCurriculum: React.FC = () => {
   });
 
   const currentCurriculum = useMemo(() => pickCurrentCurriculum(curriculums), [curriculums]);
+
+  const curriculumFilterOptions = useMemo<SearchableOption[]>(
+    () => [
+      { value: 'all', label: 'Semua Tahun', keywords: 'semua seluruh tahun kurikulum' },
+      ...curriculums.map((c) => ({
+        value: String(c.id),
+        label: `Tahun ${c.year}`,
+        description: c.name,
+        keywords: `${c.year} ${c.name}`,
+      })),
+    ],
+    [curriculums],
+  );
+
+  const cloneSourceOptions = useMemo<SearchableOption[]>(
+    () =>
+      curriculums.map((c) => ({
+        value: String(c.id),
+        label: `Tahun ${c.year}`,
+        description: c.name,
+        keywords: `${c.year} ${c.name}`,
+      })),
+    [curriculums],
+  );
 
   const handleOpenClone = () => {
     const source = currentCurriculum ?? curriculums[0];
@@ -365,27 +391,30 @@ export const AdminCurriculum: React.FC = () => {
           </div>
         ) : null}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs sm:p-5" aria-label="Filter kurikulum">
+        <section
+          className="rounded-2xl border border-slate-200/90 bg-slate-50/45 p-4 shadow-2xs sm:p-5"
+          aria-label="Filter kurikulum"
+        >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <p className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-              <FunnelIcon className="h-4 w-4" />
-              Pilih kurikulum/tahun, semester, atau cari mata kuliah
+            <p className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-[#1e3a8a] shadow-2xs ring-1 ring-slate-200/80">
+                <FunnelIcon className="h-3.5 w-3.5" />
+              </span>
+              Pilih tahun kurikulum, semester, atau cari mata kuliah
             </p>
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
               {curriculums.length > 0 ? (
-                <select
+                <SearchableSelect
                   value={curriculumFilter}
-                  onChange={(e) => setCurriculumFilter(e.target.value)}
-                  className="field-input cursor-pointer sm:w-44"
+                  onChange={(val) => setCurriculumFilter(val || 'all')}
+                  options={curriculumFilterOptions}
+                  clearable={false}
+                  searchPlaceholder="Cari tahun kurikulum..."
+                  icon={<CalendarDaysIcon className="h-4 w-4" />}
+                  dropdownMinWidth={240}
+                  className="w-full sm:w-44"
                   aria-label="Filter berdasarkan tahun kurikulum"
-                >
-                  <option value="all">Semua Tahun</option>
-                  {curriculums.map((c) => (
-                    <option key={c.id} value={String(c.id)}>
-                      Tahun {c.year}
-                    </option>
-                  ))}
-                </select>
+                />
               ) : null}
               <div className="relative sm:w-72">
                 <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -401,21 +430,21 @@ export const AdminCurriculum: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
             <button
               type="button"
               onClick={() => setSemesterFilter('all')}
-              className={`rounded-xl border p-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a8a] ${
+              className={`group rounded-xl border p-3 text-left transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a8a] ${
                 semesterFilter === 'all'
-                  ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-[#1e3a8a]/40 hover:bg-[#e8eefb]/50'
+                  ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white shadow-[0_6px_16px_-6px_rgba(30,58,138,0.5)]'
+                  : 'border-slate-200/90 bg-white text-slate-700 shadow-2xs hover:border-[#1e3a8a]/40 hover:bg-[#eff6ff]/70'
               }`}
             >
-              <span className="block text-sm font-bold">Semua</span>
-              <span className={`mt-1 block text-[11px] ${semesterFilter === 'all' ? 'text-blue-100' : 'text-slate-500'}`}>
+              <span className="block text-sm font-bold tracking-tight">Semua</span>
+              <span className={`mt-1 block text-[11px] tabular-nums ${semesterFilter === 'all' ? 'text-blue-100' : 'text-slate-500'}`}>
                 {items.length} MK · {totalCredits} SKS
               </span>
-              <span className={`mt-2 block h-1 rounded-full ${semesterFilter === 'all' ? 'bg-[#fbbf24]' : 'bg-slate-200'}`} />
+              <span className={`mt-2.5 block h-1 rounded-full transition-colors ${semesterFilter === 'all' ? 'bg-[#fbbf24]' : 'bg-slate-200/90 group-hover:bg-[#1e3a8a]/25'}`} />
             </button>
             {semesterCards.map((semester) => {
               const selected = semesterFilter === semester.number;
@@ -424,17 +453,17 @@ export const AdminCurriculum: React.FC = () => {
                   key={semester.number}
                   type="button"
                   onClick={() => setSemesterFilter(semester.number)}
-                  className={`rounded-xl border p-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a8a] ${
+                  className={`group rounded-xl border p-3 text-left transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a8a] ${
                     selected
-                      ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-[#1e3a8a]/40 hover:bg-[#e8eefb]/50'
+                      ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white shadow-[0_6px_16px_-6px_rgba(30,58,138,0.5)]'
+                      : 'border-slate-200/90 bg-white text-slate-700 shadow-2xs hover:border-[#1e3a8a]/40 hover:bg-[#eff6ff]/70'
                   }`}
                 >
-                  <span className="block text-sm font-bold">Semester {semester.number}</span>
-                  <span className={`mt-1 block text-[11px] ${selected ? 'text-blue-100' : 'text-slate-500'}`}>
+                  <span className="block text-sm font-bold tracking-tight">Semester {semester.number}</span>
+                  <span className={`mt-1 block text-[11px] tabular-nums ${selected ? 'text-blue-100' : 'text-slate-500'}`}>
                     {semester.courseCount} MK · {semester.totalCredits} SKS
                   </span>
-                  <span className={`mt-2 block h-1 rounded-full ${selected ? 'bg-[#fbbf24]' : 'bg-slate-200'}`} />
+                  <span className={`mt-2.5 block h-1 rounded-full transition-colors ${selected ? 'bg-[#fbbf24]' : 'bg-slate-200/90 group-hover:bg-[#1e3a8a]/25'}`} />
                 </button>
               );
             })}
@@ -478,21 +507,21 @@ export const AdminCurriculum: React.FC = () => {
         ) : (
           <div className="space-y-5">
             {groups.map((group) => (
-              <section key={group.number ?? 'tanpa-semester'} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
-                <header className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <section key={group.number ?? 'tanpa-semester'} className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xs">
+                <header className="flex flex-col gap-3 border-b border-slate-200/90 bg-gradient-to-r from-slate-50/90 via-white to-blue-50/35 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                   <div className="flex items-center gap-3">
-                    <span className="inline-flex h-11 w-11 flex-col items-center justify-center rounded-xl bg-[#1e3a8a] text-white">
-                      <span className="text-[9px] font-bold uppercase tracking-wide">Smt</span>
-                      <span className="-mt-0.5 text-lg font-extrabold leading-none">{group.number ?? '—'}</span>
+                    <span className="inline-flex h-11 w-11 flex-col items-center justify-center rounded-xl bg-[#1e3a8a] text-white shadow-xs">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-blue-200">Smt</span>
+                      <span className="-mt-0.5 text-lg font-extrabold leading-none tabular-nums">{group.number ?? '—'}</span>
                     </span>
                     <div>
-                      <h2 className="text-sm font-bold text-slate-900">{group.number === null ? 'Tanpa Semester' : `Semester ${group.number}`}</h2>
-                      <p className="mt-0.5 text-xs text-slate-500">{group.items.length} mata kuliah</p>
+                      <h2 className="text-sm font-bold tracking-tight text-slate-900">{group.number === null ? 'Tanpa Semester' : `Semester ${group.number}`}</h2>
+                      <p className="mt-0.5 text-xs text-slate-500 tabular-nums">{group.items.length} mata kuliah</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs font-semibold">
-                    <span className="rounded-md bg-blue-50 px-2 py-1 text-[#1e3a8a]">{group.totalCredits} SKS</span>
-                    <span className="rounded-md bg-emerald-50 px-2 py-1 text-emerald-700">{group.totalRps} RPS</span>
+                  <div className="flex items-center gap-2 text-xs font-semibold tabular-nums">
+                    <span className="rounded-lg border border-blue-200/70 bg-blue-50/80 px-2.5 py-1 text-[#1e3a8a]">{group.totalCredits} SKS</span>
+                    <span className="rounded-lg border border-emerald-200/70 bg-emerald-50/80 px-2.5 py-1 text-emerald-700">{group.totalRps} RPS</span>
                   </div>
                 </header>
                 <DataTable<CurriculumItem>
@@ -545,12 +574,16 @@ export const AdminCurriculum: React.FC = () => {
         </p>
 
         <Field label="Kurikulum Sumber" htmlFor="clone-source" required hint="Kurikulum yang datanya akan disalin.">
-          <select
+          <SearchableSelect
             id="clone-source"
-            className="field-input cursor-pointer"
-            value={String(cloneDraft.sourceId)}
-            onChange={(e) => {
-              const srcId = Number(e.target.value);
+            value={cloneDraft.sourceId ? String(cloneDraft.sourceId) : ''}
+            options={cloneSourceOptions}
+            clearable={false}
+            placeholder="Pilih kurikulum sumber..."
+            searchPlaceholder="Cari tahun atau nama kurikulum..."
+            icon={<CalendarDaysIcon className="h-4 w-4" />}
+            onChange={(val) => {
+              const srcId = Number(val);
               const found = curriculums.find((c) => c.id === srcId);
               setCloneDraft((prev) => ({
                 ...prev,
@@ -558,13 +591,7 @@ export const AdminCurriculum: React.FC = () => {
                 name: found ? `${found.name.replace(/\b\d{4}\b/g, '').trim()} ${prev.year}`.trim() : prev.name,
               }));
             }}
-          >
-            {curriculums.map((c) => (
-              <option key={c.id} value={c.id}>
-                Tahun {c.year} — {c.name}
-              </option>
-            ))}
-          </select>
+          />
         </Field>
 
         <Field label="Tahun Kurikulum Baru" htmlFor="clone-year" required hint="Contoh: 2026">

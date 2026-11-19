@@ -16,6 +16,7 @@ import {
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { Field, FormModal } from '../../components/ui/FormModal';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { mediaApi, organizationApi } from '../../services/adminApi';
@@ -590,19 +591,23 @@ export const AdminOrganization: React.FC = () => {
         }}
       >
         <Field label="Fakultas Induk" htmlFor="program-faculty" required>
-          <select
+          <SearchableSelect
             id="program-faculty"
-            className="field-input"
-            required
-            value={programDraft.facultyId}
-            onChange={(event) => setProgramDraft({ ...programDraft, facultyId: Number(event.target.value) })}
-          >
-            {faculties.map((faculty) => (
-              <option key={faculty.id} value={faculty.id}>
-                {faculty.name} ({faculty.code})
-              </option>
-            ))}
-          </select>
+            value={programDraft.facultyId ? String(programDraft.facultyId) : ''}
+            onChange={(val) => {
+              const id = Number(val);
+              if (!Number.isNaN(id)) setProgramDraft({ ...programDraft, facultyId: id });
+            }}
+            clearable={false}
+            placeholder="Pilih fakultas..."
+            searchPlaceholder="Cari fakultas..."
+            options={faculties.map((faculty) => ({
+              value: String(faculty.id),
+              label: faculty.name,
+              meta: faculty.code,
+              keywords: `${faculty.name} ${faculty.code}`,
+            }))}
+          />
         </Field>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -616,18 +621,20 @@ export const AdminOrganization: React.FC = () => {
             />
           </Field>
           <Field label="Jenjang" htmlFor="program-degree" required>
-            <select
+            <SearchableSelect
               id="program-degree"
-              className="field-input"
               value={programDraft.degree}
-              onChange={(event) => setProgramDraft({ ...programDraft, degree: event.target.value })}
-            >
-              <option value="S1">S1</option>
-              <option value="S2">S2</option>
-              <option value="S3">S3</option>
-              <option value="D3">D3</option>
-              <option value="D4">D4</option>
-            </select>
+              onChange={(val) => setProgramDraft({ ...programDraft, degree: val || 'S1' })}
+              clearable={false}
+              searchable={false}
+              options={[
+                { value: 'S1', label: 'S1' },
+                { value: 'S2', label: 'S2' },
+                { value: 'S3', label: 'S3' },
+                { value: 'D3', label: 'D3' },
+                { value: 'D4', label: 'D4' },
+              ]}
+            />
           </Field>
           <Field label="Slug URL" htmlFor="program-slug" required>
             <input

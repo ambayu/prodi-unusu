@@ -40,8 +40,13 @@ const KerangkaGelar: React.FC<{
     <div className="relative w-full max-w-[34rem]">
       {/* Garis aksen di kepala kartu sebagai penanda visual, bukan teks. */}
       <div className={`h-1.5 w-full rounded-t-[18px] bg-gradient-to-r ${aksen}`} />
-      <div className="rounded-b-[18px] border border-t-0 border-[#CBD5E1] bg-white px-6 py-8 shadow-xl shadow-slate-900/5 sm:px-9 sm:py-10">
-        {children}
+      <div className="relative overflow-hidden rounded-b-[18px] border border-t-0 border-[#CBD5E1] bg-white px-6 py-8 shadow-xl shadow-slate-900/5 sm:px-9 sm:py-10">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 select-none bg-cover bg-right-bottom opacity-45"
+          style={{ backgroundImage: "url('/assets/admin-card-texture.png')" }}
+        />
+        <div className="relative">{children}</div>
       </div>
     </div>
   </div>

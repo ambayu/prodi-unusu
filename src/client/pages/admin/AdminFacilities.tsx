@@ -5,6 +5,7 @@ import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { facilityApi, type Facility } from '../../services/contentApi';
@@ -261,16 +262,18 @@ export const AdminFacilities: React.FC = () => {
         </div>
 
         <Field label="Status" htmlFor="facility-status">
-          <select
+          <SearchableSelect
             id="facility-status"
-            className="field-input"
             value={draft.status ?? 'aktif'}
-            onChange={(event) => setDraft({ ...draft, status: event.target.value })}
-          >
-            <option value="aktif">Aktif</option>
-            <option value="renovasi">Renovasi</option>
-            <option value="tidak aktif">Tidak aktif</option>
-          </select>
+            onChange={(val) => setDraft({ ...draft, status: val || 'aktif' })}
+            clearable={false}
+            searchable={false}
+            options={[
+              { value: 'aktif', label: 'Aktif' },
+              { value: 'renovasi', label: 'Renovasi' },
+              { value: 'tidak aktif', label: 'Tidak aktif' },
+            ]}
+          />
         </Field>
 
         <Field

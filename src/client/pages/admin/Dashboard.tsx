@@ -29,16 +29,23 @@ const MetricCard: React.FC<{
   icon: React.ComponentType<{ className?: string }>;
   accentColor?: string;
 }> = ({ label, value, detail, icon: Icon, accentColor = 'bg-[#DBEAFE] text-[#1e3a8a]' }) => (
-  <div className="flex items-center justify-between rounded-[14px] border border-[#CBD5E1] bg-white p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-shadow">
-    <div className="min-w-0 pr-3">
-      <p className="text-xs font-semibold text-slate-500 truncate">{label}</p>
-      <p className="mt-1 text-2xl font-black text-slate-900 tracking-tight">
-        {value.toLocaleString('id-ID')}
-      </p>
-      <p className="mt-1 text-[11px] font-bold text-[#1e3a8a] truncate">{detail}</p>
-    </div>
-    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] ${accentColor} shadow-2xs`}>
-      <Icon className="h-6 w-6" />
+  <div className="group relative overflow-hidden rounded-[14px] border border-[#CBD5E1]/90 bg-white p-4 shadow-2xs transition-all duration-150 hover:border-[#1e3a8a]/35 hover:shadow-sm sm:p-5">
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 select-none bg-cover bg-right-bottom opacity-65 transition-opacity group-hover:opacity-90"
+      style={{ backgroundImage: "url('/assets/admin-card-texture.png')" }}
+    />
+    <div className="relative flex items-center justify-between">
+      <div className="min-w-0 pr-3">
+        <p className="truncate text-xs font-semibold text-slate-500">{label}</p>
+        <p className="mt-1 text-2xl font-black tracking-tight text-slate-900 tabular-nums">
+          {value.toLocaleString('id-ID')}
+        </p>
+        <p className="mt-1 truncate text-[11px] font-bold text-[#1e3a8a]">{detail}</p>
+      </div>
+      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] ${accentColor} ring-1 ring-inset ring-black/5 shadow-2xs`}>
+        <Icon className="h-6 w-6" />
+      </div>
     </div>
   </div>
 );

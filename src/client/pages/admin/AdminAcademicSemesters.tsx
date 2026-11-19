@@ -6,6 +6,7 @@ import { DataTable } from '../../components/ui/DataTable';
 import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/RowActions';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { academicSemesterApi, type AcademicSemester } from '../../services/contentApi';
@@ -221,15 +222,17 @@ export const AdminAcademicSemesters: React.FC = () => {
             />
           </Field>
           <Field label="Status Aktif" htmlFor="semester-status">
-            <select
+            <SearchableSelect
               id="semester-status"
-              className="field-input"
               value={draft.isActive ? 'true' : 'false'}
-              onChange={(e) => setDraft({ ...draft, isActive: e.target.value === 'true' })}
-            >
-              <option value="true">Aktif</option>
-              <option value="false">Tidak Aktif</option>
-            </select>
+              onChange={(val) => setDraft({ ...draft, isActive: val === 'true' })}
+              clearable={false}
+              searchable={false}
+              options={[
+                { value: 'true', label: 'Aktif' },
+                { value: 'false', label: 'Tidak Aktif' },
+              ]}
+            />
           </Field>
         </div>
 

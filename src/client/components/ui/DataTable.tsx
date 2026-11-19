@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { EmptyState, ErrorState, LoadingState } from './States';
+import { SearchableSelect } from './SearchableSelect';
 
 /**
  * DataTable: tabel data standar ONE UNUSU dengan dukungan pagination otomatis.
@@ -216,23 +217,28 @@ export function DataTable<T>({
               </span>
 
               {pageSizeOptions.length > 1 && totalRows > pageSizeOptions[0] && (
-                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                <div className="flex items-center gap-1.5 border-l border-slate-200 pl-2.5">
                   <span className="text-[11px] text-slate-500">Tampilkan:</span>
-                  <select
-                    value={limit}
-                    onChange={(e) => {
-                      setLimit(Number(e.target.value));
-                      setCurrentPage(1);
+                  <SearchableSelect
+                    value={String(limit)}
+                    onChange={(val) => {
+                      const next = Number(val);
+                      if (!Number.isNaN(next) && next > 0) {
+                        setLimit(next);
+                        setCurrentPage(1);
+                      }
                     }}
-                    className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-800 focus:border-[#1e3a8a] focus:outline-none"
+                    options={pageSizeOptions.map((opt) => ({
+                      value: String(opt),
+                      label: String(opt),
+                    }))}
+                    clearable={false}
+                    searchable={false}
+                    size="sm"
+                    dropdownMinWidth={84}
+                    className="w-[72px]"
                     aria-label="Pilih jumlah data per halaman"
-                  >
-                    {pageSizeOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
               )}
             </div>

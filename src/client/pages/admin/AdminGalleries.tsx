@@ -6,6 +6,7 @@ import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { galleryApi, type Gallery } from '../../services/contentApi';
@@ -230,15 +231,17 @@ export const AdminGalleries: React.FC = () => {
         </Field>
 
         <Field label="Jenis media" htmlFor="gallery-item-type">
-          <select
+          <SearchableSelect
             id="gallery-item-type"
-            className="field-input"
             value={itemDraft.mediaType}
-            onChange={(event) => setItemDraft({ ...itemDraft, mediaType: event.target.value })}
-          >
-            <option value="image">Gambar</option>
-            <option value="video">Video</option>
-          </select>
+            onChange={(val) => setItemDraft({ ...itemDraft, mediaType: val || 'image' })}
+            clearable={false}
+            searchable={false}
+            options={[
+              { value: 'image', label: 'Gambar' },
+              { value: 'video', label: 'Video' },
+            ]}
+          />
         </Field>
 
         <Field label="Keterangan" htmlFor="gallery-item-caption">

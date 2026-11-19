@@ -10,6 +10,7 @@ import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/RowActions';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, FormModal } from '../../components/ui/FormModal';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
 import { settingsApi, type MenuItem } from '../../services/adminApi';
@@ -340,38 +341,47 @@ export const AdminNavigation: React.FC = () => {
         </Field>
 
         <Field label="Induk Menu / Dropdown Navbar" htmlFor="menu-parent" hint="Pilih jika menu ini ingin dimasukkan sebagai sub-menu dropdown.">
-          <select
+          <SearchableSelect
             id="menu-parent"
-            className="field-input"
-            value={menuDraft.parentId ?? ''}
-            onChange={(e) =>
+            value={menuDraft.parentId ? String(menuDraft.parentId) : ''}
+            onChange={(val) =>
               setMenuDraft({
                 ...menuDraft,
-                parentId: e.target.value ? Number(e.target.value) : null,
+                parentId: val ? Number(val) : null,
               })
             }
-          >
-            <option value="">-- Menu Utama (Tingkat Teratas / Bukan Sub-Menu) --</option>
-            {sortedMenus
-              .filter((m) => (!editingMenu || m.id !== editingMenu.id) && !m.parentId)
-              .map((parent) => (
-                <option key={parent.id} value={parent.id}>
-                  Dropdown: {parent.title} ({parent.url})
-                </option>
-              ))}
-          </select>
+            clearable={false}
+            searchPlaceholder="Cari induk menu..."
+            options={[
+              {
+                value: '',
+                label: 'Menu Utama',
+                description: 'Tingkat teratas (bukan sub-menu)',
+              },
+              ...sortedMenus
+                .filter((m) => (!editingMenu || m.id !== editingMenu.id) && !m.parentId)
+                .map((parent) => ({
+                  value: String(parent.id),
+                  label: parent.title,
+                  description: `Dropdown (${parent.url})`,
+                  keywords: `${parent.title} ${parent.url}`,
+                })),
+            ]}
+          />
         </Field>
 
         <Field label="Target Buka Link" htmlFor="menu-target">
-          <select
+          <SearchableSelect
             id="menu-target"
-            className="field-input"
             value={menuDraft.target}
-            onChange={(e) => setMenuDraft({ ...menuDraft, target: e.target.value })}
-          >
-            <option value="_self">Tab Saat Ini (_self)</option>
-            <option value="_blank">Tab Baru (_blank)</option>
-          </select>
+            onChange={(val) => setMenuDraft({ ...menuDraft, target: val || '_self' })}
+            clearable={false}
+            searchable={false}
+            options={[
+              { value: '_self', label: 'Tab Saat Ini (_self)' },
+              { value: '_blank', label: 'Tab Baru (_blank)' },
+            ]}
+          />
         </Field>
 
         <div className="flex items-center gap-2 pt-1">

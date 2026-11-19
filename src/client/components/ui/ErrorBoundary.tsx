@@ -31,13 +31,19 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
 
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-        <div className="w-full max-w-2xl rounded-2xl border border-rose-200 bg-white p-8">
-          <div className="flex items-start gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+        <div className="relative w-full max-w-2xl overflow-hidden rounded-[18px] border border-rose-200 bg-white shadow-xl shadow-slate-900/5">
+          <div className="h-1.5 w-full bg-gradient-to-r from-rose-600 via-rose-500 to-amber-400" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 select-none bg-cover bg-right-bottom opacity-40"
+            style={{ backgroundImage: "url('/assets/admin-card-texture.png')" }}
+          />
+          <div className="relative flex items-start gap-4 p-8">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-rose-100 text-rose-600 ring-1 ring-inset ring-rose-200">
               <ExclamationTriangleIcon className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-bold text-slate-900">Terjadi kesalahan pada antarmuka</h1>
+              <h1 className="text-lg font-bold tracking-tight text-slate-900">Terjadi kesalahan pada antarmuka</h1>
               <p className="mt-1 text-sm leading-relaxed text-slate-600">
                 Halaman gagal dirender. Muat ulang halaman; bila masalah berulang, laporkan detail di
                 bawah kepada pengembang.
@@ -53,7 +59,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="mt-5 rounded-xl bg-[#1e3a8a] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#172f6e]"
+                className="btn-primary mt-5"
               >
                 Muat ulang halaman
               </button>

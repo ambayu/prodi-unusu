@@ -83,26 +83,37 @@ export const FormModal: React.FC<FormModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="form-modal-title"
-        className={`relative my-6 w-full rounded-[16px] border border-[#CBD5E1] bg-white shadow-xl ${
+        className={`relative my-6 w-full overflow-hidden rounded-[16px] border border-slate-200/90 bg-white shadow-[0_24px_60px_-15px_rgba(15,23,42,0.28)] ${
           wide ? 'max-w-3xl' : 'max-w-xl'
         }`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[#CBD5E1] px-6 py-4">
-          <div>
-            <h2 id="form-modal-title" className="text-base font-bold text-slate-900">
-              {title}
-            </h2>
-            {description ? <p className="mt-1 text-xs text-slate-500">{description}</p> : null}
+        <div className="relative overflow-hidden border-b border-slate-200/90 bg-slate-50/70 px-6 py-4">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 select-none bg-cover bg-right bg-no-repeat opacity-60"
+            style={{ backgroundImage: "url('/assets/admin-header-texture.png')" }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/95 via-white/85 to-transparent"
+          />
+          <div className="relative flex items-start justify-between gap-4">
+            <div>
+              <h2 id="form-modal-title" className="text-base font-bold tracking-tight text-slate-900">
+                {title}
+              </h2>
+              {description ? <p className="mt-1 text-xs text-slate-500">{description}</p> : null}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-700 disabled:opacity-50"
+              aria-label="Tutup formulir"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="rounded-[8px] p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
-            aria-label="Tutup formulir"
-          >
-            <XMarkIcon className="h-5 w-5" />
-          </button>
         </div>
 
         <form onSubmit={onSubmit}>
