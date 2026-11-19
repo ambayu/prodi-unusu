@@ -7,7 +7,7 @@ import { prisma } from '../../prisma.js';
 import { config } from '../../config/index.js';
 import { asyncHandler, getParams, validate } from '../../utils/validation.js';
 import { requirePermission } from '../../middlewares/auth.js';
-import { scopedTenantId } from '../../middlewares/tenantScope.js';
+import { scopedTenantId, resolveContentOwner } from '../../middlewares/tenantScope.js';
 import { requireTenant } from '../../middlewares/tenantResolver.js';
 import { AppError } from '../../utils/errors.js';
 import { recordAudit } from '../../services/auditService.js';
@@ -136,14 +136,14 @@ const SELECT_ADMIN = {
 
 const router = Router();
 
-/** GET /api/v1/admin/dokumen-prodi: seluruh dokumen milik prodi aktif (Publish & Draft). */
+/** GET /api/v1/admin/dokumen-prodi: seluruh dokumen milik prodi/fakultas aktif (Publish & Draft). */
 router.get(
   '/dokumen-prodi',
   requirePermission('documents.view'),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = await resolveContentOwner(req);
     const rows = await prisma.document.findMany({
-      where: { studyProgramId },
+      where: owner,
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
       select: SELECT_ADMIN,
     });
@@ -157,13 +157,13 @@ router.get(
   requirePermission('documents.view'),
   validate({ params: idParamSchema }),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = await resolveContentOwner(req);
     const { id } = getParams<{ id: number }>(req);
     const dokumen = await prisma.document.findFirst({
-      where: { id, studyProgramId },
+      where: { id, ...owner },
       select: { title: true, fileUrl: true },
     });
-    if (!dokumen) throw AppError.notFound('Dokumen tidak ditemukan pada program studi ini.');
+    if (!dokumen) throw AppError.notFound('Dokumen tidak ditemukan pada unit ini.');
     kirimBerkas(res, dokumen, req.query.download === '1');
   }),
 );
@@ -174,14 +174,14 @@ router.post(
   requirePermission('documents.create'),
   upload.single('file'),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = await resolveContentOwner(req);
     const file = req.file;
     const body = parseBody(req.body, file);
     if (!file) throw AppError.badRequest('Berkas dokumen belum dipilih.', 'FILE_REQUIRED');
 
     const dokumen = await prisma.document.create({
       data: {
-        studyProgramId,
+        ...owner,
         title: body.title,
         code: body.code || null,
         category: body.category,
@@ -206,16 +206,16 @@ router.put(
   requirePermission('documents.update'),
   upload.single('file'),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = await resolveContentOwner(req);
     const file = req.file;
     const id = Number(req.params.id);
 
     const lama = Number.isInteger(id) && id > 0
-      ? await prisma.document.findFirst({ where: { id, studyProgramId }, select: { fileUrl: true } })
+      ? await prisma.document.findFirst({ where: { id, ...owner }, select: { fileUrl: true } })
       : null;
     if (!lama) {
       if (file) hapusBerkas(file.filename);
-      throw AppError.notFound('Dokumen tidak ditemukan pada program studi ini.');
+      throw AppError.notFound('Dokumen tidak ditemukan pada unit ini.');
     }
 
     const body = parseBody(req.body, file);
@@ -245,11 +245,11 @@ router.delete(
   requirePermission('documents.delete'),
   validate({ params: idParamSchema }),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = await resolveContentOwner(req);
     const { id } = getParams<{ id: number }>(req);
 
-    const dokumen = await prisma.document.findFirst({ where: { id, studyProgramId }, select: { fileUrl: true } });
-    if (!dokumen) throw AppError.notFound('Dokumen tidak ditemukan pada program studi ini.');
+    const dokumen = await prisma.document.findFirst({ where: { id, ...owner }, select: { fileUrl: true } });
+    if (!dokumen) throw AppError.notFound('Dokumen tidak ditemukan pada unit ini.');
 
     await prisma.document.delete({ where: { id } });
     hapusBerkas(dokumen.fileUrl);
@@ -311,9 +311,7 @@ for (const [aksi, unduh] of [['preview', false], ['download', true]] as const) {
     validate({ params: idParamSchema }),
     asyncHandler(async (req, res) => {
       const scope = tenantScope(req.tenant!);
-      if (scope.studyProgramId) {
-        await assertArsipPassword(scope.studyProgramId, req);
-      }
+      await assertArsipPassword(scope, req);
 
       const { id } = getParams<{ id: number }>(req);
       const dokumen = await prisma.document.findFirst({

@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import { asyncHandler, getBody, getParams, validate } from '../../utils/validation.js';
 import { requirePermission } from '../../middlewares/auth.js';
-import { scopedTenantId } from '../../middlewares/tenantScope.js';
+import { scopedTenantId, resolveContentOwner } from '../../middlewares/tenantScope.js';
 import { requireTenant } from '../../middlewares/tenantResolver.js';
 import { AppError } from '../../utils/errors.js';
 import { recordAudit } from '../../services/auditService.js';
@@ -52,9 +52,12 @@ const unlockSchema = z.object({
 /** Header tempat kata sandi arsip dikirim (tidak pernah lewat URL). */
 const PASSWORD_HEADER = 'x-arsip-password';
 
-/** Kata sandi aktif bila prodi sudah memasangnya. Selama kosong -> fail-closed. */
-export async function assertArsipPassword(studyProgramId: number, req: { header: (name: string) => string | undefined }) {
-  const stored = await getDocumentPasswordHash(studyProgramId);
+/** Kata sandi aktif bila prodi/fakultas sudah memasangnya. Selama kosong -> fail-closed. */
+export async function assertArsipPassword(
+  target: number | { studyProgramId?: number | null; facultyId?: number | null },
+  req: { header: (name: string) => string | undefined },
+) {
+  const stored = await getDocumentPasswordHash(target);
   const submitted = req.header(PASSWORD_HEADER) ?? '';
 
   if (!submitted) {
@@ -62,10 +65,10 @@ export async function assertArsipPassword(studyProgramId: number, req: { header:
   }
 
   /*
-   * Prodi yang belum memasang kata sandi tidak memiliki kata sandi yang benar,
+   * Prodi/fakultas yang belum memasang kata sandi tidak memiliki kata sandi yang benar,
    * sehingga SEMUA percobaan ditolak sebagai "kata sandi salah". Sengaja tidak
-   * dibedakan agar klien tidak dapat menyimpulkan status kunci prodi, dan agar
-   * prodi yang lupa memasang kunci tidak pernah terbuka secara diam-diam.
+   * dibedakan agar klien tidak dapat menyimpulkan status kunci unit, dan agar
+   * unit yang lupa memasang kunci tidak pernah terbuka secara diam-diam.
    */
   if (!stored || !verifyDocumentPassword(submitted, stored)) {
     throw AppError.forbidden('Kata sandi dokumen salah.', 'ARSIP_PASSWORD_INVALID');
@@ -162,7 +165,25 @@ router.get(
   '/arsip-dokumen',
   requirePermission('documents.view'),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = await resolveContentOwner(req);
+    if (owner.facultyId) {
+      const password = await getDocumentPasswordStatus({ facultyId: owner.facultyId });
+      res.json({
+        success: true,
+        items: [],
+        meta: {
+          prodiCode: 'FAKULTAS',
+          prodiName: 'Fakultas',
+          total: 0,
+          sumberGagal: [],
+          passwordActive: password.passwordActive,
+          passwordSetAt: password.setAt,
+        },
+      });
+      return;
+    }
+
+    const studyProgramId = owner.studyProgramId!;
     const { prodiCode, nama } = await resolveProdiCode(studyProgramId);
     const query = arsipQuerySchema.parse(req.query);
 
@@ -208,13 +229,13 @@ router.get(
   }),
 );
 
-/** GET /api/v1/admin/dokumen-password: status kata sandi arsip prodi. */
+/** GET /api/v1/admin/dokumen-password: status kata sandi arsip prodi atau fakultas. */
 router.get(
   '/dokumen-password',
   requirePermission('documents.view'),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
-    const status = await getDocumentPasswordStatus(studyProgramId);
+    const owner = await resolveContentOwner(req);
+    const status = await getDocumentPasswordStatus(owner);
     res.json({ success: true, ...status });
   }),
 );
@@ -225,10 +246,10 @@ router.put(
   requirePermission('documents.view'),
   validate({ body: dokumenPasswordSchema }),
   asyncHandler(async (req, res) => {
-    const studyProgramId = scopedTenantId(req);
+    const owner = await resolveContentOwner(req);
     const { password } = getBody<{ password: string }>(req);
 
-    const status = await setDocumentPassword(studyProgramId, password);
+    const status = await setDocumentPassword(owner, password);
 
     // Nilai kata sandi tidak pernah ditulis ke audit.
     await recordAudit({
@@ -236,7 +257,7 @@ router.put(
       action: 'UPDATE',
       module: 'DOCUMENTS',
       targetType: 'document_password',
-      targetId: studyProgramId,
+      targetId: owner.facultyId ?? owner.studyProgramId ?? 0,
     });
 
     res.json({
@@ -267,6 +288,23 @@ router.get(
   '/public/arsip-dokumen',
   requireTenant,
   asyncHandler(async (req, res) => {
+    if (req.tenant!.tenantType === 'faculty') {
+      const password = await getDocumentPasswordStatus({ facultyId: req.tenant!.id });
+      res.json({
+        success: true,
+        items: [],
+        meta: {
+          prodiCode: req.tenant!.code ?? 'FAKULTAS',
+          prodiName: req.tenant!.name,
+          total: 0,
+          sumberGagal: [],
+          passwordActive: password.passwordActive,
+          terkunci: password.passwordActive,
+        },
+      });
+      return;
+    }
+
     const studyProgramId = req.tenant!.id;
     const { prodiCode, nama } = await resolveProdiCode(studyProgramId);
     const password = await getDocumentPasswordStatus(studyProgramId);
@@ -313,8 +351,12 @@ router.post(
   requireTenant,
   validate({ body: unlockSchema }),
   asyncHandler(async (req, res) => {
-    const studyProgramId = req.tenant!.id;
-    const stored = await getDocumentPasswordHash(studyProgramId);
+    const tenantTarget =
+      req.tenant!.tenantType === 'faculty'
+        ? { facultyId: req.tenant!.id, studyProgramId: null }
+        : { studyProgramId: req.tenant!.id, facultyId: null };
+
+    const stored = await getDocumentPasswordHash(tenantTarget);
     const body = getBody<{ password: string }>(req);
     const password = body.password;
 
@@ -327,7 +369,10 @@ router.post(
       throw AppError.forbidden('Kata sandi dokumen salah.', 'ARSIP_PASSWORD_INVALID');
     }
 
-    const { prodiCode } = await resolveProdiCode(studyProgramId);
+    const prodiCode =
+      req.tenant!.tenantType === 'faculty'
+        ? req.tenant!.code ?? 'FAKULTAS'
+        : (await resolveProdiCode(req.tenant!.id)).prodiCode;
 
     res.json({
       success: true,

@@ -80,10 +80,26 @@ export interface DocumentPasswordStatus {
   version: number;
 }
 
-/** Membaca status kata sandi arsip sebuah prodi. */
-export async function getDocumentPasswordStatus(studyProgramId: number): Promise<DocumentPasswordStatus> {
+export interface TenantTarget {
+  studyProgramId?: number | null;
+  facultyId?: number | null;
+}
+
+function resolveWhere(target: number | TenantTarget): { studyProgramId: number } | { facultyId: number } {
+  if (typeof target === 'number') {
+    return { studyProgramId: target };
+  }
+  if (target.facultyId) {
+    return { facultyId: target.facultyId };
+  }
+  return { studyProgramId: target.studyProgramId! };
+}
+
+/** Membaca status kata sandi arsip sebuah prodi atau fakultas. */
+export async function getDocumentPasswordStatus(target: number | TenantTarget): Promise<DocumentPasswordStatus> {
+  const where = resolveWhere(target);
   const setting = await prisma.websiteSetting.findUnique({
-    where: { studyProgramId },
+    where,
     select: { documentPasswordHash: true, documentPasswordSetAt: true, documentPasswordVersion: true },
   });
 
@@ -95,31 +111,34 @@ export async function getDocumentPasswordStatus(studyProgramId: number): Promise
 }
 
 /**
- * Mengambil hash kata sandi arsip satu prodi.
+ * Mengambil hash kata sandi arsip satu prodi atau fakultas.
  *
- * Mengembalikan `null` bila prodi belum memasang kata sandi.
+ * Mengembalikan `null` bila belum memasang kata sandi.
  */
-export async function getDocumentPasswordHash(studyProgramId: number): Promise<string | null> {
+export async function getDocumentPasswordHash(target: number | TenantTarget): Promise<string | null> {
+  const where = resolveWhere(target);
   const setting = await prisma.websiteSetting.findUnique({
-    where: { studyProgramId },
+    where,
     select: { documentPasswordHash: true },
   });
   return setting?.documentPasswordHash ?? null;
 }
 
-/** Memasang atau mengganti kata sandi arsip prodi. */
+/** Memasang atau mengganti kata sandi arsip prodi atau fakultas. */
 export async function setDocumentPassword(
-  studyProgramId: number,
+  target: number | TenantTarget,
   password: string,
 ): Promise<DocumentPasswordStatus> {
+  const where = resolveWhere(target);
   const hash = hashDocumentPassword(password);
   const now = new Date();
 
+  const isFaculty = 'facultyId' in where;
   const setting = await prisma.websiteSetting.upsert({
-    where: { studyProgramId },
+    where,
     create: {
-      studyProgramId,
-      siteTitle: 'Website Program Studi',
+      ...where,
+      siteTitle: isFaculty ? 'Website Fakultas' : 'Website Program Studi',
       documentPasswordHash: hash,
       documentPasswordSetAt: now,
       documentPasswordVersion: 1,

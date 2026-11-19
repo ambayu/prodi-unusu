@@ -576,10 +576,6 @@ model CurriculumItem {
   id                 Int      @id @default(autoincrement())
   curriculumId       Int      @map("curriculum_id")
   courseId           Int      @map("course_id")
-  academicSemesterId Int?     @map("academic_semester_id")
-  // Semester penawaran 1 s/d 8 yang dipilih langsung admin, tanpa menautkan
-  // kalender akademik. `academic_semester_id` tetap dipertahankan untuk data
-  // warisan yang sudah terisi.
   semesterNumber     Int?     @map("semester_number")
   credits            Int      @default(2)
   description        String?  @db.Text
@@ -588,10 +584,9 @@ model CurriculumItem {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  curriculum       Curriculum        @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
-  course           Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  academicSemester AcademicSemester? @relation(fields: [academicSemesterId], references: [id], onDelete: SetNull)
-  rpsDocuments     CurriculumRps[]
+  curriculum   Curriculum      @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  course       Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  rpsDocuments CurriculumRps[]
   classrooms       LmsClassroom[]
 
   // Satu mata kuliah hanya boleh muncul sekali dalam kurikulum yang sama.

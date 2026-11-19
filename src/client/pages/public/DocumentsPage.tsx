@@ -173,8 +173,12 @@ export const DocumentsPage: React.FC = () => {
     <>
       <PageHeader
         eyebrow="Bank Dokumen"
-        title="Dokumen Program Studi"
-        description="Arsip surat dan dokumen program studi. Untuk membuka isi berkas, masukkan kata sandi arsip program studi."
+        title={tenant?.tenantType === 'faculty' ? 'Dokumen Fakultas' : 'Dokumen Program Studi'}
+        description={
+          tenant?.tenantType === 'faculty'
+            ? 'Arsip surat dan dokumen fakultas. Untuk membuka isi berkas, masukkan kata sandi arsip fakultas.'
+            : 'Arsip surat dan dokumen program studi. Untuk membuka isi berkas, masukkan kata sandi arsip program studi.'
+        }
       />
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">

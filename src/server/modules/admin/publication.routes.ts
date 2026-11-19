@@ -2,7 +2,7 @@
 import { prisma } from '../../prisma.js';
 import { asyncHandler, getBody, getParams, getQuery, validate } from '../../utils/validation.js';
 import { requirePermission } from '../../middlewares/auth.js';
-import { scopedTenantId } from '../../middlewares/tenantScope.js';
+import { resolveContentOwner, scopedTenantId } from '../../middlewares/tenantScope.js';
 import { AppError } from '../../utils/errors.js';
 import { recordAudit } from '../../services/auditService.js';
 import {
@@ -35,45 +35,6 @@ import type { Request } from 'express';
  *    header `X-Tenant-Id` (program studi) atau `X-Faculty-Id` (fakultas).
  *    Header hanya dipercaya setelah dicocokkan dengan penugasan pengguna.
  */
-async function resolveContentOwner(
-  req: Request,
-): Promise<{ studyProgramId: number | null; facultyId: number | null }> {
-  const user = req.authUser;
-  if (!user) throw AppError.unauthorized();
-
-  const rawFaculty = req.headers['x-faculty-id'];
-  const facultyHeader = Array.isArray(rawFaculty) ? rawFaculty[0] : rawFaculty;
-
-  if (facultyHeader) {
-    const facultyId = Number(facultyHeader);
-    if (!Number.isInteger(facultyId) || facultyId <= 0) {
-      throw AppError.badRequest('Unit fakultas tidak valid.', 'FACULTY_ID_INVALID');
-    }
-
-    const allowed = user.facultyTenantIds ?? [];
-    if (!user.isSuperAdmin && !allowed.includes(facultyId)) {
-      throw AppError.forbidden(
-        'Anda tidak berwenang mengelola fakultas tersebut.',
-        'FACULTY_SCOPE_DENIED',
-      );
-    }
-
-    /*
-     * Fakultas harus benar-benar ada. Tanpa pemeriksaan ini, ID karangan dari
-     * header akan membuat baris konten milik "fakultas hantu" dan gambar yang
-     * tersimpan tidak akan pernah terbaca halaman publik mana pun.
-     */
-    const exists = await prisma.faculty.count({ where: { id: facultyId } });
-    if (exists === 0) {
-      throw AppError.notFound('Fakultas yang diminta tidak ditemukan.', 'FACULTY_NOT_FOUND');
-    }
-
-    return { studyProgramId: null, facultyId };
-  }
-
-  return { studyProgramId: scopedTenantId(req), facultyId: null };
-}
-
 /** Label unit yang sedang dikelola, dipakai pada pesan respons. */
 function ownerLabel(req: Request): string {
   return req.headers['x-faculty-id'] ? 'fakultas' : 'program studi';
