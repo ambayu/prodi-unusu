@@ -224,12 +224,11 @@ export const AdminLmsJadwal: React.FC = () => {
               ) : (
                 curriculums.map((c) => (
                   <option key={c.id} value={String(c.year)}>
-                    Tahun {c.year} — {c.name}
-                    {currentCurriculum?.id === c.id ? ' (Berlaku)' : ''}
+                    Tahun {c.year}
                   </option>
                 ))
               )}
-              <option value="all">Semua Tahun Kurikulum</option>
+              <option value="all">Semua Tahun</option>
             </select>
           </div>
 
@@ -273,7 +272,7 @@ export const AdminLmsJadwal: React.FC = () => {
         </div>
 
         {coursesQuery.isLoading ? (
-          <LoadingState label="Memuat penawaran mata kuliah kurikulum aktif..." />
+          <LoadingState label="Memuat penawaran mata kuliah kurikulum..." />
         ) : coursesQuery.isError ? (
           <ErrorState message={toApiError(coursesQuery.error).message} onRetry={() => void coursesQuery.refetch()} />
         ) : filteredCourses.length === 0 ? (
@@ -281,7 +280,7 @@ export const AdminLmsJadwal: React.FC = () => {
             title="Tidak ada mata kuliah"
             description={
               selectedSemester === 'all'
-                ? 'Belum ada mata kuliah pada kurikulum aktif saat ini.'
+                ? 'Belum ada mata kuliah pada kurikulum saat ini.'
                 : `Tidak ada mata kuliah yang ditawarkan untuk Semester ${selectedSemester}.`
             }
           />

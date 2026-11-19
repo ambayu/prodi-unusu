@@ -376,13 +376,13 @@ export const AdminCurriculum: React.FC = () => {
                 <select
                   value={curriculumFilter}
                   onChange={(e) => setCurriculumFilter(e.target.value)}
-                  className="field-input cursor-pointer sm:w-60"
+                  className="field-input cursor-pointer sm:w-44"
                   aria-label="Filter berdasarkan tahun kurikulum"
                 >
-                  <option value="all">Semua Kurikulum / Tahun</option>
+                  <option value="all">Semua Tahun</option>
                   {curriculums.map((c) => (
                     <option key={c.id} value={String(c.id)}>
-                      {c.name} ({c.year}){currentCurriculum?.id === c.id ? ' — Berlaku' : ''}
+                      Tahun {c.year}
                     </option>
                   ))}
                 </select>
@@ -561,7 +561,7 @@ export const AdminCurriculum: React.FC = () => {
           >
             {curriculums.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name} ({c.year}){currentCurriculum?.id === c.id ? ' — Berlaku' : ''}
+                Tahun {c.year} — {c.name}
               </option>
             ))}
           </select>
