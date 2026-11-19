@@ -124,7 +124,7 @@ export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({ widgetCode, conf
                 }
               >
                 <p
-                  className="font-display text-4xl sm:text-5xl font-extrabold tabular-nums tracking-tight"
+                  className="text-4xl sm:text-5xl font-extrabold tabular-nums tracking-tight"
                   style={{ color: primaryColor }}
                 >
                   {typeof item.value === 'number' ? item.value.toLocaleString('id-ID') : item.value}
@@ -226,7 +226,7 @@ export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({ widgetCode, conf
             }}
           />
           <div className="relative z-10 max-w-3xl mx-auto space-y-5">
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-[42px] font-extrabold leading-tight text-white">
+            <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold leading-tight text-white">
               {asString(config.title) || 'Mari Bergabung Bersama Kami'}
             </h2>
             <p className="text-base sm:text-lg text-slate-100 leading-relaxed font-medium">
@@ -266,7 +266,7 @@ export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({ widgetCode, conf
             >
               Sekretariat &amp; Layanan
             </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-950">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950">
               {asString(config.title) || 'Hubungi Kami'}
             </h2>
             <p className="text-[16px] text-slate-800 mt-2 font-medium">
@@ -445,7 +445,7 @@ const AboutProdiWidget: React.FC<{
               >
                 Profil Program Studi
               </span>
-              <h2 className="font-display text-3xl sm:text-4xl lg:text-[42px] font-extrabold text-slate-950 leading-[1.15]">
+              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold text-slate-950 leading-[1.15]">
                 {tenantName || tenant?.name || 'Program Studi UNUSU'}
               </h2>
             </div>
@@ -522,7 +522,7 @@ const VisionMissionWidget: React.FC<{
           >
             Visi &amp; Misi Program Studi
           </span>
-          <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
             Komitmen Akademik &amp; Visi Misi
           </h2>
         </div>
@@ -537,7 +537,7 @@ const VisionMissionWidget: React.FC<{
               Visi Utama
             </span>
             <div
-              className="mt-5 font-display text-xl sm:text-2xl font-bold leading-relaxed text-white"
+              className="mt-5 text-xl sm:text-2xl font-bold leading-relaxed text-white"
               dangerouslySetInnerHTML={{
                 __html:
                   vision ||
@@ -599,7 +599,7 @@ const LatestNewsWidget: React.FC<{ title?: string; limit: number; primaryColor: 
             >
               Warta &amp; Informasi
             </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
               {title || 'Berita & Kegiatan Terbaru'}
             </h2>
           </div>
@@ -698,7 +698,7 @@ const GalleryGridWidget: React.FC<{ title?: string; limit: number; primaryColor:
             >
               Dokumentasi Kegiatan
             </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
               {title || 'Galeri Foto & Aktivitas'}
             </h2>
           </div>
@@ -768,7 +768,7 @@ const LecturersWidget: React.FC<{ title?: string; limit: number; primaryColor: s
             >
               Tenaga Pendidik
             </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
               {title || 'Dosen & Tenaga Pengajar'}
             </h2>
           </div>
@@ -881,7 +881,7 @@ const FacilityGridWidget: React.FC<{ title?: string; limit: number; primaryColor
             >
               Fasilitas Kampus
             </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
               {title || 'Sarana & Prasarana Pembelajaran'}
             </h2>
           </div>
@@ -932,6 +932,14 @@ const FacilityGridWidget: React.FC<{ title?: string; limit: number; primaryColor
                       </p>
                     ) : null}
                   </div>
+                  <Link
+                    to={`/sarpras/${fac.id}`}
+                    className="inline-flex items-center gap-1.5 pt-3 text-[14px] font-bold transition-colors hover:underline"
+                    style={{ color: primaryColor }}
+                  >
+                    <span>Lihat rincian</span>
+                    <ArrowRightIcon className="h-4 w-4" />
+                  </Link>
                 </div>
               </div>
             ))}
@@ -967,7 +975,7 @@ const DocumentListWidget: React.FC<{ title?: string; limit: number; primaryColor
             >
               Unduhan &amp; Pedoman
             </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
               {title || 'Dokumen & Pedoman Akademik'}
             </h2>
           </div>
@@ -1044,7 +1052,7 @@ const CurriculumOverviewWidget: React.FC<{ title?: string; primaryColor: string 
             >
               Struktur Pembelajaran
             </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
               {title || 'Kurikulum & Capaian Pembelajaran'}
             </h2>
           </div>
@@ -1068,7 +1076,7 @@ const CurriculumOverviewWidget: React.FC<{ title?: string; primaryColor: string 
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} />
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="font-display text-4xl font-extrabold tabular-nums tracking-tight text-slate-950">
+              <span className="text-4xl font-extrabold tabular-nums tracking-tight text-slate-950">
                 {summary?.totalCredits ?? 144}
               </span>
               <span className="text-[15px] font-bold text-slate-700">SKS</span>
@@ -1084,7 +1092,7 @@ const CurriculumOverviewWidget: React.FC<{ title?: string; primaryColor: string 
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="font-display text-4xl font-extrabold tabular-nums tracking-tight text-slate-950">
+              <span className="text-4xl font-extrabold tabular-nums tracking-tight text-slate-950">
                 {summary?.totalSemesters ?? 8}
               </span>
               <span className="text-[15px] font-bold text-slate-700">Semester</span>
@@ -1100,7 +1108,7 @@ const CurriculumOverviewWidget: React.FC<{ title?: string; primaryColor: string 
               <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="font-display text-4xl font-extrabold tabular-nums tracking-tight text-slate-950">
+              <span className="text-4xl font-extrabold tabular-nums tracking-tight text-slate-950">
                 {summary?.totalCourses ?? 48}
               </span>
               <span className="text-[15px] font-bold text-slate-700">MK Inti</span>
@@ -1116,7 +1124,7 @@ const CurriculumOverviewWidget: React.FC<{ title?: string; primaryColor: string 
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="font-display text-4xl font-extrabold tabular-nums tracking-tight text-slate-950">
+              <span className="text-4xl font-extrabold tabular-nums tracking-tight text-slate-950">
                 {summary?.totalRps ?? 48}
               </span>
               <span className="text-[15px] font-bold text-slate-700">Tersedia</span>

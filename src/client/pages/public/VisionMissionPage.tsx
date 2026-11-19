@@ -106,7 +106,7 @@ export const VisionMissionPage: React.FC = () => {
         foto/konten di bawahnya. Tanpa ini gambar langsung menempel ke banner
         sehingga halaman terasa sesak.
       */}
-      <section className="pt-10 sm:pt-14">
+      <section className="pt-10 pb-14 sm:pt-14">
         {profileQuery.isLoading ? (
           <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
             <LoadingState label="Memuat visi dan misi" rows={2} />
@@ -141,7 +141,7 @@ export const VisionMissionPage: React.FC = () => {
                 <GambarTentang
                   src={heroGambar}
                   alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
-                  className="h-auto w-full object-contain lg:h-full"
+                  className="mx-auto h-auto w-full max-w-md object-contain lg:h-full lg:max-w-none"
                 />
               </figure>
             </aside>

@@ -109,12 +109,12 @@ export const ProfilePage: React.FC = () => {
            * dahulu, juga tanpa bingkai.
            */
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-10">
-            <aside className="lg:col-span-6 xl:col-span-5 lg:relative">
+            <aside className="px-4 pb-6 lg:col-span-6 xl:col-span-5 lg:relative lg:pb-0">
               <figure className="lg:absolute lg:inset-0">
                 <GambarTentang
                   src={heroGambar}
                   alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
-                  className="h-auto w-full object-contain lg:h-full"
+                  className="mx-auto h-auto w-full max-w-md object-contain lg:h-full lg:max-w-none"
                 />
               </figure>
             </aside>
