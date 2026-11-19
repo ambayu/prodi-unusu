@@ -68,7 +68,7 @@ const PanelFakultas: React.FC<{
       <span className="inline-flex items-center rounded-lg bg-amber-400 px-3 py-1 text-[13px] font-black tracking-wider text-slate-950 shadow-xs">
         {faculty.code}
       </span>
-      <h3 className="font-display text-lg font-extrabold leading-snug text-white drop-shadow-xs">
+      <h3 className="text-lg font-extrabold leading-snug text-white drop-shadow-xs">
         {faculty.name}
       </h3>
     </div>
@@ -386,7 +386,7 @@ export const MainLandingPage: React.FC = () => {
               </Reveal>
 
               <Reveal direction="up" delayMs={200}>
-                <h2 className="font-display text-3xl sm:text-4xl lg:text-[44px] font-extrabold tracking-tight text-slate-950 leading-[1.15] !mb-8">
+                <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold tracking-tight text-slate-950 leading-[1.15] !mb-8">
                   Tentang Program Studi <br className="hidden sm:inline" />
                   <span className="text-[#166534]">di UNUSU</span>
                 </h2>
@@ -437,7 +437,7 @@ export const MainLandingPage: React.FC = () => {
               <Reveal direction="left" delayMs={200}>
                 <div className="rounded-2xl border border-emerald-900/15 bg-white p-5 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-display text-lg font-extrabold text-slate-950 leading-snug">
+                    <h3 className="text-lg font-extrabold text-slate-950 leading-snug">
                       Kurikulum MBKM
                     </h3>
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-900">
@@ -455,7 +455,7 @@ export const MainLandingPage: React.FC = () => {
               <Reveal direction="left" delayMs={350}>
                 <div className="rounded-2xl border border-amber-900/15 bg-white p-5 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-display text-lg font-extrabold text-slate-950 leading-snug">
+                    <h3 className="text-lg font-extrabold text-slate-950 leading-snug">
                       Dosen Berkualitas
                     </h3>
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-950">
@@ -473,7 +473,7 @@ export const MainLandingPage: React.FC = () => {
               <Reveal direction="left" delayMs={500}>
                 <div className="rounded-2xl border border-emerald-900/15 bg-white p-5 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-display text-lg font-extrabold text-slate-950 leading-snug">
+                    <h3 className="text-lg font-extrabold text-slate-950 leading-snug">
                       Website Mandiri
                     </h3>
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-900">
@@ -574,7 +574,7 @@ export const MainLandingPage: React.FC = () => {
                 </div>
               </Reveal>
               <Reveal direction="up" delayMs={200}>
-                <h2 className="font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-[42px] lg:leading-[1.15]">
+                <h2 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl lg:text-[42px] lg:leading-[1.15]">
                   Fakultas &amp; Portal Mandiri Program Studi
                 </h2>
               </Reveal>
@@ -609,7 +609,7 @@ export const MainLandingPage: React.FC = () => {
         <div id="daftar-fakultas" className="mb-12 text-center scroll-mt-24">
           <div className="flex items-center justify-center gap-3.5">
             <span className="h-1 w-10 rounded-full bg-[#166534]" />
-            <h2 className="font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+            <h2 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
               Daftar Fakultas &amp; Program Studi
             </h2>
             <span className="h-1 w-10 rounded-full bg-[#166534]" />
@@ -736,7 +736,7 @@ export const MainLandingPage: React.FC = () => {
               <p className="mb-1.5 text-[13px] font-extrabold uppercase tracking-widest text-[#166534]">
                 KABAR KAMPUS
               </p>
-              <h2 className="font-display text-3xl font-extrabold text-slate-950 sm:text-4xl">
+              <h2 className="text-3xl font-extrabold text-slate-950 sm:text-4xl">
                 Berita Terbaru Program Studi
               </h2>
               <p className="mt-2 max-w-2xl text-[16px] text-slate-800 font-medium">

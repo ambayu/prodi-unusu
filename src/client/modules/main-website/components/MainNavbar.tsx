@@ -51,7 +51,7 @@ export const MainNavbar: React.FC = () => {
                 <img src="/logo-unusu.jpg" alt="Logo UNUSU" className="w-full h-full object-contain" />
               </div>
               <div>
-                <span className="font-display font-extrabold text-white text-xl sm:text-2xl tracking-tight block leading-tight">
+                <span className="font-extrabold text-white text-xl sm:text-2xl tracking-tight block leading-tight">
                   UNIVERSITAS NAHDLATUL ULAMA
                 </span>
                 <span className="text-[13px] text-amber-300 font-bold tracking-widest uppercase block leading-tight mt-0.5">

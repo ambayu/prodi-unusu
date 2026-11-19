@@ -1,4 +1,4 @@
-ï»¿import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -184,7 +184,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
         </div>
       </div>
 
-      {/* Navbar utama dengan warna tema spesifik prodi/fakultas â€” Teks 15px & Target Klik Lega */}
+      {/* Navbar utama dengan warna tema spesifik prodi/fakultas — Teks 15px & Target Klik Lega */}
       <nav
         className="sticky top-0 z-30 text-white shadow-md transition-colors duration-200 border-b-2"
         style={{ backgroundColor: primaryColor, borderBottomColor: accentColor }}
@@ -201,7 +201,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 leading-tight">
                   <span
-                    className="font-display font-extrabold text-lg sm:text-xl tracking-tight"
+                    className="font-extrabold text-lg sm:text-xl tracking-tight"
                     style={{ color: accentColor }}
                   >
                     {labelUnit} {labelKode}
@@ -337,7 +337,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
               </Link>
             </div>
 
-            {/* Mobile Hamburger â€” Target sentuh 48px */}
+            {/* Mobile Hamburger — Target sentuh 48px */}
             <div className="lg:hidden flex items-center">
               <button
                 type="button"
@@ -437,7 +437,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
         {children}
       </div>
 
-      {/* Footer Bersih Terstandarisasi â€” Teks Besar & Kontras Tinggi */}
+      {/* Footer Bersih Terstandarisasi — Teks Besar & Kontras Tinggi */}
       <footer className="bg-slate-900 text-slate-100 border-t-4" style={{ borderTopColor: accentColor }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
@@ -447,7 +447,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                   <img src="/logo-unusu.jpg" alt="UNUSU" className="w-full h-full object-contain" />
                 </div>
                 <div>
-                  <p className="font-display font-extrabold text-white text-lg leading-tight">
+                  <p className="font-extrabold text-white text-lg leading-tight">
                     {labelUnit} {tenant?.name}
                   </p>
                   <p className="text-[13px] font-bold text-amber-300">UNUSU Sumatera Utara</p>
@@ -459,7 +459,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
             </div>
 
             <div>
-              <p className="font-display font-bold text-amber-300 text-lg mb-4">Tautan Cepat</p>
+              <p className="font-bold text-amber-300 text-lg mb-4">Tautan Cepat</p>
               <ul className="space-y-2.5 text-[15px]">
                 <li>
                   <Link to="/profil" className="text-slate-100 hover:text-amber-300 transition-colors">
@@ -493,7 +493,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
             </div>
 
             <div>
-              <p className="font-display font-bold text-amber-300 text-lg mb-4">Layanan Terpadu</p>
+              <p className="font-bold text-amber-300 text-lg mb-4">Layanan Terpadu</p>
               <ul className="space-y-2.5 text-[15px]">
                 <li>
                   <a href="https://unusu.ac.id" className="text-slate-100 hover:text-amber-300 transition-colors">
@@ -519,7 +519,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
             </div>
 
             <div>
-              <p className="font-display font-bold text-amber-300 text-lg mb-4">
+              <p className="font-bold text-amber-300 text-lg mb-4">
                 {adalahFakultas ? 'Sekretariat Fakultas' : 'Sekretariat Prodi'}
               </p>
               <div className="space-y-2.5 text-[15px] text-slate-200 leading-relaxed">
@@ -539,7 +539,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
           </div>
 
           <div className="pt-8 border-t border-slate-700/80 text-center text-slate-300 text-[14px] font-medium">
-            Â© {new Date().getFullYear()} {adalahFakultas ? tenant?.name : `Program Studi ${tenant?.name || 'Sistem Informasi'}`} â€¢ Universitas Nahdlatul Ulama Sumatera Utara
+            © {new Date().getFullYear()} {adalahFakultas ? tenant?.name : `Program Studi ${tenant?.name || 'Sistem Informasi'}`} • Universitas Nahdlatul Ulama Sumatera Utara
           </div>
         </div>
       </footer>

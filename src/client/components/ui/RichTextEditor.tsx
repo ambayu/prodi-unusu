@@ -127,7 +127,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <button
           type="button"
           onClick={() => exec('italic')}
-          className="rounded-md p-1.5 hover:bg-slate-200 italic text-xs w-7 h-7 flex items-center justify-center font-serif"
+          className="rounded-md p-1.5 hover:bg-slate-200 italic text-xs w-7 h-7 flex items-center justify-center"
           title="Miring (Italic)"
         >
           I

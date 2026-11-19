@@ -17,9 +17,10 @@ export default {
         },
       },
       fontFamily: {
+        // Satu keluarga huruf untuk seluruh situs: UI dan judul.
         sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['"Newsreader"', 'Georgia', 'ui-serif', 'serif'],
-        serif: ['"Newsreader"', 'Georgia', 'ui-serif', 'serif'],
+        // Judul memakai Montserrat agar terasa tegas tanpa menambah keluarga huruf body.
+        heading: ['"Montserrat"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
       },
       boxShadow: {
         '2xs': '0 1px 2px 0 rgba(0, 0, 0, 0.03)',

@@ -19,7 +19,7 @@ export const MainFooter: React.FC = () => {
                 <img src="/logo-unusu.jpg" alt="Logo UNUSU" className="w-full h-full object-contain" />
               </div>
               <div>
-                <p className="font-display font-extrabold text-white text-xl leading-tight">UNUSU</p>
+                <p className="font-extrabold text-white text-xl leading-tight">UNUSU</p>
                 <p className="text-[13px] text-amber-300 font-bold leading-snug">
                   Universitas Nahdlatul Ulama Sumatera Utara
                 </p>
@@ -33,7 +33,7 @@ export const MainFooter: React.FC = () => {
 
           {/* Kolom 2: Fakultas Akademik */}
           <div>
-            <p className="font-display font-bold text-amber-300 text-lg tracking-tight mb-4">
+            <p className="font-bold text-amber-300 text-lg tracking-tight mb-4">
               Fakultas Akademik
             </p>
             <ul className="space-y-2.5 text-[15px] text-emerald-50">
@@ -72,7 +72,7 @@ export const MainFooter: React.FC = () => {
 
           {/* Kolom 3: Layanan & Informasi */}
           <div>
-            <p className="font-display font-bold text-amber-300 text-lg tracking-tight mb-4">
+            <p className="font-bold text-amber-300 text-lg tracking-tight mb-4">
               Layanan &amp; Portal
             </p>
             <ul className="space-y-2.5 text-[15px] text-emerald-50">
@@ -107,7 +107,7 @@ export const MainFooter: React.FC = () => {
 
           {/* Kolom 4: Kampus Pusat */}
           <div>
-            <p className="font-display font-bold text-amber-300 text-lg tracking-tight mb-4">
+            <p className="font-bold text-amber-300 text-lg tracking-tight mb-4">
               Kampus Utama
             </p>
             <ul className="space-y-3 text-[15px] text-emerald-50 leading-relaxed">

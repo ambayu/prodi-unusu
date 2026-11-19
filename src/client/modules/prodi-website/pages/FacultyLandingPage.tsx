@@ -233,7 +233,7 @@ export const FacultyLandingPage: React.FC = () => {
                 >
                   Tentang Fakultas
                 </span>
-                <h2 className="font-display text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-950 sm:text-4xl lg:text-[42px]">
+                <h2 className="text-3xl font-extrabold leading-[1.15] tracking-tight text-slate-950 sm:text-4xl lg:text-[42px]">
                   {namaFakultas}
                 </h2>
               </div>
@@ -259,7 +259,7 @@ export const FacultyLandingPage: React.FC = () => {
                   <dt className="text-[13px] font-extrabold uppercase tracking-wider text-slate-700">
                     Program Studi
                   </dt>
-                  <dd className="font-display text-3xl font-extrabold mt-1" style={{ color: primary }}>
+                  <dd className="text-3xl font-extrabold mt-1" style={{ color: primary }}>
                     {directoryQuery.isLoading ? '—' : prodis.length}
                   </dd>
                 </div>
@@ -267,7 +267,7 @@ export const FacultyLandingPage: React.FC = () => {
                   <dt className="text-[13px] font-extrabold uppercase tracking-wider text-slate-700">
                     Jenjang Pendidikan
                   </dt>
-                  <dd className="font-display text-3xl font-extrabold mt-1" style={{ color: primary }}>
+                  <dd className="text-3xl font-extrabold mt-1" style={{ color: primary }}>
                     {prodis.length > 0 ? [...new Set(prodis.map((p) => p.degree))].join(', ') : 'S1'}
                   </dd>
                 </div>
@@ -308,7 +308,7 @@ export const FacultyLandingPage: React.FC = () => {
             >
               Program Studi
             </p>
-            <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
               Yang Diselenggarakan {namaFakultas}
             </h2>
             <p className="mt-3 text-[16px] leading-relaxed text-slate-800 font-medium">
@@ -429,7 +429,7 @@ export const FacultyLandingPage: React.FC = () => {
               <p className="text-[13px] font-extrabold uppercase tracking-[0.2em]" style={{ color: primary }}>
                 Warta Fakultas
               </p>
-              <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
                 Berita Fakultas
               </h2>
             </div>
@@ -522,7 +522,7 @@ export const FacultyLandingPage: React.FC = () => {
               <p className="text-[13px] font-extrabold uppercase tracking-[0.2em]" style={{ color: accent }}>
                 Sekretariat Fakultas
               </p>
-              <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
                 Hubungi {namaFakultas}
               </h2>
               <p className="mt-4 max-w-md text-[16px] leading-relaxed text-slate-100 font-medium">

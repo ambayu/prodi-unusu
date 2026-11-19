@@ -19,7 +19,7 @@
   }
 
   h1, h2, h3 {
-    @apply tracking-tight text-slate-950;
+    @apply font-heading tracking-tight text-slate-950;
   }
 
   /* Fokus keyboard yang sangat jelas dan berjarak lega */
