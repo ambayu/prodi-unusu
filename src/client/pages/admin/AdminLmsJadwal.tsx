@@ -67,7 +67,7 @@ export const AdminLmsJadwal: React.FC = () => {
   const canEdit = has('curriculum.update');
 
   const [selectedSemester, setSelectedSemester] = useState<number | 'all'>('all');
-  const [selectedYear, setSelectedYear] = useState<string>('current');
+  const [selectedYear, setSelectedYear] = useState<string>('');
   const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null);
   const [expandedDosenClassId, setExpandedDosenClassId] = useState<number | null>(null);
 
@@ -94,13 +94,14 @@ export const AdminLmsJadwal: React.FC = () => {
     queryKey: ['admin', 'lms-courses', selectedYear],
     queryFn: () => {
       const params: { year?: number; all?: boolean } = {};
-      if (selectedYear !== 'current' && selectedYear !== 'all') {
-        params.year = Number(selectedYear);
-      } else if (selectedYear === 'all') {
+      if (selectedYear === 'all') {
         params.all = true;
+      } else if (selectedYear) {
+        params.year = Number(selectedYear);
       }
       return lmsAdminApi.courses(params).then((res) => res.data.courses);
     },
+    enabled: Boolean(selectedYear),
   });
 
   const lecturersQuery = useQuery({
@@ -128,19 +129,16 @@ export const AdminLmsJadwal: React.FC = () => {
     }));
   }, [rawLecturers]);
 
-  const yearOptions = useMemo<SearchableOption[]>(() => {
-    const items: SearchableOption[] =
-      curriculums.length === 0
-        ? [{ value: 'current', label: 'Tahun Berlaku' }]
-        : curriculums.map((c) => ({
-            value: String(c.year),
-            label: `Tahun ${c.year}`,
-            description: c.name,
-            keywords: `${c.year} ${c.name}`,
-          }));
-    items.push({ value: 'all', label: 'Semua Tahun', keywords: 'semua seluruh tahun kurikulum' });
-    return items;
-  }, [curriculums]);
+  const yearOptions = useMemo<SearchableOption[]>(
+    () =>
+      curriculums.map((c) => ({
+        value: String(c.year),
+        label: `Tahun ${c.year}`,
+        description: c.name,
+        keywords: `${c.year} ${c.name}`,
+      })),
+    [curriculums],
+  );
 
   const lecturerOptions = useMemo<SearchableOption[]>(
     () =>

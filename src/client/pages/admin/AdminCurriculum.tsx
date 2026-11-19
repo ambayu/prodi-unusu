@@ -58,7 +58,7 @@ export const AdminCurriculum: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [semesterFilter, setSemesterFilter] = useState<number | 'all'>('all');
-  const [curriculumFilter, setCurriculumFilter] = useState<string>('all');
+  const [curriculumFilter, setCurriculumFilter] = useState<string>('');
   const [deleteTarget, setDeleteTarget] = useState<CurriculumItem | null>(null);
 
   const [cloneModalOpen, setCloneModalOpen] = useState(false);
@@ -88,18 +88,20 @@ export const AdminCurriculum: React.FC = () => {
 
   const items = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data]);
   const curriculums: Curriculum[] = useMemo(() => curriculumsQuery.data ?? [], [curriculumsQuery.data]);
+  const currentCurriculum = useMemo(() => pickCurrentCurriculum(curriculums), [curriculums]);
+  const effectiveCurriculumFilter = curriculumFilter || (currentCurriculum ? String(currentCurriculum.id) : '');
   const sandiBelumDipasang = passwordQuery.data?.passwordActive === false;
   const keyword = search.trim().toLowerCase();
 
   const filteredItems = useMemo(
     () =>
       items.filter((item) => {
-        if (curriculumFilter !== 'all' && String(item.curriculumId) !== curriculumFilter) return false;
+        if (effectiveCurriculumFilter && String(item.curriculumId) !== effectiveCurriculumFilter) return false;
         if (semesterFilter !== 'all' && semesterOf(item) !== semesterFilter) return false;
         if (!keyword) return true;
         return item.course.code.toLowerCase().includes(keyword) || item.course.name.toLowerCase().includes(keyword);
       }),
-    [items, keyword, semesterFilter, curriculumFilter],
+    [items, keyword, semesterFilter, effectiveCurriculumFilter],
   );
 
   const groups = useMemo<SemesterGroup[]>(() => {
@@ -181,18 +183,14 @@ export const AdminCurriculum: React.FC = () => {
     },
   });
 
-  const currentCurriculum = useMemo(() => pickCurrentCurriculum(curriculums), [curriculums]);
-
   const curriculumFilterOptions = useMemo<SearchableOption[]>(
-    () => [
-      { value: 'all', label: 'Semua Tahun', keywords: 'semua seluruh tahun kurikulum' },
-      ...curriculums.map((c) => ({
+    () =>
+      curriculums.map((c) => ({
         value: String(c.id),
         label: `Tahun ${c.year}`,
         description: c.name,
         keywords: `${c.year} ${c.name}`,
       })),
-    ],
     [curriculums],
   );
 
@@ -405,8 +403,8 @@ export const AdminCurriculum: React.FC = () => {
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
               {curriculums.length > 0 ? (
                 <SearchableSelect
-                  value={curriculumFilter}
-                  onChange={(val) => setCurriculumFilter(val || 'all')}
+                  value={effectiveCurriculumFilter}
+                  onChange={(val) => setCurriculumFilter(val)}
                   options={curriculumFilterOptions}
                   clearable={false}
                   searchPlaceholder="Cari tahun kurikulum..."

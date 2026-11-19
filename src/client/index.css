@@ -19,7 +19,9 @@
   }
 
   h1, h2, h3 {
-    @apply font-heading tracking-tight text-slate-950;
+    /* font-family lewat theme(): @apply font-heading gagal kalau config belum ter-reload dev server. */
+    font-family: theme('fontFamily.heading');
+    @apply tracking-tight text-slate-950;
   }
 
   /* Fokus keyboard yang sangat jelas dan berjarak lega */
