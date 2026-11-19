@@ -173,6 +173,7 @@ router.get(
         id: true,
         credits: true,
         semesterNumber: true,
+        lecturersData: true,
         course: { select: { code: true, name: true } },
         classrooms: {
           where: { group: 'Utama' },
@@ -193,14 +194,18 @@ router.get(
 
     res.json({
       success: true,
-      courses: items.map((item) => ({
-        id: item.id,
-        code: item.course.code,
-        name: item.course.name,
-        credits: item.credits,
-        semesterNumber: item.semesterNumber,
-        classroom: item.classrooms[0] ?? null,
-      })),
+      courses: items.map((item) => {
+        const assignedLecturers = Array.isArray(item.lecturersData) ? item.lecturersData : [];
+        return {
+          id: item.id,
+          code: item.course.code,
+          name: item.course.name,
+          credits: item.credits,
+          semesterNumber: item.semesterNumber,
+          lecturers: assignedLecturers,
+          classroom: item.classrooms[0] ?? null,
+        };
+      }),
     });
   }),
 );
@@ -320,6 +325,37 @@ router.put(
     await syncClassroomToLms(id, tenantId);
     await recordAudit({ req, action: 'UPDATE', module: 'CURRICULUM', targetType: 'lms_classroom_students', targetId: id });
     res.json({ success: true, message: 'Peserta kelas berhasil disimpan dan dikirim ke LMS.', total: uniqueStudents.size });
+  }),
+);
+
+/** GET /api/v1/admin/lms/classrooms/:id/meetings: daftar 16 pertemuan dari LMS. */
+router.get(
+  '/lms/classrooms/:id/meetings',
+  requirePermission('curriculum.view'),
+  validate({ params: idParamSchema }),
+  asyncHandler(async (req, res) => {
+    const tenantId = scopedTenantId(req);
+    const { id } = getParams<{ id: number }>(req);
+    await findOwnedClassroom(id, tenantId);
+
+    const url = (process.env.LMS_SYNC_URL ?? '').trim().replace(/\/$/, '');
+    const apiKey = (process.env.LMS_SYNC_API_KEY ?? '').trim();
+    if (!url || !apiKey) {
+      return res.json({ success: true, meetings: [] });
+    }
+    try {
+      const response = await fetch(`${url}/api/internal/classes/${id}/meetings`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+      });
+      if (!response.ok) {
+        return res.json({ success: true, meetings: [] });
+      }
+      const data = (await response.json()) as { success: boolean; meetings: Array<{ id: number; number: number; title: string; status: string }> };
+      return res.json({ success: true, meetings: data.meetings ?? [] });
+    } catch {
+      return res.json({ success: true, meetings: [] });
+    }
   }),
 );
 

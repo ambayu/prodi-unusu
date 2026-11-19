@@ -131,7 +131,7 @@ export interface CurriculumItem {
   lecturersData: LecturerAssignment[] | null;
   sortOrder: number;
   course: { id: number; code: string; name: string };
-  curriculum?: { id: number; name: string; year: number; description?: string | null };
+  curriculum?: { id: number; name: string; year: number; isActive?: boolean; description?: string | null };
   academicSemester?: AcademicSemester | null;
   rpsDocuments: CurriculumRpsRow[];
 }

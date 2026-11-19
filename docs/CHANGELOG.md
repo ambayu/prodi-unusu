@@ -2,13 +2,15 @@
 
 ## Unreleased
 
+- Kurikulum: panel admin kini memakai penyaring kartu Semua dan Semester 1 sampai 8, lalu menampilkan penawaran yang dikelompokkan per semester beserta ringkasan jumlah mata kuliah, SKS, dan RPS.
 - Bank Dokumen: pratinjau, unduh, dan penghapusan dokumen migrasi BAKSI kini membaca kembali berkas legacy dari `uploads/dokumen/baksi`, sementara unggahan baru tetap memakai `uploads/documents`.
 - Hero Slider: scope fakultas kini menyimpan dan membaca widget `hero_slider` pada halaman fakultas sendiri. Beranda fakultas memakai API hero publik yang sama, sehingga banner editor dan domain fakultas konsisten; gambar bawaan hanya fallback.
 - LMS: kandidat plotting peserta kini diambil dari API ONE UNUSU dengan peran `MAHASISWA`; peserta tetap dipilih dan disimpan per kelas sebelum sinkronisasi ke LMS.
 - LMS: perbaiki validasi parameter ID pada ubah, hapus, dan plotting peserta kelas.
 - LMS: Perkuliahan kini berasal langsung dari penawaran kurikulum aktif per semester 1 sampai 8. Setiap mata kuliah hanya memiliki kelas `Utama`, disimpan lewat upsert, dan langsung tersinkron ke LMS beserta 16 pertemuan.
 - LMS: antarmuka menghapus rombel, hapus kelas, buka kelas baru, sinkronisasi manual, serta input peserta manual; peserta dipilih dari ONE UNUSU.
-- LMS: halaman Perkuliahan kini dikelompokkan per dosen pengampu dan daftar dosen memakai endpoint LMS berizin `curriculum.view`.
+- Kurikulum: menambahkan filter tahun/kurikulum di halaman `/admin/kurikulum` serta kolom kurikulum dengan indikator tahun dan badge aktif.
+- LMS: restrukturisasi halaman `/admin/lms/jadwal` menjadi 4 level hierarkis: filter semester 1-8 -> daftar MK -> dosen pengampu (edit hari/jam/ruang) -> rincian 16 pertemuan LMS. Nama dosen dibersihkan dari format `- junaidikom`.
 
 Semua perubahan penting dicatat di sini. Format tanggal: YYYY-MM-DD.
 

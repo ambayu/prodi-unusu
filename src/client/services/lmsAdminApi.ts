@@ -41,12 +41,20 @@ export interface LmsLecturer {
   nidn: string;
 }
 
+export interface LmsMeeting {
+  id: number;
+  number: number;
+  title: string;
+  status: string;
+}
+
 export interface LmsCourseOffering {
   id: number;
   code: string;
   name: string;
   credits: number;
   semesterNumber: number | null;
+  lecturers?: Array<{ id: number | string; name: string; nidn: string | null }>;
   classroom: Omit<LmsClassroom, 'curriculumItemId' | 'group' | 'curriculumItem'> | null;
 }
 
@@ -60,6 +68,8 @@ export const lmsAdminApi = {
   classrooms: () => api.get<{ success: boolean; classrooms: LmsClassroom[] }>('/admin/lms/classrooms'),
   saveClassroom: (data: LmsClassroomInput) =>
     api.post<{ success: boolean; classroom: LmsClassroom }>('/admin/lms/classrooms', data),
+  meetings: (classroomId: number) =>
+    api.get<{ success: boolean; meetings: LmsMeeting[] }>(`/admin/lms/classrooms/${classroomId}/meetings`),
   students: (classroomId: number) =>
     api.get<{ success: boolean; students: LmsStudentRow[] }>(`/admin/lms/classrooms/${classroomId}/students`),
   saveStudents: (classroomId: number, students: LmsStudentRow[]) =>
