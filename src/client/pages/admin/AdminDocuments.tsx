@@ -19,6 +19,7 @@ import { DeleteRowButton, EditRowButton, RowActions } from '../../components/ui/
 import { DokumenPreviewModal } from '../../components/DokumenPreviewModal';
 import { useToast } from '../../components/ui/Toast';
 import { usePermission } from '../../hooks/useSite';
+import { useSiteStore } from '../../app/siteStore';
 import {
   DOKUMEN_MAX_BYTES,
   arsipDokumenApi,
@@ -121,8 +122,12 @@ export const AdminDocuments: React.FC = () => {
   const [passwordUlang, setPasswordUlang] = useState('');
   const [panelTerbuka, setPanelTerbuka] = useState(false);
 
+  const activeFacultyId = useSiteStore((state) => state.activeFacultyId);
+  const activeTenantId = useSiteStore((state) => state.activeTenantId);
+  const scopeKey = activeFacultyId ? `faculty-${activeFacultyId}` : `prodi-${activeTenantId ?? 'default'}`;
+
   const prodiQuery = useQuery({
-    queryKey: ['admin', 'dokumen-prodi'],
+    queryKey: ['admin', 'dokumen-prodi', scopeKey],
     queryFn: () => dokumenProdiApi.list().then((res) => res.data.items),
     retry: 1,
   });
@@ -132,13 +137,13 @@ export const AdminDocuments: React.FC = () => {
    * prodi tetap tampil dan pengguna diberi tahu lewat catatan di bawah.
    */
   const pusatQuery = useQuery({
-    queryKey: ['admin', 'arsip-dokumen'],
+    queryKey: ['admin', 'arsip-dokumen', scopeKey],
     queryFn: () => arsipDokumenApi.adminList().then((res) => res.data.items),
     retry: 1,
   });
 
   const passwordQuery = useQuery({
-    queryKey: ['admin', 'dokumen-password'],
+    queryKey: ['admin', 'dokumen-password', scopeKey],
     queryFn: () => arsipDokumenApi.passwordStatus().then((res) => res.data),
     retry: 1,
     /*

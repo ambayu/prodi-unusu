@@ -32,20 +32,17 @@ api.interceptors.request.use((config) => {
     }
   }
 
-  // Kirimkan tenant ID aktif jika disimpan di sessionStorage/localStorage
-  const activeTenantId = sessionStorage.getItem('active_tenant_id');
-  if (activeTenantId) {
-    config.headers['X-Tenant-Id'] = activeTenantId;
-  }
-
-  /*
-   * Unit fakultas dikirim terpisah karena fakultas tidak memiliki program
-   * studi, sehingga tidak dapat diwakili `X-Tenant-Id`. Tanpa header ini,
-   * simpan profil dari admin fakultas akan dialamatkan ke prodi yang salah.
-   */
+  // Jika scope fakultas aktif, utamakan header fakultas dan hapus tenant prodi agar tidak ambigu
   const activeFacultyId = sessionStorage.getItem('active_faculty_id');
-  if (!activeTenantId && activeFacultyId) {
+  if (activeFacultyId) {
     config.headers['X-Faculty-Id'] = activeFacultyId;
+    delete config.headers['X-Tenant-Id'];
+  } else {
+    // Kirimkan tenant ID aktif jika disimpan di sessionStorage/localStorage
+    const activeTenantId = sessionStorage.getItem('active_tenant_id');
+    if (activeTenantId) {
+      config.headers['X-Tenant-Id'] = activeTenantId;
+    }
   }
 
   return config;

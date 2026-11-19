@@ -534,13 +534,14 @@ async function ambilBerkasArsip(
 
   const headers: Record<string, string> = {};
   if (sumber === 'admin') {
-    const activeTenantId = sessionStorage.getItem('active_tenant_id');
-    if (activeTenantId) {
-      headers['X-Tenant-Id'] = activeTenantId;
-    }
     const activeFacultyId = sessionStorage.getItem('active_faculty_id');
-    if (!activeTenantId && activeFacultyId) {
+    if (activeFacultyId) {
       headers['X-Faculty-Id'] = activeFacultyId;
+    } else {
+      const activeTenantId = sessionStorage.getItem('active_tenant_id');
+      if (activeTenantId) {
+        headers['X-Tenant-Id'] = activeTenantId;
+      }
     }
   } else {
     headers['X-Arsip-Password'] = password;
