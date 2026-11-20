@@ -247,6 +247,13 @@ export interface DashboardStats {
   pages: number;
   unreadMessages: number;
   mediaAssets: number;
+  classrooms?: {
+    total: number;
+    withoutLecturer: number;
+    withoutSchedule: number;
+    withoutStudents: number;
+    students: number;
+  };
 }
 
 export interface AuditEntry {

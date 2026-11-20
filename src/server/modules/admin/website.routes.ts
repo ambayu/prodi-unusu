@@ -4,6 +4,7 @@ import { asyncHandler, getBody, validate } from '../../utils/validation.js';
 import { requirePermission } from '../../middlewares/auth.js';
 import { scopedTenantId } from '../../middlewares/tenantScope.js';
 import { recordAudit } from '../../services/auditService.js';
+import { findCurrentCurriculum } from '../../services/curriculumService.js';
 import {
   updateThemeSchema,
   updateWebsiteSettingSchema,
@@ -69,6 +70,48 @@ router.get(
       include: { user: { select: { name: true } } },
     });
 
+    // Kesiapan LMS kelas Utama pada kurikulum berlaku: dihitung dari seluruh
+    // mata kuliah penawaran agar kelas yang belum pernah dibuka pun terhitung
+    // sebagai belum punya dosen/jadwal.
+    const currentCurriculum = await findCurrentCurriculum(studyProgramId);
+    const offerings = currentCurriculum
+      ? await prisma.curriculumItem.findMany({
+          where: { curriculumId: currentCurriculum.id },
+          select: {
+            lecturersData: true,
+            classrooms: {
+              where: { group: 'Utama' },
+              select: {
+                lecturerName: true,
+                day: true,
+                startTime: true,
+                _count: { select: { students: true } },
+              },
+              take: 1,
+            },
+          },
+        })
+      : [];
+
+    let withoutLecturer = 0;
+    let withoutSchedule = 0;
+    let withoutStudents = 0;
+    let totalStudents = 0;
+
+    for (const item of offerings) {
+      const room = item.classrooms[0];
+      const fallbackLecturers = Array.isArray(item.lecturersData) ? item.lecturersData : [];
+      const roomLecturer = (room?.lecturerName || '').replace(/^-\s*/, '').trim();
+      const hasLecturer = Boolean(roomLecturer) || fallbackLecturers.length > 0;
+      const hasSchedule = Boolean(room?.day && room?.startTime);
+      const studentCount = room?._count.students ?? 0;
+
+      if (!hasLecturer) withoutLecturer += 1;
+      if (!hasSchedule) withoutSchedule += 1;
+      if (studentCount === 0) withoutStudents += 1;
+      totalStudents += studentCount;
+    }
+
     res.json({
       success: true,
       stats: {
@@ -84,6 +127,13 @@ router.get(
         pages,
         unreadMessages,
         mediaAssets,
+        classrooms: {
+          total: offerings.length,
+          withoutLecturer,
+          withoutSchedule,
+          withoutStudents,
+          students: totalStudents,
+        },
       },
       recentPosts,
       recentAudit,

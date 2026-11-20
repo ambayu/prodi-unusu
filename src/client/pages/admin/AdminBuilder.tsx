@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   PlusIcon,
   TrashIcon,
   ArrowUpIcon,
   ArrowDownIcon,
+  ArrowTopRightOnSquareIcon,
   DocumentDuplicateIcon,
   EyeIcon,
   RocketLaunchIcon,
@@ -22,6 +24,7 @@ import {
   InformationCircleIcon,
   EllipsisVerticalIcon,
   FolderArrowDownIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
@@ -1349,37 +1352,60 @@ export const AdminBuilder: React.FC = () => {
       ) : pagesQuery.isError ? (
         <ErrorState message={toApiError(pagesQuery.error).message} onRetry={() => void pagesQuery.refetch()} />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {tenant ? (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] border border-blue-200 bg-blue-50/60 px-4 py-2.5">
-              <p className="text-xs font-semibold text-blue-900">
-                Cakupan aktif:{' '}
-                <span className="font-bold">{tenant.name}</span>
-                <span className="ml-1.5 rounded bg-white px-1.5 py-0.5 font-mono text-[10px] font-bold text-blue-800">
-                  {tenant.code}
-                </span>
-                <span className="ml-1.5 font-normal text-blue-800">— {tenant.facultyName}</span>
-              </p>
-              <a
-                href={
-                  tenant.domain
-                    ? `${window.location.protocol}//${tenant.domain}${window.location.port ? `:${window.location.port}` : ''}/`
-                    : `${window.location.origin}/`
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="text-[11px] font-bold text-blue-900 underline hover:text-blue-950"
-              >
-                Lihat Website Prodi &rarr;
-              </a>
+            <div className="relative overflow-hidden rounded-[16px] bg-gradient-to-br from-[#1e3a8a] via-[#1b357d] to-[#13265c] px-5 py-4 text-white shadow-sm">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#fbbf24]/15 blur-2xl"
+              />
+              <div className="relative flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md bg-[#fbbf24] px-2 py-0.5 font-mono text-[10px] font-extrabold text-[#1e3a8a]">
+                      {tenant.code}
+                    </span>
+                    <span className="text-[11px] font-semibold text-blue-100/85">
+                      {tenant.facultyName}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-sm font-extrabold tracking-tight text-white">
+                    {tenant.name}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    to="/admin/widget-bank"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-[9px] border border-white/20 bg-white/10 px-3 text-[11px] font-bold text-white backdrop-blur-sm transition-colors hover:border-[#fbbf24]/60 hover:bg-white/15"
+                  >
+                    <Squares2X2Icon className="h-3.5 w-3.5 text-[#fbbf24]" />
+                    <span>Bank Widget</span>
+                  </Link>
+                  <a
+                    href={
+                      tenant.domain
+                        ? `${window.location.protocol}//${tenant.domain}${window.location.port ? `:${window.location.port}` : ''}/`
+                        : `${window.location.origin}/`
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-[9px] bg-[#fbbf24] px-3 text-[11px] font-extrabold text-[#1e3a8a] transition-colors hover:bg-[#f59e0b]"
+                  >
+                    <span>Lihat Website</span>
+                    <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              </div>
             </div>
           ) : null}
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[340px_1fr]">
-          <aside className="rounded-[14px] border border-[#CBD5E1] bg-white p-4 shadow-2xs">
-            <div className="mb-2.5 flex items-center justify-between">
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[330px_1fr]">
+          <aside className="rounded-[16px] border border-[#CBD5E1] bg-white p-4 shadow-2xs lg:sticky lg:top-6 lg:self-start">
+            <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Struktur Navbar</p>
-                <p className="text-[9px] text-slate-400">Navigasi &amp; Halaman Website</p>
+                <p className="text-xs font-extrabold tracking-tight text-slate-900">Struktur Navbar</p>
+                <p className="text-[10px] text-slate-500">Seret item untuk mengubah urutan menu</p>
               </div>
               {has('pages.create') ? (
                 <button
@@ -1390,9 +1416,9 @@ export const AdminBuilder: React.FC = () => {
                     setNavbarFormOpen(true);
                   }}
                   title="Tambah Navbar Baru"
-                  className="inline-flex items-center gap-1 rounded bg-[#1e3a8a]/10 px-2 py-1 text-[10px] font-bold text-[#1e3a8a] hover:bg-[#1e3a8a] hover:text-white transition-colors"
+                  className="inline-flex h-7 items-center gap-1 rounded-[8px] bg-[#1e3a8a] px-2.5 text-[11px] font-bold text-white transition-colors hover:bg-[#172f6e]"
                 >
-                  <PlusIcon className="h-3 w-3" />
+                  <PlusIcon className="h-3.5 w-3.5" />
                   Tambah
                 </button>
               ) : null}
@@ -1528,27 +1554,36 @@ export const AdminBuilder: React.FC = () => {
                       disabled={halaman === null}
                       onClick={() => halaman && setSelectedPageId(halaman.id)}
                       title={halaman === null ? 'Belum ada halaman untuk menu ini' : `Buka ${item.title}`}
-                      className={`flex w-full items-center justify-between rounded-lg py-1.5 pr-24 pl-1.5 text-left text-xs font-semibold transition-colors disabled:cursor-default ${
-                        isChild ? 'pl-2' : ''
-                      } ${isSelected ? 'bg-[#1e3a8a] text-white' : 'text-slate-700 hover:bg-slate-50'}`}
+                      className={`flex w-full items-center justify-between rounded-[10px] py-2 pr-10 pl-2 text-left text-xs font-semibold transition-all disabled:cursor-default ${
+                        isChild ? 'pl-2.5' : ''
+                      } ${
+                        isSelected
+                          ? 'bg-[#1e3a8a] text-white shadow-xs ring-1 ring-inset ring-[#1e3a8a]'
+                          : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-950'
+                      }`}
                     >
-                      <span className="min-w-0 truncate">{item.title}</span>
+                      <span className="flex min-w-0 items-center gap-2">
+                        {isSelected ? (
+                          <span className="h-3.5 w-1 shrink-0 rounded-full bg-[#fbbf24]" aria-hidden="true" />
+                        ) : null}
+                        <span className="min-w-0 truncate">{item.title}</span>
+                      </span>
                       {halaman ? (
                         <span
-                          className={`shrink-0 ml-2 rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                          className={`shrink-0 ml-2 rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
                             halaman.isPublished
                               ? isSelected
                                 ? 'bg-white/20 text-white'
-                                : 'bg-emerald-50 text-emerald-700'
+                                : 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70'
                               : isSelected
-                                ? 'bg-white/20 text-white'
-                                : 'bg-amber-50 text-amber-700'
+                                ? 'bg-[#fbbf24]/25 text-[#fbbf24]'
+                                : 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200/70'
                           }`}
                         >
                           {halaman.isPublished ? 'Terbit' : 'Draft'}
                         </span>
                       ) : (
-                        <span className="shrink-0 ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+                        <span className="shrink-0 ml-2 rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
                           Tanpa halaman
                         </span>
                       )}
@@ -1715,12 +1750,32 @@ export const AdminBuilder: React.FC = () => {
               <LoadingState label="Memuat halaman" rows={2} />
             ) : page ? (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] border border-[#CBD5E1] bg-white px-5 py-3.5 shadow-2xs">
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">{page.title}</p>
-                    <p className="font-mono text-[11px] text-slate-500">
-                      {page.slug === 'beranda' ? '/' : `/${page.slug}`} • {page.sections.length} section
-                    </p>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#CBD5E1] bg-white px-5 py-4 shadow-2xs">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="truncate text-base font-extrabold tracking-tight text-slate-900">
+                        {page.title}
+                      </h2>
+                      <span
+                        className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${
+                          page.isPublished
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            : 'border-amber-200 bg-amber-50 text-amber-800'
+                        }`}
+                      >
+                        {page.isPublished ? 'Terbit' : 'Draft'}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-700">
+                        {page.slug === 'beranda' ? '/' : `/${page.slug}`}
+                      </span>
+                      <span>·</span>
+                      <span className="font-medium">
+                        {page.sections.length} section ·{' '}
+                        {page.sections.reduce((sum, s) => sum + s.widgets.length, 0)} widget
+                      </span>
+                    </div>
                   </div>
                   {has('builder.create') ? (
                     <button
@@ -1798,36 +1853,52 @@ export const AdminBuilder: React.FC = () => {
                 ) : (
                   [...page.sections]
                     .sort((a, b) => a.sortOrder - b.sortOrder)
-                    .map((section) => (
-                      <section key={section.id} className="rounded-[14px] border border-[#CBD5E1] bg-white shadow-2xs overflow-hidden">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#CBD5E1]/70 px-4 py-3">
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-900">
-                              {section.title ?? section.sectionKey}
-                              <span className="ml-2 font-mono text-[10px] font-normal text-slate-400">
-                                {section.sectionKey}
-                              </span>
-                            </p>
-                            <p className="text-[10px] text-slate-500">{section.widgets.length} widget</p>
+                    .map((section, sectionIdx, allSections) => (
+                      <section
+                        key={section.id}
+                        className="overflow-hidden rounded-[16px] border border-[#CBD5E1] bg-white shadow-2xs transition-shadow hover:shadow-xs"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 bg-slate-50/75 px-4 py-3">
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[#1e3a8a]/10 font-mono text-[11px] font-extrabold text-[#1e3a8a]">
+                              {String(sectionIdx + 1).padStart(2, '0')}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-extrabold text-slate-900">
+                                {section.title ?? section.sectionKey}
+                                <span className="ml-2 rounded bg-white px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-500 ring-1 ring-inset ring-slate-200">
+                                  {section.sectionKey}
+                                </span>
+                              </p>
+                              <p className="mt-0.5 text-[10px] font-medium text-slate-500">
+                                {section.widgets.length} widget pada seksi ini
+                              </p>
+                            </div>
                           </div>
 
-                          <div className="flex shrink-0 items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => void moveSection(section, -1)}
-                              className="rounded border border-slate-200 p-1 text-slate-600 hover:bg-slate-50"
-                              aria-label="Naikkan section"
-                            >
-                              <ArrowUpIcon className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void moveSection(section, 1)}
-                              className="rounded border border-slate-200 p-1 text-slate-600 hover:bg-slate-50"
-                              aria-label="Turunkan section"
-                            >
-                              <ArrowDownIcon className="h-3.5 w-3.5" />
-                            </button>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <div className="inline-flex overflow-hidden rounded-[8px] border border-slate-200 bg-white">
+                              <button
+                                type="button"
+                                disabled={sectionIdx === 0}
+                                onClick={() => void moveSection(section, -1)}
+                                className="p-1.5 text-slate-600 transition-colors hover:bg-slate-50 hover:text-[#1e3a8a] disabled:opacity-35"
+                                aria-label="Naikkan section"
+                                title="Naikkan urutan seksi"
+                              >
+                                <ArrowUpIcon className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={sectionIdx === allSections.length - 1}
+                                onClick={() => void moveSection(section, 1)}
+                                className="border-l border-slate-200 p-1.5 text-slate-600 transition-colors hover:bg-slate-50 hover:text-[#1e3a8a] disabled:opacity-35"
+                                aria-label="Turunkan section"
+                                title="Turunkan urutan seksi"
+                              >
+                                <ArrowDownIcon className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                             {has('builder.create') ? (
                               <button
                                 type="button"
@@ -1842,9 +1913,10 @@ export const AdminBuilder: React.FC = () => {
                                   });
                                   setWidgetFormOpen(true);
                                 }}
-                                className="rounded border border-slate-200 px-2 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-50"
+                                className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-[#1e3a8a]/25 bg-blue-50/70 px-2.5 text-[11px] font-bold text-[#1e3a8a] transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] hover:text-white"
                               >
-                                + Widget
+                                <PlusIcon className="h-3 w-3" />
+                                Widget
                               </button>
                             ) : null}
                             {has('builder.delete') ? (
@@ -1857,8 +1929,9 @@ export const AdminBuilder: React.FC = () => {
                                     label: section.title ?? section.sectionKey,
                                   })
                                 }
-                                className="rounded border border-rose-200 p-1 text-rose-600 hover:bg-rose-50"
+                                className="rounded-[8px] border border-rose-200 bg-white p-1.5 text-rose-600 transition-colors hover:bg-rose-50"
                                 aria-label="Hapus section"
+                                title="Hapus seksi"
                               >
                                 <TrashIcon className="h-3.5 w-3.5" />
                               </button>
@@ -1866,34 +1939,44 @@ export const AdminBuilder: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="space-y-2 p-4">
+                        <div className="space-y-2.5 p-4">
                           {section.widgets.length === 0 ? (
-                            <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-center text-[11px] text-slate-500">
-                              Section ini belum berisi widget. Halaman tidak dapat dipublikasikan sebelum ada widget.
+                            <p className="rounded-[12px] border border-dashed border-slate-300 bg-slate-50/80 px-3 py-5 text-center text-[11px] text-slate-500">
+                              Section ini belum berisi widget. Tambahkan minimal satu widget sebelum memublikasikan halaman.
                             </p>
                           ) : (
                             [...section.widgets]
                               .sort((a, b) => a.sortOrder - b.sortOrder)
-                              .map((widget) => {
+                              .map((widget, widgetIdx, allWidgets) => {
                                 const config = parseConfig(widget.configJson);
                                 const origin = getWidgetOriginMeta(widget.widget.code);
                                 return (
                                   <div
                                     key={widget.id}
-                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 shadow-2xs hover:bg-white hover:border-slate-300 transition-all"
+                                    className="group flex flex-col justify-between gap-3 rounded-[12px] border border-slate-200/90 bg-slate-50/50 p-3.5 transition-all hover:border-[#1e3a8a]/35 hover:bg-white hover:shadow-xs sm:flex-row sm:items-center"
                                   >
-                                    <div className="min-w-0 space-y-1">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <p className="text-xs font-bold text-slate-900">
+                                    <div className="min-w-0 flex-1 space-y-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <span
+                                          className={`h-2 w-2 shrink-0 rounded-full ${
+                                            widget.widget.code === 'custom_layout'
+                                              ? 'bg-[#fbbf24]'
+                                              : origin.type === 'dynamic'
+                                                ? 'bg-emerald-500'
+                                                : 'bg-[#1e3a8a]'
+                                          }`}
+                                          aria-hidden="true"
+                                        />
+                                        <p className="text-xs font-extrabold text-slate-900">
                                           {getWidgetDisplayName(widget.widget.code, widget.widget.name)}
                                         </p>
                                         <span
-                                          className={`rounded-md border px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase ${origin.badgeClass}`}
+                                          className={`rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${origin.badgeClass}`}
                                         >
                                           {origin.badge}
                                         </span>
                                         {widget.variantCode ? (
-                                          <span className="rounded bg-white border border-slate-200 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
+                                          <span className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
                                             {widget.variantCode}
                                           </span>
                                         ) : null}
@@ -1916,16 +1999,16 @@ export const AdminBuilder: React.FC = () => {
                                           </p>
                                         ) : null;
                                       })()}
-                                      <div className="flex items-center gap-2 text-[10px] text-slate-500 flex-wrap">
-                                        <span className="font-medium text-slate-700">{summarize(config)}</span>
-                                        <span>•</span>
+                                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-500">
+                                        <span className="font-semibold text-slate-700">{summarize(config)}</span>
+                                        <span>·</span>
                                         <span>{origin.sourceDesc}</span>
                                         {origin.manageRoute && (
                                           <a
                                             href={origin.manageRoute}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="font-bold text-[#1e3a8a] hover:underline inline-flex items-center gap-0.5"
+                                            className="inline-flex items-center gap-0.5 font-bold text-[#1e3a8a] hover:underline"
                                           >
                                             {origin.manageLabel} &rarr;
                                           </a>
@@ -1933,23 +2016,29 @@ export const AdminBuilder: React.FC = () => {
                                       </div>
                                     </div>
 
-                                    <div className="flex shrink-0 items-center gap-1 self-end sm:self-center">
-                                      <button
-                                        type="button"
-                                        onClick={() => void moveWidget(section, widget, -1)}
-                                        className="rounded border border-slate-200 bg-white p-1 text-slate-600 hover:bg-slate-100"
-                                        aria-label="Naikkan widget"
-                                      >
-                                        <ArrowUpIcon className="h-3 w-3" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => void moveWidget(section, widget, 1)}
-                                        className="rounded border border-slate-200 bg-white p-1 text-slate-600 hover:bg-slate-100"
-                                        aria-label="Turunkan widget"
-                                      >
-                                        <ArrowDownIcon className="h-3 w-3" />
-                                      </button>
+                                    <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-center">
+                                      <div className="inline-flex overflow-hidden rounded-[8px] border border-slate-200 bg-white">
+                                        <button
+                                          type="button"
+                                          disabled={widgetIdx === 0}
+                                          onClick={() => void moveWidget(section, widget, -1)}
+                                          className="p-1.5 text-slate-600 transition-colors hover:bg-slate-50 hover:text-[#1e3a8a] disabled:opacity-35"
+                                          aria-label="Naikkan widget"
+                                          title="Naikkan widget"
+                                        >
+                                          <ArrowUpIcon className="h-3 w-3" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={widgetIdx === allWidgets.length - 1}
+                                          onClick={() => void moveWidget(section, widget, 1)}
+                                          className="border-l border-slate-200 p-1.5 text-slate-600 transition-colors hover:bg-slate-50 hover:text-[#1e3a8a] disabled:opacity-35"
+                                          aria-label="Turunkan widget"
+                                          title="Turunkan widget"
+                                        >
+                                          <ArrowDownIcon className="h-3 w-3" />
+                                        </button>
+                                      </div>
                                       {has('builder.update') ? (
                                         <button
                                           type="button"
@@ -1959,19 +2048,20 @@ export const AdminBuilder: React.FC = () => {
                                             setConfigText(JSON.stringify(config, null, 2));
                                             setConfigMode('visual');
                                           }}
-                                          className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-600 hover:bg-slate-100"
+                                          className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-[#1e3a8a]/25 bg-white px-2.5 text-[11px] font-bold text-[#1e3a8a] transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] hover:text-white"
                                         >
-                                          <PencilSquareIcon className="h-3 w-3" /> Atur
+                                          <PencilSquareIcon className="h-3.5 w-3.5" /> Atur
                                         </button>
                                       ) : null}
                                       {has('builder.create') ? (
                                         <button
                                           type="button"
                                           onClick={() => duplicateWidget.mutate(widget.id)}
-                                          className="rounded border border-slate-200 bg-white p-1 text-slate-600 hover:bg-slate-100"
+                                          className="rounded-[8px] border border-slate-200 bg-white p-1.5 text-slate-600 transition-colors hover:bg-slate-100 hover:text-[#1e3a8a]"
                                           aria-label="Gandakan widget"
+                                          title="Gandakan widget"
                                         >
-                                          <DocumentDuplicateIcon className="h-3 w-3" />
+                                          <DocumentDuplicateIcon className="h-3.5 w-3.5" />
                                         </button>
                                       ) : null}
                                       {has('builder.delete') ? (
@@ -1980,10 +2070,11 @@ export const AdminBuilder: React.FC = () => {
                                           onClick={() =>
                                             setDeleteTarget({ kind: 'widget', id: widget.id, label: widget.widget.name })
                                           }
-                                          className="rounded border border-rose-200 bg-white p-1 text-rose-600 hover:bg-rose-50"
+                                          className="rounded-[8px] border border-rose-200 bg-white p-1.5 text-rose-600 transition-colors hover:bg-rose-50"
                                           aria-label="Hapus widget"
+                                          title="Hapus widget"
                                         >
-                                          <TrashIcon className="h-3 w-3" />
+                                          <TrashIcon className="h-3.5 w-3.5" />
                                         </button>
                                       ) : null}
                                     </div>
