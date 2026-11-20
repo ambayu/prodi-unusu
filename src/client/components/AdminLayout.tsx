@@ -325,40 +325,52 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         onClick={() => setMobileOpen(false)}
         title={isCollapsedView ? `${item.label}${item.desc ? ` — ${item.desc}` : ''}` : undefined}
         className={[
-          'group relative w-full flex items-center min-h-[50px] rounded-[12px] transition-all duration-150',
-          isCollapsedView ? 'justify-center p-2.5' : 'px-3.5 py-2.5 gap-3',
+          'group relative flex w-full items-center rounded-[11px] transition-all duration-150',
+          isCollapsedView ? 'justify-center p-2' : 'min-h-[44px] gap-2.5 px-2.5 py-2',
           isSelected
-            ? 'bg-[#DBEAFE] text-slate-900 shadow-2xs border border-blue-200/80'
-            : 'text-slate-700 hover:bg-[#E2EDFB] hover:text-[#1e3a8a]',
+            ? 'bg-gradient-to-r from-[#1e3a8a] to-[#172f6e] text-white shadow-[0_6px_16px_-8px_rgba(30,58,138,0.65)]'
+            : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-950',
         ].join(' ')}
       >
+        {/* Bilah aksen emas di sisi kiri item aktif */}
+        {isSelected && !isCollapsedView && (
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#fbbf24]"
+          />
+        )}
+
         {/* Ikon Menu */}
         <div
           className={[
-            'w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 transition-colors',
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] transition-colors',
             isSelected
-              ? 'bg-[#1e3a8a] text-white shadow-2xs'
-              : 'bg-[#DBEAFE] text-[#1e3a8a] group-hover:bg-[#bfdbfe]',
+              ? 'bg-white/15 text-[#fbbf24]'
+              : 'bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-[#1e3a8a]',
           ].join(' ')}
         >
-          <Icon className="w-[18px] h-[18px]" aria-hidden="true" />
+          <Icon className="h-[17px] w-[17px]" aria-hidden="true" />
         </div>
 
         {/* Label & Subtitle Deskripsi */}
         {!isCollapsedView && (
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-1">
-              <span className="truncate leading-snug text-slate-950 text-[15px] font-bold">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-1.5">
+              <span
+                className={`truncate text-[13.5px] leading-snug ${
+                  isSelected ? 'font-bold text-white' : 'font-semibold text-slate-800 group-hover:text-slate-950'
+                }`}
+              >
                 {item.label}
               </span>
               {isSelected && (
-                <div className="w-2 h-2 rounded-full bg-[#1e3a8a] shrink-0" />
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#fbbf24]" aria-hidden="true" />
               )}
             </div>
             {item.desc && (
               <p
-                className={`text-[13px] font-medium leading-snug truncate mt-0.5 ${
-                  isSelected ? 'text-[#1e3a8a]' : 'text-slate-700'
+                className={`mt-0.5 truncate text-[11px] leading-tight ${
+                  isSelected ? 'text-blue-100/85' : 'text-slate-500 group-hover:text-slate-600'
                 }`}
               >
                 {item.desc}
@@ -370,28 +382,77 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     );
   };
 
+  const renderSection = (
+    sectionKey: string,
+    heading: string,
+    ariaLabel: string,
+    items: AdminMenuItem[],
+    isCollapsedView: boolean,
+    options?: { collapsible?: boolean; dividerTop?: boolean },
+  ) => {
+    if (items.length === 0) return null;
+    const collapsible = options?.collapsible ?? true;
+    const isSectionCollapsed = !isCollapsedView && collapsible && Boolean(collapsedSections[sectionKey]);
+
+    return (
+      <div
+        key={sectionKey}
+        className={options?.dividerTop ? 'border-t border-slate-200/80 pt-3.5' : undefined}
+      >
+        {isCollapsedView ? (
+          options?.dividerTop ? null : (
+            <div className="mx-2 mb-2 border-t border-slate-100 first:hidden" aria-hidden="true" />
+          )
+        ) : collapsible ? (
+          <button
+            type="button"
+            onClick={() => toggleSection(sectionKey)}
+            aria-expanded={!isSectionCollapsed}
+            className="group mb-1.5 flex w-full items-center justify-between rounded-md px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.11em] text-slate-400 transition-colors hover:text-[#1e3a8a]"
+          >
+            <span>{heading}</span>
+            <ChevronDownIcon
+              className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 group-hover:text-[#1e3a8a] ${
+                isSectionCollapsed ? '-rotate-90' : 'rotate-0'
+              }`}
+            />
+          </button>
+        ) : (
+          <p className="mb-1.5 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.11em] text-slate-400">
+            {heading}
+          </p>
+        )}
+        {!isSectionCollapsed && (
+          <nav className="space-y-1" role="navigation" aria-label={ariaLabel}>
+            {items.map((item) => renderMenuItem(item, isCollapsedView))}
+          </nav>
+        )}
+      </div>
+    );
+  };
+
   const renderSidebarContent = (isCollapsedView: boolean, isMobile = false) => (
-    <div className="h-full flex flex-col justify-between bg-[#F0F4FA] text-slate-800 border-r border-[#CBD5E1] relative overflow-hidden select-none">
-      <div className="relative z-10 flex flex-col h-full min-h-0">
+    <div className="relative flex h-full flex-col justify-between overflow-hidden border-r border-slate-200/90 bg-white text-slate-800 shadow-[1px_0_14px_-8px_rgba(15,23,42,0.12)] select-none">
+      <div className="relative z-10 flex h-full min-h-0 flex-col">
         {/* Header Branding — Height h-[88px] persis dengan Topbar */}
         <div
-          className={`h-[88px] border-b border-[#CBD5E1] flex items-center ${
-            isCollapsedView ? 'px-3 justify-center' : 'px-5'
-          } bg-[#F0F4FA] shrink-0`}
+          className={`flex h-[88px] shrink-0 items-center justify-between border-b border-slate-200/80 bg-gradient-to-b from-slate-50/70 to-white ${
+            isCollapsedView ? 'justify-center px-3' : 'px-4'
+          }`}
         >
-          <Link to="/admin" className="flex items-center gap-3 overflow-hidden">
-            <div className="w-11 h-11 rounded-[14px] bg-white border border-[#CBD5E1] p-1.5 shadow-2xs shrink-0 flex items-center justify-center">
-              <img src="/logo-unusu.jpg" alt="UNUSU" className="w-full h-full object-contain" />
+          <Link to="/admin" className="flex min-w-0 items-center gap-3 overflow-hidden">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] border border-slate-200/90 bg-white p-1.5 shadow-xs ring-2 ring-[#1e3a8a]/5">
+              <img src="/logo-unusu.jpg" alt="UNUSU" className="h-full w-full object-contain" />
             </div>
             {!isCollapsedView && (
-              <div className="leading-tight truncate">
+              <div className="min-w-0 leading-tight">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-[16px] text-slate-900 tracking-tight">PORTAL</span>
-                  <span className="font-extrabold text-[16px] text-[#1e3a8a] tracking-tight">
-                    {menuScope === 'portal' ? 'UNUSU' : 'PRODI'}
+                  <span className="text-[15px] font-extrabold tracking-tight text-slate-900">PORTAL</span>
+                  <span className="rounded-md bg-[#1e3a8a] px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide text-[#fbbf24]">
+                    {menuScope === 'portal' ? 'UNUSU' : menuScope === 'faculty' ? 'FAKULTAS' : 'PRODI'}
                   </span>
                 </div>
-                <p className="text-[12px] text-slate-600 font-semibold tracking-wide truncate mt-0.5">
+                <p className="mt-1 truncate text-[11.5px] font-semibold text-slate-500">
                   {menuScope === 'portal'
                     ? 'Portal Utama Universitas'
                     : isSuperAdmin
@@ -403,6 +464,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               </div>
             )}
           </Link>
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Tutup menu navigasi"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-slate-200 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            >
+              <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         {/*
@@ -417,143 +488,33 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
         <div
           ref={isMobile ? undefined : desktopNavRef}
           onScroll={isMobile ? undefined : handleSidebarScroll}
-          className="flex-1 py-4 px-3 space-y-5 overflow-y-auto min-h-0"
+          className="select2-scroll min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4"
         >
           {menuLoading ? (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, idx) => (
-                <div key={idx} className="h-12 animate-pulse rounded-[12px] bg-slate-200/70" />
+                <div key={idx} className="h-11 animate-pulse rounded-[11px] bg-slate-100" />
               ))}
             </div>
           ) : (
             <>
-              {/* 1. Menu Utama */}
-              {utamaMenus.length > 0 && (
-                <div>
-                  {!isCollapsedView && (
-                    <p className="px-3 pb-2 text-[11px] font-bold text-slate-600 uppercase tracking-widest">
-                      UTAMA
-                    </p>
-                  )}
-                  <nav className="space-y-1.5" role="navigation" aria-label="Menu Utama">
-                    {utamaMenus.map((item) => renderMenuItem(item, isCollapsedView))}
-                  </nav>
-                </div>
+              {renderSection('UTAMA', 'Utama', 'Menu Utama', utamaMenus, isCollapsedView, {
+                collapsible: false,
+              })}
+              {renderSection('KONTEN', 'Konten & Akademik', 'Menu Konten & Akademik', kontenMenus, isCollapsedView)}
+              {renderSection('WEBSITE', 'Pengaturan Website', 'Menu Pengaturan Website', websiteMenus, isCollapsedView)}
+              {renderSection('TATA KELOLA', 'Tata Kelola Akses', 'Menu Tata Kelola Akses', tataKelolaMenus, isCollapsedView)}
+              {renderSection(
+                'UNIVERSITAS',
+                'Tata Kelola Universitas',
+                'Menu Tata Kelola Universitas',
+                universitasMenus,
+                isCollapsedView,
+                { dividerTop: true },
               )}
-
-              {/* 2. Menu Konten & Akademik Prodi */}
-              {kontenMenus.length > 0 && (
-                <div>
-                  {!isCollapsedView && (
-                    <button
-                      type="button"
-                      onClick={() => toggleSection('KONTEN')}
-                      className="w-full flex items-center justify-between px-3 pb-2 text-[11px] font-bold text-slate-600 hover:text-[#1e3a8a] uppercase tracking-widest transition-colors"
-                    >
-                      <span>KONTEN &amp; AKADEMIK</span>
-                      <ChevronDownIcon
-                        className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
-                          collapsedSections['KONTEN'] ? '-rotate-90' : 'rotate-0'
-                        }`}
-                      />
-                    </button>
-                  )}
-                  {!collapsedSections['KONTEN'] && (
-                    <nav className="space-y-1.5 animate-fadeIn" role="navigation" aria-label="Menu Konten & Akademik">
-                      {kontenMenus.map((item) => renderMenuItem(item, isCollapsedView))}
-                    </nav>
-                  )}
-                </div>
-              )}
-
-              {/* 3. Menu Tata Kelola Website */}
-              {websiteMenus.length > 0 && (
-                <div>
-                  {!isCollapsedView && (
-                    <button
-                      type="button"
-                      onClick={() => toggleSection('WEBSITE')}
-                      className="w-full flex items-center justify-between px-3 pb-2 text-[11px] font-bold text-slate-600 hover:text-[#1e3a8a] uppercase tracking-widest transition-colors"
-                    >
-                      <span>PENGATURAN WEBSITE</span>
-                      <ChevronDownIcon
-                        className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
-                          collapsedSections['WEBSITE'] ? '-rotate-90' : 'rotate-0'
-                        }`}
-                      />
-                    </button>
-                  )}
-                  {!collapsedSections['WEBSITE'] && (
-                    <nav className="space-y-1.5 animate-fadeIn" role="navigation" aria-label="Menu Pengaturan Website">
-                      {websiteMenus.map((item) => renderMenuItem(item, isCollapsedView))}
-                    </nav>
-                  )}
-                </div>
-              )}
-
-              {/* 4. Menu Tata Kelola Akses RBAC */}
-              {tataKelolaMenus.length > 0 && (
-                <div>
-                  {!isCollapsedView && (
-                    <button
-                      type="button"
-                      onClick={() => toggleSection('TATA KELOLA')}
-                      className="w-full flex items-center justify-between px-3 pb-2 text-[11px] font-bold text-slate-600 hover:text-[#1e3a8a] uppercase tracking-widest transition-colors"
-                    >
-                      <span>TATA KELOLA AKSES</span>
-                      <ChevronDownIcon
-                        className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
-                          collapsedSections['TATA KELOLA'] ? '-rotate-90' : 'rotate-0'
-                        }`}
-                      />
-                    </button>
-                  )}
-                  {!collapsedSections['TATA KELOLA'] && (
-                    <nav className="space-y-1.5 animate-fadeIn" role="navigation" aria-label="Menu Tata Kelola Akses">
-                      {tataKelolaMenus.map((item) => renderMenuItem(item, isCollapsedView))}
-                    </nav>
-                  )}
-                </div>
-              )}
-
-              {/* 5. Menu Tata Kelola Universitas (Super Admin) */}
-              {universitasMenus.length > 0 && (
-                <div className="pt-2 border-t border-[#CBD5E1]/80">
-                  {!isCollapsedView && (
-                    <button
-                      type="button"
-                      onClick={() => toggleSection('UNIVERSITAS')}
-                      className="w-full flex items-center justify-between px-3 pb-2 text-[11px] font-bold text-slate-600 hover:text-[#1e3a8a] uppercase tracking-widest transition-colors"
-                    >
-                      <span>TATA KELOLA UNIVERSITAS</span>
-                      <ChevronDownIcon
-                        className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
-                          collapsedSections['UNIVERSITAS'] ? '-rotate-90' : 'rotate-0'
-                        }`}
-                      />
-                    </button>
-                  )}
-                  {!collapsedSections['UNIVERSITAS'] && (
-                    <nav className="space-y-1.5 animate-fadeIn" role="navigation" aria-label="Menu Tata Kelola Universitas">
-                      {universitasMenus.map((item) => renderMenuItem(item, isCollapsedView))}
-                    </nav>
-                  )}
-                </div>
-              )}
-
-              {/* 6. Menu Lainnya (Fallback) */}
-              {otherMenus.length > 0 && (
-                <div>
-                  {!isCollapsedView && (
-                    <p className="px-3 pb-2 text-[11px] font-bold text-slate-600 uppercase tracking-widest">
-                      LAINNYA
-                    </p>
-                  )}
-                  <nav className="space-y-1" role="navigation" aria-label="Menu Lainnya">
-                    {otherMenus.map((item) => renderMenuItem(item, isCollapsedView))}
-                  </nav>
-                </div>
-              )}
+              {renderSection('LAINNYA', 'Lainnya', 'Menu Lainnya', otherMenus, isCollapsedView, {
+                collapsible: false,
+              })}
 
               {/*
                 Pesan ini hanya boleh muncul setelah pemuatan selesai. Sebelumnya
@@ -569,19 +530,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           )}
         </div>
 
-        {/* Sidebar Footer — Desktop Collapse Toggle & Quick Info */}
-        <div className="p-3 border-t border-[#CBD5E1] bg-[#F0F4FA] shrink-0 space-y-2">
+        {/* Sidebar Footer — Desktop Collapse Toggle */}
+        <div className="hidden shrink-0 border-t border-slate-200/80 bg-slate-50/70 p-2.5 lg:block">
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
             title={collapsed ? 'Perluas Menu' : 'Perkecil Menu'}
-            className="hidden lg:flex w-full min-h-[46px] items-center justify-center gap-2 rounded-[10px] border border-[#CBD5E1] bg-white text-slate-800 hover:bg-slate-100 hover:text-slate-950 transition-colors text-[13px] font-bold shadow-2xs"
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-[10px] border border-slate-200/90 bg-white text-[12px] font-bold text-slate-700 shadow-2xs transition-colors hover:border-[#1e3a8a]/30 hover:bg-blue-50/50 hover:text-[#1e3a8a]"
           >
             {collapsed ? (
-              <ChevronDoubleRightIcon className="w-4 h-4 text-[#1e3a8a]" />
+              <ChevronDoubleRightIcon className="h-4 w-4 text-[#1e3a8a]" />
             ) : (
               <>
-                <ChevronDoubleLeftIcon className="w-4 h-4 text-[#1e3a8a]" />
+                <ChevronDoubleLeftIcon className="h-4 w-4 text-[#1e3a8a]" />
                 <span>Ciutkan Sidebar</span>
               </>
             )}
@@ -596,13 +557,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* 1. Mobile Off-Canvas Sidebar */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/60 z-50 lg:hidden backdrop-blur-xs transition-opacity"
+          className="fixed inset-0 bg-slate-900/50 z-50 lg:hidden backdrop-blur-sm transition-opacity"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
       )}
       <div
-        className={`fixed top-0 bottom-0 left-0 z-50 w-[300px] bg-[#F0F4FA] transform transition-transform duration-300 ease-in-out lg:hidden shadow-2xl ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-[280px] bg-white transform transition-transform duration-300 ease-in-out lg:hidden shadow-2xl ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -612,7 +573,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* 2. Desktop Fixed Sidebar */}
       <div
         className={`hidden lg:block fixed top-0 bottom-0 left-0 z-40 transition-all duration-300 ${
-          collapsed ? 'w-[84px]' : 'w-[300px]'
+          collapsed ? 'w-[78px]' : 'w-[272px]'
         }`}
       >
         {renderSidebarContent(collapsed, false)}
@@ -621,7 +582,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* 3. Main Workspace Container */}
       <div
         className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
-          collapsed ? 'lg:pl-[84px]' : 'lg:pl-[300px]'
+          collapsed ? 'lg:pl-[78px]' : 'lg:pl-[272px]'
         }`}
       >
         {/* Topbar Header (Tinggi 88px sesuai standar UNUSU) */}
