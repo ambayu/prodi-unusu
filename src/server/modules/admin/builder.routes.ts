@@ -6,14 +6,11 @@ import { scopedTenantId } from '../../middlewares/tenantScope.js';
 import { AppError } from '../../utils/errors.js';
 import { recordAudit } from '../../services/auditService.js';
 import {
-  EMBEDDABLE_WIDGET_CODES,
   createPageSchema,
   createSectionSchema,
   createSectionWidgetSchema,
   createWidgetTemplateSchema,
-  customLayoutTemplateConfigSchema,
-  customLayoutWidgetConfigSchema,
-  reorderSectionsSchema,
+  customLayoutWidgetConfigSchema,  reorderSectionsSchema,
   reorderWidgetsSchema,
   updatePageSchema,
   updateSectionSchema,
@@ -21,7 +18,6 @@ import {
   updateWidgetTemplateSchema,
   validateWidgetConfig,
   type CustomLayoutTemplateConfig,
-  type EmbeddableWidgetCode,
 } from '../../../shared/schemas/builder.js';
 import { idParamSchema } from '../../../shared/schemas/common.js';
 import {
@@ -30,195 +26,17 @@ import {
   listPages,
   validatePageForPublish,
 } from '../../services/pageService.js';
+import {
+  convertSectionWidgetsToBank,
+  ensureCustomLayoutWidget,
+  ensureTenantWidgetBankSynced,
+  parseTemplateConfig,
+  safeParseJsonObject,
+} from '../../services/widgetBankService.js';
 
 const router = Router();
 
-/** Memastikan master widget `custom_layout` tersedia di tabel `widgets`. */
-async function ensureCustomLayoutWidget() {
-  return prisma.widget.upsert({
-    where: { code: 'custom_layout' },
-    create: {
-      code: 'custom_layout',
-      name: 'Bank Widget Kustom',
-      category: 'Supporting',
-      description: 'Widget susunan kolom buatan sendiri dari Bank Widget program studi.',
-      defaultJson: JSON.stringify({ templateId: 0, templateName: '' }),
-      isActive: true,
-    },
-    update: { isActive: true },
-  });
-}
-
-function parseTemplateConfig(raw: string): CustomLayoutTemplateConfig {
-  try {
-    const parsed = customLayoutTemplateConfigSchema.safeParse(JSON.parse(raw) as unknown);
-    return parsed.success ? parsed.data : { rows: [] };
-  } catch {
-    return { rows: [] };
-  }
-}
-
-const EMBEDDABLE_SET = new Set<string>(EMBEDDABLE_WIDGET_CODES);
-
-const WIDGET_DISPLAY_LABELS: Record<EmbeddableWidgetCode, string> = {
-  hero_slider: 'Hero Slider (Banner Beranda)',
-  about_prodi: 'Profil Program Studi',
-  vision_mission: 'Visi & Misi Program Studi',
-  statistics: 'Statistik Program Studi',
-  lecturer_list: 'Daftar Dosen & Pengajar',
-  curriculum_overview: 'Struktur Kurikulum',
-  latest_news: 'Berita Terbaru',
-  document_list: 'Dokumen & Unduhan',
-  facility_grid: 'Sarana & Prasarana',
-  gallery_grid: 'Galeri Kegiatan',
-  contact_information: 'Informasi Kontak',
-  cta_banner: 'Banner Ajakan (CTA)',
-};
-
-function safeParseJsonObject(raw: string | null | undefined): Record<string, unknown> {
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
-}
-
-/**
- * Mengonversi sekumpulan SectionWidget bawaan milik tenant menjadi template di Bank Widget
- * (`widget_templates`) lalu mengarahkan instance-nya ke `custom_layout` secara atomik.
- */
-async function convertSectionWidgetsToBank(
-  studyProgramId: number,
-  instances: Array<{
-    id: number;
-    configJson: string;
-    widget: { code: string; name: string };
-  }>,
-): Promise<{ convertedCount: number; createdTemplateIds: number[]; firstTemplateId: number | null }> {
-  const candidates = instances.filter((inst) => EMBEDDABLE_SET.has(inst.widget.code));
-  if (candidates.length === 0) {
-    return { convertedCount: 0, createdTemplateIds: [], firstTemplateId: null };
-  }
-
-  const customLayoutMaster = await ensureCustomLayoutWidget();
-  const existingTemplates = await prisma.widgetTemplate.findMany({
-    where: { studyProgramId, isActive: true },
-    select: { id: true, name: true, configJson: true },
-  });
-
-  // Kunci dedup: configJson identik -> gunakan template yang sama agar tidak dobel.
-  const byConfig = new Map<string, { id: number; name: string }>();
-  for (const tpl of existingTemplates) {
-    byConfig.set(tpl.configJson, { id: tpl.id, name: tpl.name });
-  }
-
-  const createdTemplateIds: number[] = [];
-  let firstTemplateId: number | null = null;
-
-  await prisma.$transaction(async (tx) => {
-    for (const inst of candidates) {
-      const widgetCode = inst.widget.code as EmbeddableWidgetCode;
-      const rawCfg = safeParseJsonObject(inst.configJson);
-      const displayLabel = WIDGET_DISPLAY_LABELS[widgetCode] ?? inst.widget.name;
-      const customTitle = typeof rawCfg.title === 'string' && rawCfg.title.trim() ? rawCfg.title.trim() : '';
-      const templateName = (customTitle && customTitle.length <= 120 ? customTitle : displayLabel).slice(0, 150);
-
-      const templateConfig: CustomLayoutTemplateConfig = {
-        rows: [
-          {
-            id: `row-${widgetCode}`,
-            layout: '1-col',
-            background: 'white',
-            columns: [
-              [
-                {
-                  id: `mod-${widgetCode}`,
-                  type: 'widget',
-                  widgetCode,
-                  config: rawCfg,
-                },
-              ],
-            ],
-          },
-        ],
-      };
-
-      const configJson = JSON.stringify(templateConfig);
-      let target = byConfig.get(configJson);
-
-      if (!target) {
-        const created = await tx.widgetTemplate.create({
-          data: {
-            studyProgramId,
-            name: templateName,
-            description: `Modul ${displayLabel} — bebas dimodifikasi atau dipadukan kolom di Bank Widget.`,
-            configJson,
-          },
-          select: { id: true, name: true },
-        });
-        target = created;
-        byConfig.set(configJson, created);
-        createdTemplateIds.push(created.id);
-      }
-
-      if (firstTemplateId === null) firstTemplateId = target.id;
-
-      await tx.sectionWidget.update({
-        where: { id: inst.id },
-        data: {
-          widgetId: customLayoutMaster.id,
-          variantCode: null,
-          configJson: JSON.stringify({
-            templateId: target.id,
-            templateName: target.name,
-          }),
-        },
-      });
-    }
-  });
-
-  return {
-    convertedCount: candidates.length,
-    createdTemplateIds,
-    firstTemplateId,
-  };
-}
-
-/** Memetakan jumlah dan nama halaman pemakai setiap template Bank Widget milik tenant. */
-async function collectTemplateUsage(studyProgramId: number): Promise<Map<number, string[]>> {
-  const instances = await prisma.sectionWidget.findMany({
-    where: {
-      widget: { code: 'custom_layout' },
-      pageSection: { page: { studyProgramId } },
-    },
-    select: {
-      configJson: true,
-      pageSection: { select: { page: { select: { title: true } } } },
-    },
-  });
-
-  const usage = new Map<number, Set<string>>();
-  for (const inst of instances) {
-    try {
-      const cfg = JSON.parse(inst.configJson) as { templateId?: unknown };
-      const tid = Number(cfg?.templateId);
-      if (Number.isInteger(tid) && tid > 0) {
-        if (!usage.has(tid)) usage.set(tid, new Set());
-        usage.get(tid)!.add(inst.pageSection.page.title);
-      }
-    } catch {
-      // Abaikan configJson yang tidak valid agar listing tidak gagal.
-    }
-  }
-
-  return new Map([...usage.entries()].map(([tid, pages]) => [tid, [...pages]]));
-}
-
-/** Mengambil page dengan verifikasi kepemilikan tenant. */
+/** Memastikan halaman milik program studi aktif; 404 bila bukan miliknya. */
 async function requireOwnedPage(pageId: number, studyProgramId: number) {
   const page = await prisma.page.findFirst({ where: { id: pageId, studyProgramId } });
   if (!page) {
@@ -227,16 +45,42 @@ async function requireOwnedPage(pageId: number, studyProgramId: number) {
   return page;
 }
 
-/** Mengambil section dengan verifikasi rantai kepemilikan sampai tenant. */
+/** Memastikan section milik program studi aktif; 404 bila bukan miliknya. */
 async function requireOwnedSection(sectionId: number, studyProgramId: number) {
   const section = await prisma.pageSection.findFirst({
     where: { id: sectionId, page: { studyProgramId } },
-    include: { page: { select: { id: true, slug: true } } },
+    include: { page: { select: { id: true, slug: true, title: true } } },
   });
   if (!section) {
-    throw AppError.notFound('Section tidak ditemukan pada halaman program studi ini.');
+    throw AppError.notFound('Section tidak ditemukan pada program studi ini.');
   }
   return section;
+}
+
+/** Peta templateId -> halaman yang memakainya, untuk kolom "dipakai di". */
+async function collectTemplateUsage(studyProgramId: number) {
+  const instances = await prisma.sectionWidget.findMany({
+    where: {
+      widget: { code: 'custom_layout' },
+      pageSection: { page: { studyProgramId } },
+    },
+    select: {
+      configJson: true,
+      pageSection: { select: { page: { select: { id: true, title: true, slug: true } } } },
+    },
+  });
+
+  const usage = new Map<number, Array<{ id: number; title: string; slug: string }>>();
+  for (const inst of instances) {
+    const templateId = Number(safeParseJsonObject(inst.configJson).templateId);
+    if (!Number.isInteger(templateId) || templateId <= 0) continue;
+    const pages = usage.get(templateId) ?? [];
+    if (!pages.some((page) => page.id === inst.pageSection.page.id)) {
+      pages.push(inst.pageSection.page);
+    }
+    usage.set(templateId, pages);
+  }
+  return usage;
 }
 
 /** GET /api/v1/admin/pages: daftar halaman tenant. */
@@ -245,6 +89,8 @@ router.get(
   requirePermission('pages.view'),
   asyncHandler(async (req, res) => {
     const studyProgramId = scopedTenantId(req);
+    // Sinkronkan widget bawaan lama ke Bank Widget agar halaman selalu bersumber dari Bank Widget.
+    await ensureTenantWidgetBankSynced(studyProgramId);
     const pages = await listPages(studyProgramId);
     res.json({ success: true, pages });
   }),

@@ -5,6 +5,7 @@ import { asyncHandler, getBody, validate } from '../../utils/validation.js';
 import { requirePermission } from '../../middlewares/auth.js';
 import { resolveContentOwner, scopedTenantId } from '../../middlewares/tenantScope.js';
 import { recordAudit } from '../../services/auditService.js';
+import { findProdiHeroSlider, saveProdiHeroSlider } from '../../services/widgetBankService.js';
 import { AppError } from '../../utils/errors.js';
 
 /**
@@ -42,86 +43,12 @@ type HeroConfig = {
 };
 
 /**
- * Cari widget hero_slider pada beranda prodi aktif beserta halaman induknya.
- *
- * Bila belum ada, dibuatkan: halaman `beranda` (bila prodi baru belum punya),
- * section pembungkus, lalu widget hero_slider dengan konfigurasi kosong.
+ * Banner hero prodi kini bersumber dari Bank Widget (`custom_layout` berisi
+ * blok `hero_slider`). `saveProdiHeroSlider` memastikan template tersedia
+ * sekaligus menautkannya ke beranda prodi bila belum dipasang.
  */
-async function resolveHeroWidget(studyProgramId: number) {
-  const existing = await prisma.sectionWidget.findFirst({
-    where: {
-      widget: { code: 'hero_slider' },
-      pageSection: { page: { studyProgramId, slug: 'beranda' } },
-    },
-    include: { pageSection: { include: { page: true } } },
-  });
-
-  if (existing) {
-    return { widget: existing, created: false as const };
-  }
-
-  const widgetMaster = await prisma.widget.findUnique({ where: { code: 'hero_slider' } });
-  if (!widgetMaster) {
-    throw AppError.badRequest('Widget hero_slider belum terdaftar pada registri widget.');
-  }
-
-  // Pastikan halaman beranda prodi tersedia.
-  let page = await prisma.page.findFirst({ where: { studyProgramId, slug: 'beranda' } });
-  if (!page) {
-    page = await prisma.page.create({
-      data: {
-        studyProgramId,
-        slug: 'beranda',
-        title: 'Beranda',
-        layout: 'default',
-        isPublished: true,
-        isSystem: true,
-      },
-    });
-  }
-
-  let section = await prisma.pageSection.findFirst({
-    where: { pageId: page.id, sectionKey: 'hero' },
-  });
-  if (!section) {
-    const lastSection = await prisma.pageSection.findFirst({
-      where: { pageId: page.id },
-      orderBy: { sortOrder: 'desc' },
-      select: { sortOrder: true },
-    });
-    section = await prisma.pageSection.create({
-      data: {
-        pageId: page.id,
-        sectionKey: 'hero',
-        title: 'Hero Slider',
-        // Hero selalu di paling atas halaman beranda.
-        sortOrder: lastSection ? Math.min(lastSection.sortOrder, 0) - 1 : 0,
-      },
-    });
-  }
-
-  const lastWidget = await prisma.sectionWidget.findFirst({
-    where: { pageSectionId: section.id },
-    orderBy: { sortOrder: 'desc' },
-    select: { sortOrder: true },
-  });
-
-  const created = await prisma.sectionWidget.create({
-    data: {
-      pageSectionId: section.id,
-      widgetId: widgetMaster.id,
-      sortOrder: lastWidget ? lastWidget.sortOrder + 1 : 1,
-      isActive: true,
-      configJson: JSON.stringify({
-        slides: [],
-        autoplayMs: 6000,
-        showDots: true,
-      }),
-    },
-    include: { pageSection: { include: { page: true } } },
-  });
-
-  return { widget: created, created: true as const };
+async function resolveProdiHero(studyProgramId: number) {
+  return saveProdiHeroSlider(studyProgramId, (current) => current);
 }
 
 async function resolveFacultyHeroWidget(facultyId: number) {
@@ -224,7 +151,7 @@ function assertPortalHeroAllowed(req: { authUser?: { isSuperAdmin: boolean } }) 
  * Cari/buat widget `hero_slider` milik Portal Pusat.
  *
  * Halaman dan section dibuat otomatis bila belum ada, dengan pola yang sama
- * seperti `resolveHeroWidget` untuk prodi, hanya saja tanpa tenant.
+ * seperti banner prodi, hanya saja tanpa tenant.
  */
 async function resolvePortalHeroWidget() {
   const widgetMaster = await prisma.widget.findUnique({ where: { code: 'hero_slider' } });
@@ -355,15 +282,15 @@ router.get(
       throw AppError.notFound('Program studi aktif tidak ditemukan.');
     }
 
-    const { widget } = await resolveHeroWidget(studyProgramId);
-    const config = parseHeroConfig(widget.configJson);
+    const hero = await resolveProdiHero(studyProgramId);
+    const config = hero.config as HeroConfig;
 
     res.json({
       success: true,
       scope: 'prodi',
       studyProgram,
       faculty: null,
-      page: { id: widget.pageSection.page.id, slug: widget.pageSection.page.slug },
+      page: hero.page.slug ? hero.page : null,
       config: {
         slides: Array.isArray(config.slides) ? config.slides : [],
         autoplayMs: typeof config.autoplayMs === 'number' ? config.autoplayMs : 6000,
@@ -469,34 +396,26 @@ router.put(
     }
 
     const studyProgramId = scopedTenantId(req);
-    const { widget } = await resolveHeroWidget(studyProgramId);
-    const config = parseHeroConfig(widget.configJson);
-
-    const nextConfig: HeroConfig = {
+    const saved = await saveProdiHeroSlider(studyProgramId, (config) => ({
       ...config,
       slides: normalizedSlides,
       ...(body.autoplayMs !== undefined ? { autoplayMs: body.autoplayMs } : {}),
       ...(body.showDots !== undefined ? { showDots: body.showDots } : {}),
-    };
-
-    const updated = await prisma.sectionWidget.update({
-      where: { id: widget.id },
-      data: { configJson: JSON.stringify(nextConfig) },
-    });
+    }));
 
     await recordAudit({
       req,
       action: 'UPDATE',
       module: 'NAVIGATION',
-      targetType: 'hero_slider',
-      targetId: widget.id,
+      targetType: 'widget_template_hero_slider',
+      targetId: saved.targetId,
       details: { studyProgramId, slideCount: normalizedSlides.length },
     });
 
     res.json({
       success: true,
       message: `Hero slider program studi berhasil disimpan (${normalizedSlides.length} slide).`,
-      widgetId: updated.id,
+      widgetId: saved.targetId,
       slides: normalizedSlides,
     });
   }),

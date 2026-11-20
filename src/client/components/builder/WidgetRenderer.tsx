@@ -60,16 +60,16 @@ export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({ widgetCode, conf
 
   // 1. HERO SLIDER
   if (widgetCode === 'hero_slider') {
-    const rawSlides: HeroSlideConfig[] =
+    const slides: HeroSlideConfig[] =
       Array.isArray(config.slides) && config.slides.length > 0
         ? (config.slides as HeroSlideConfig[])
-        : [
-            { imageUrl: '/heroslider-full.png', alt: 'Hero Banner 1' },
-            { imageUrl: '/hero-slide-generated.png', alt: 'Hero Banner 2' },
-          ];
+        : [];
+    // Tanpa slide, komponen hero bawaan akan menampilkan gambar cadangan —
+    // di beranda yang sudah punya hero Bank Widget itu menjadi banner ganda.
+    if (slides.length === 0) return null;
     return (
       <HeroSliderWidget
-        slides={rawSlides}
+        slides={slides}
         autoplayMs={asNumber(config.autoplayMs, 5000)}
         showDots={config.showDots !== false}
       />

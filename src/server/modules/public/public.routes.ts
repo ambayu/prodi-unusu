@@ -7,6 +7,7 @@ import { createContactMessageSchema } from '../../../shared/schemas/content.js';
 import { slugParamSchema } from '../../../shared/schemas/public.js';
 import { paginationSchema } from '../../../shared/schemas/common.js';
 import { getPublishedPageBySlug } from '../../services/pageService.js';
+import { findProdiHeroSlider, safeParseJsonObject as parseJsonObject } from '../../services/widgetBankService.js';
 import { buildCurriculumSummary, listPublicCurriculum } from '../../services/curriculumService.js';
 import { fetchLecturersFromApiHub } from '../../services/lecturerIntegrationService.js';
 import type { InterServiceLecturer } from '../../services/lecturerIntegrationService.js';
@@ -982,57 +983,62 @@ router.get(
 router.get(
   '/hero-slides',
   asyncHandler(async (req, res) => {
-    const widget = await prisma.sectionWidget.findFirst({
-      where: req.tenant?.tenantType === 'faculty'
-        ? {
-            widget: { code: 'hero_slider' },
-            pageSection: { page: { facultyId: req.tenant.id, slug: 'beranda' } },
-          }
-        : req.tenant
-          ? {
-              widget: { code: 'hero_slider' },
-              pageSection: { page: { studyProgramId: req.tenant.id } },
-            }
-          : {
-              widget: { code: 'hero_slider' },
-              pageSection: { page: { studyProgramId: null, slug: '__portal_hero__' } },
-            },
-      orderBy: { id: 'asc' },
-      select: { configJson: true },
-    });
+    let rawConfig: Record<string, unknown> | null = null;
+
+    if (req.tenant?.tenantType === 'faculty') {
+      const widget = await prisma.sectionWidget.findFirst({
+        where: {
+          widget: { code: 'hero_slider' },
+          pageSection: { page: { facultyId: req.tenant.id, slug: 'beranda' } },
+        },
+        orderBy: { id: 'asc' },
+        select: { configJson: true },
+      });
+      rawConfig = parseJsonObject(widget?.configJson);
+    } else if (req.tenant) {
+      // Banner prodi dibaca dari Bank Widget (custom_layout berisi blok hero_slider).
+      const hero = await findProdiHeroSlider(req.tenant.id);
+      rawConfig = hero?.config ?? null;
+    } else {
+      const widget = await prisma.sectionWidget.findFirst({
+        where: {
+          widget: { code: 'hero_slider' },
+          pageSection: { page: { studyProgramId: null, slug: '__portal_hero__' } },
+        },
+        orderBy: { id: 'asc' },
+        select: { configJson: true },
+      });
+      rawConfig = parseJsonObject(widget?.configJson);
+    }
 
     let slides: Array<{ imageUrl: string; alt: string; linkUrl: string }> = [];
     let autoplayMs = 6000;
     let showDots = true;
-    if (widget?.configJson) {
-      try {
-        const config = JSON.parse(widget.configJson) as {
-          slides?: Array<{ imageUrl?: string; alt?: string; linkUrl?: string }>;
-          autoplayMs?: unknown;
-          showDots?: unknown;
-        };
-        if (
-          typeof config.autoplayMs === 'number' &&
-          Number.isInteger(config.autoplayMs) &&
-          config.autoplayMs >= 1000 &&
-          config.autoplayMs <= 60000
-        ) {
-          autoplayMs = config.autoplayMs;
-        }
-        if (typeof config.showDots === 'boolean') {
-          showDots = config.showDots;
-        }
-        if (Array.isArray(config.slides)) {
-          slides = config.slides
-            .filter((slide) => typeof slide?.imageUrl === 'string' && slide.imageUrl.trim())
-            .map((slide) => ({
-              imageUrl: slide.imageUrl as string,
-              alt: slide.alt ?? '',
-              linkUrl: slide.linkUrl ?? '',
-            }));
-        }
-      } catch {
-        slides = [];
+    if (rawConfig) {
+      const config = rawConfig as {
+        slides?: Array<{ imageUrl?: string; alt?: string; linkUrl?: string }>;
+        autoplayMs?: unknown;
+        showDots?: unknown;
+      };
+      if (
+        typeof config.autoplayMs === 'number' &&
+        Number.isInteger(config.autoplayMs) &&
+        config.autoplayMs >= 1000 &&
+        config.autoplayMs <= 60000
+      ) {
+        autoplayMs = config.autoplayMs;
+      }
+      if (typeof config.showDots === 'boolean') {
+        showDots = config.showDots;
+      }
+      if (Array.isArray(config.slides)) {
+        slides = config.slides
+          .filter((slide) => typeof slide?.imageUrl === 'string' && slide.imageUrl.trim())
+          .map((slide) => ({
+            imageUrl: slide.imageUrl as string,
+            alt: slide.alt ?? '',
+            linkUrl: slide.linkUrl ?? '',
+          }));
       }
     }
 
