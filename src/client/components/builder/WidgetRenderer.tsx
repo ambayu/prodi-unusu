@@ -498,6 +498,7 @@ const VisionMissionWidget: React.FC<{
   fallbackMissions: string[];
 }> = ({ primaryColor, fallbackVision, fallbackMissions }) => {
   const { tenant } = useTenant();
+  const accentColor = tenant?.theme?.accentColor || '#fbbf24';
 
   const profileQuery = useQuery({
     queryKey: ['public', 'profile', tenant?.id ?? null],
@@ -506,10 +507,27 @@ const VisionMissionWidget: React.FC<{
 
   const stored = profileQuery.data?.visionMission as Record<string, unknown> | null;
   const storedVision = typeof stored?.vision === 'string' ? stored.vision.trim() : '';
-  const storedMissions = (typeof stored?.missions === 'string' ? stored.missions : '')
-    .split('\n')
-    .map((line) => line.replace(/^[-•*\d.)\s]+/, '').trim())
-    .filter(Boolean);
+  const rawMissions = typeof stored?.missions === 'string' ? stored.missions.trim() : '';
+  let storedMissions: string[] = [];
+  if (rawMissions.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(rawMissions);
+      if (Array.isArray(parsed)) {
+        storedMissions = parsed
+          .map((item) => (typeof item === 'string' ? item : String(item ?? '')))
+          .map((item) => item.replace(/^[-•*\d.)\s]+/, '').trim())
+          .filter(Boolean);
+      }
+    } catch {
+      // Bukan JSON valid — pakai pemecahan per baris.
+    }
+  }
+  if (storedMissions.length === 0 && rawMissions) {
+    storedMissions = rawMissions
+      .split('\n')
+      .map((line) => line.replace(/^[-•*\d.)\s]+/, '').trim())
+      .filter(Boolean);
+  }
 
   const vision = storedVision || fallbackVision;
   const missions = storedMissions.length > 0 ? storedMissions : fallbackMissions;
@@ -529,48 +547,116 @@ const VisionMissionWidget: React.FC<{
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-stretch">
           {/* Visi */}
-          <div
-            className="lg:col-span-5 rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <span className="inline-block rounded-lg bg-amber-400 px-3 py-1 text-[13px] font-black uppercase tracking-widest text-slate-950">
-              Visi Utama
-            </span>
+          <article className="lg:col-span-5 flex flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
             <div
-              className="mt-5 text-xl sm:text-2xl font-bold leading-relaxed text-white"
-              dangerouslySetInnerHTML={{
-                __html:
-                  vision ||
-                  'Menjadi program studi unggul dalam pengembangan ilmu dan teknologi berkarakter nilai luhur.',
+              className="h-1.5 w-full"
+              style={{
+                backgroundImage: `linear-gradient(90deg, ${primaryColor} 0%, ${primaryColor}cc 68%, ${accentColor} 100%)`,
               }}
             />
-          </div>
+            <div
+              className="relative flex flex-1 flex-col p-7 sm:p-9"
+              style={{
+                backgroundImage: `linear-gradient(180deg, ${primaryColor}08 0%, #ffffff 48%)`,
+              }}
+            >
+              <span
+                aria-hidden="true"
+                className="pointer-events-none select-none absolute right-6 top-2 font-heading text-[96px] font-black leading-none"
+                style={{ color: `${primaryColor}12` }}
+              >
+                &ldquo;
+              </span>
+
+              <div className="relative">
+                <span
+                  className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-widest"
+                  style={{
+                    backgroundColor: `${primaryColor}10`,
+                    borderColor: `${primaryColor}24`,
+                    color: primaryColor,
+                  }}
+                >
+                  <EyeIcon className="h-3.5 w-3.5" />
+                  <span>Visi Utama</span>
+                </span>
+
+                <div
+                  className="mt-5 text-xl sm:text-[23px] font-extrabold leading-[1.58] tracking-tight text-slate-950"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      vision ||
+                      'Menjadi program studi unggul dalam pengembangan ilmu dan teknologi berkarakter nilai luhur.',
+                  }}
+                />
+              </div>
+
+              <div className="mt-auto pt-7">
+                <div className="flex items-center gap-2.5 text-[12.5px] font-semibold text-slate-500">
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: primaryColor }}
+                  />
+                  <span>Komitmen Mutu &amp; Tridharma Perguruan Tinggi</span>
+                </div>
+              </div>
+            </div>
+
+            <Link
+              to="/visi-misi"
+              className="group flex items-center justify-between border-t border-slate-100 bg-slate-50/80 px-7 py-4 text-[13px] font-bold transition-colors hover:bg-slate-50 sm:px-9"
+              style={{ color: primaryColor }}
+            >
+              <span>Selengkapnya Visi &amp; Misi</span>
+              <ArrowRightIcon className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+            </Link>
+          </article>
 
           {/* Misi */}
-          <div className="lg:col-span-7 bg-white rounded-3xl p-8 sm:p-10 border border-slate-200 shadow-sm space-y-5">
-            <span className="text-[13px] font-extrabold uppercase tracking-widest text-slate-700">
-              Misi Kami
-            </span>
-            <div className="space-y-4">
+          <article className="lg:col-span-7 flex flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/75 px-7 py-4 sm:px-8">
+              <span className="text-[12.5px] font-extrabold uppercase tracking-widest text-slate-800">
+                Misi Kami
+              </span>
+              {missions.length > 0 ? (
+                <span
+                  className="rounded-full border px-3 py-0.5 text-[11.5px] font-bold tabular-nums"
+                  style={{
+                    backgroundColor: `${primaryColor}0d`,
+                    borderColor: `${primaryColor}24`,
+                    color: primaryColor,
+                  }}
+                >
+                  {missions.length} Poin
+                </span>
+              ) : null}
+            </div>
+
+            <div className="flex-1 divide-y divide-slate-100">
               {missions.length > 0 ? (
                 missions.map((mission, idx) => (
-                  <div key={idx} className="flex items-start gap-4">
+                  <div key={idx} className="flex items-start gap-4 px-7 py-4 sm:px-8">
                     <span
-                      className="flex-shrink-0 w-9 h-9 rounded-xl text-[15px] font-extrabold grid place-items-center mt-0.5 text-white shadow-xs"
-                      style={{ backgroundColor: primaryColor }}
+                      className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-mono text-[12px] font-extrabold tabular-nums"
+                      style={{
+                        backgroundColor: `${primaryColor}12`,
+                        color: primaryColor,
+                      }}
                     >
-                      {idx + 1}
+                      {String(idx + 1).padStart(2, '0')}
                     </span>
-                    <p className="text-[16px] text-slate-900 leading-[1.7] font-medium">{mission}</p>
+                    <p className="text-[15px] text-slate-700 leading-relaxed font-medium">{mission}</p>
                   </div>
                 ))
               ) : (
-                <p className="text-[16px] text-slate-700 italic">Misi program studi sedang diselaraskan.</p>
+                <p className="px-7 py-8 text-[15px] text-slate-500 italic sm:px-8">
+                  Misi program studi sedang diselaraskan.
+                </p>
               )}
             </div>
-          </div>
+          </article>
         </div>
       </div>
     </section>
@@ -810,12 +896,10 @@ const LecturersWidget: React.FC<{
                 key={idx}
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs animate-pulse"
               >
-                <div className="h-24 bg-slate-200" />
-                <div className="flex flex-col items-center px-6 pb-6 -mt-12">
-                  <div className="w-24 h-24 rounded-2xl bg-slate-200 ring-4 ring-white" />
-                  <div className="mt-4 h-4 w-44 rounded bg-slate-200" />
-                  <div className="mt-2 h-3 w-28 rounded bg-slate-100" />
-                  <div className="mt-4 h-7 w-32 rounded-full bg-slate-100" />
+                <div className="aspect-[4/4.3] w-full bg-slate-200" />
+                <div className="px-5 py-5 space-y-2.5">
+                  <div className="h-4 w-44 rounded bg-slate-200" />
+                  <div className="h-3 w-28 rounded bg-slate-100" />
                 </div>
               </div>
             ))}
@@ -846,72 +930,67 @@ const LecturersWidget: React.FC<{
                   className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-slate-300 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2"
                   style={{ outlineColor: primaryColor }}
                 >
-                  {/* Banner atas bertekstur arsitektural adaptif warna prodi */}
-                  <div
-                    className="relative h-24 w-full overflow-hidden"
-                    style={{
-                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}d8 65%, #0f172a 100%)`,
-                    }}
-                  >
-                    <img
-                      src="/assets/visual/lecturer-card-texture.png"
-                      alt=""
-                      aria-hidden="true"
-                      loading="lazy"
-                      className="absolute inset-0 h-full w-full object-cover object-center opacity-40 mix-blend-screen transition-transform duration-700 group-hover:scale-105"
-                    />
-                    <div
-                      className="absolute inset-x-0 bottom-0 h-[3px] opacity-85"
-                      style={{
-                        background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
-                      }}
-                    />
-                  </div>
-
-                  {/* Foto / Avatar mengambang di perbatasan banner */}
-                  <div className="relative -mt-14 flex justify-center px-6">
-                    <div className="relative h-28 w-28 rounded-2xl bg-white p-1.5 shadow-lg ring-1 ring-slate-200/80 transition-transform duration-300 group-hover:scale-[1.03]">
-                      {doc.photoUrl ? (
-                        <img
-                          src={doc.photoUrl}
-                          alt={`Foto ${doc.name}`}
-                          loading="lazy"
-                          className="h-full w-full rounded-xl object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            const fallback = e.currentTarget.nextElementSibling;
-                            if (fallback) fallback.classList.remove('hidden');
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className={`relative h-full w-full overflow-hidden rounded-xl flex items-center justify-center font-extrabold text-2xl tracking-wider text-white shadow-inner ${
-                          doc.photoUrl ? 'hidden' : ''
-                        }`}
-                        style={{
-                          background: `linear-gradient(145deg, ${primaryColor} 0%, ${primaryColor}cc 60%, #0f172a 100%)`,
+                  {/* Foto potret penuh agar sosok dosen tampil menonjol */}
+                  <div className="relative aspect-[4/4.3] w-full overflow-hidden bg-slate-100">
+                    {doc.photoUrl ? (
+                      <img
+                        src={doc.photoUrl}
+                        alt={`Foto ${doc.name}`}
+                        loading="lazy"
+                        className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback) fallback.classList.remove('hidden');
                         }}
-                      >
-                        <img
-                          src="/assets/visual/lecturer-card-texture.png"
-                          alt=""
-                          aria-hidden="true"
-                          className="absolute inset-0 h-full w-full object-cover opacity-35 mix-blend-screen"
-                        />
-                        <span className="relative z-10">{inisial || 'DS'}</span>
-                      </div>
+                      />
+                    ) : null}
+                    <div
+                      className={`relative h-full w-full flex flex-col items-center justify-center text-white ${
+                        doc.photoUrl ? 'hidden' : ''
+                      }`}
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      <div
+                        className="pointer-events-none absolute inset-0 opacity-[0.18]"
+                        style={{
+                          backgroundImage: `radial-gradient(${accentColor} 1px, transparent 1px)`,
+                          backgroundSize: '20px 20px',
+                        }}
+                        aria-hidden="true"
+                      />
+                      <span className="relative z-10 text-5xl font-extrabold tracking-wider">
+                        {inisial || 'DS'}
+                      </span>
+                      <span className="relative z-10 mt-2 text-[11px] font-bold uppercase tracking-widest text-white/75">
+                        Tenaga Pendidik
+                      </span>
                     </div>
+
+                    {/* Gradasi tipis di bawah foto untuk kontras label jabatan */}
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/55 via-slate-950/15 to-transparent"
+                    />
+                    <span
+                      className="absolute bottom-3.5 left-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1 text-[11.5px] font-extrabold shadow-xs backdrop-blur-sm"
+                      style={{ color: primaryColor }}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: accentColor }}
+                      />
+                      <span>{roleLabel}</span>
+                    </span>
                   </div>
 
                   {/* Identitas dosen dengan tinggi sejajar antar kartu */}
-                  <div className="flex flex-1 flex-col items-center text-center px-6 pt-4 pb-5">
-                    <div className="min-h-[2.75rem] flex items-center justify-center">
-                      <h3 className="font-extrabold text-[16px] text-slate-950 leading-snug line-clamp-2 transition-colors group-hover:text-slate-800">
-                        {doc.name}
-                      </h3>
-                    </div>
+                  <div className="flex flex-1 flex-col px-5 pt-4 pb-5 text-left">
+                    <h3 className="min-h-[2.75rem] font-extrabold text-[16px] text-slate-950 leading-snug line-clamp-2 transition-colors group-hover:text-slate-800">
+                      {doc.name}
+                    </h3>
 
-                    <p className="mt-1.5 min-h-[20px] text-[12.5px] font-mono font-semibold tracking-tight text-slate-600">
+                    <p className="mt-1.5 min-h-[18px] text-[12.5px] font-mono font-semibold tracking-tight text-slate-500">
                       {doc.nidn ? `NIDN ${doc.nidn}` : '\u00A0'}
                     </p>
 
@@ -920,23 +999,10 @@ const LecturersWidget: React.FC<{
                         {doc.expertise}
                       </p>
                     ) : null}
-
-                    <div className="mt-auto pt-4">
-                      <span
-                        className="inline-flex items-center rounded-full border px-3.5 py-1 text-[12.5px] font-bold tracking-tight transition-colors"
-                        style={{
-                          backgroundColor: `${primaryColor}10`,
-                          borderColor: `${primaryColor}28`,
-                          color: primaryColor,
-                        }}
-                      >
-                        {roleLabel}
-                      </span>
-                    </div>
                   </div>
 
                   {/* Footer aksi halus menuju detail profil dosen */}
-                  <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/75 px-6 py-3 text-[13px] font-bold transition-colors group-hover:bg-slate-50">
+                  <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/75 px-5 py-3 text-[13px] font-bold transition-colors group-hover:bg-slate-50">
                     <span style={{ color: primaryColor }}>Lihat Profil</span>
                     <ArrowRightIcon
                       className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"

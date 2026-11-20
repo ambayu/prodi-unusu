@@ -39,7 +39,6 @@ import { AdminCurriculum } from './pages/admin/AdminCurriculum';
 import { AdminCurriculumItemForm } from './pages/admin/AdminCurriculumItemForm';
 import { AdminCourses } from './pages/admin/AdminCourses';
 import { AdminLmsJadwal } from './pages/admin/AdminLmsJadwal';
-import { AdminLmsPeserta } from './pages/admin/AdminLmsPeserta';
 import { AdminDocuments } from './pages/admin/AdminDocuments';
 import { AdminLecturers } from './pages/admin/AdminLecturers';
 import { AdminFacilities } from './pages/admin/AdminFacilities';
@@ -210,16 +209,7 @@ export const App: React.FC = () => {
           </RequireAuth>
         }
       />
-      <Route
-        path="/admin/lms/peserta"
-        element={
-          <RequireAuth>
-            <RequirePermission anyOf={['curriculum.view']}>
-              <AdminLmsPeserta />
-            </RequirePermission>
-          </RequireAuth>
-        }
-      />
+      <Route path="/admin/lms/peserta" element={<Navigate to="/admin/lms/jadwal" replace />} />
       <Route path="/admin/lms/sinkronisasi" element={<Navigate to="/admin/lms/jadwal" replace />} />
       <Route
         path="/admin/kurikulum"

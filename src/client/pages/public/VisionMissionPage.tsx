@@ -174,36 +174,54 @@ export const VisionMissionPage: React.FC = () => {
             {/* Kolom Kanan: Visi, Misi, Tujuan & Sasaran Strategis */}
             <div className="space-y-6 lg:col-span-7">
               {vision ? (
-                <article
-                  className="relative overflow-hidden rounded-3xl p-7 text-white shadow-sm sm:p-8"
-                  style={{ backgroundColor: primary }}
-                >
+                <article className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
                   <div
-                    className="pointer-events-none absolute inset-0 opacity-[0.16]"
+                    className="h-1.5 w-full"
                     style={{
-                      backgroundImage: `radial-gradient(${accent} 1px, transparent 1px)`,
-                      backgroundSize: '20px 20px',
+                      backgroundImage: `linear-gradient(90deg, ${primary} 0%, ${primary}cc 68%, ${accent} 100%)`,
                     }}
-                    aria-hidden="true"
                   />
-                  <div className="relative">
-                    <div className="flex items-center gap-2.5">
+                  <div
+                    className="relative p-7 sm:p-9"
+                    style={{
+                      backgroundImage: `linear-gradient(180deg, ${primary}08 0%, #ffffff 48%)`,
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none select-none absolute right-6 top-2 font-heading text-[96px] font-black leading-none"
+                      style={{ color: `${primary}12` }}
+                    >
+                      &ldquo;
+                    </span>
+
+                    <div className="relative">
                       <span
-                        className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15"
-                        style={{ color: accent }}
+                        className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-widest"
+                        style={{
+                          backgroundColor: `${primary}10`,
+                          borderColor: `${primary}24`,
+                          color: primary,
+                        }}
                       >
-                        <EyeIcon className="h-5 w-5" />
+                        <EyeIcon className="h-3.5 w-3.5" />
+                        <span>Visi {unitLabel}</span>
                       </span>
-                      <h2
-                        className="border-l-2 pl-2.5 text-xs font-extrabold uppercase tracking-widest"
-                        style={{ borderColor: accent, color: accent }}
-                      >
-                        Visi {unitLabel}
-                      </h2>
+
+                      <blockquote className="mt-5 text-lg font-extrabold leading-[1.6] tracking-tight text-slate-950 sm:text-[22px]">
+                        &ldquo;{vision}&rdquo;
+                      </blockquote>
+
+                      <div className="mt-6 flex items-center gap-3 pt-4 border-t border-slate-100">
+                        <span
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: primary }}
+                        />
+                        <p className="text-[12.5px] font-semibold text-slate-500">
+                          Arah Pengembangan &amp; Komitmen Mutu {tenant?.name || unitLabel}
+                        </p>
+                      </div>
                     </div>
-                    <p className="mt-4 text-lg font-bold leading-relaxed text-white sm:text-xl">
-                      &ldquo;{vision}&rdquo;
-                    </p>
                   </div>
                 </article>
               ) : null}

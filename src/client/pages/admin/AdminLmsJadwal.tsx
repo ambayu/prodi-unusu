@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AcademicCapIcon,
@@ -9,6 +9,8 @@ import {
   FunnelIcon,
   MagnifyingGlassIcon,
   MapPinIcon,
+  PlusIcon,
+  TrashIcon,
   UserGroupIcon,
   CheckCircleIcon,
   XCircleIcon,
@@ -33,6 +35,7 @@ import {
   type LmsCourseOffering,
   type LmsLecturer,
   type LmsMeeting,
+  type LmsStudentRow,
 } from '../../services/lmsAdminApi';
 import { curriculumApi } from '../../services/contentApi';
 import { pickCurrentCurriculum } from '../../../shared/utils/curriculum';
@@ -117,6 +120,12 @@ export const AdminLmsJadwal: React.FC = () => {
   const [meetingDraft, setMeetingDraft] = useState<MeetingDraft>(EMPTY_MEETING_DRAFT);
   const [meetingFormError, setMeetingFormError] = useState<string | null>(null);
 
+  const [participantsCourse, setParticipantsCourse] = useState<LmsCourseOffering | null>(null);
+  const [createdClassroomId, setCreatedClassroomId] = useState<number | null>(null);
+  const [participantRows, setParticipantRows] = useState<LmsStudentRow[]>([]);
+  const [participantSearch, setParticipantSearch] = useState('');
+  const [participantFormError, setParticipantFormError] = useState<string | null>(null);
+
   const curriculumsQuery = useQuery({
     queryKey: ['admin', 'curriculums'],
     queryFn: () => curriculumApi.list().then((res) => res.data.curriculums),
@@ -163,6 +172,35 @@ export const AdminLmsJadwal: React.FC = () => {
     },
     enabled: Boolean(expandedDosenClassId),
   });
+
+  const existingParticipantsClassroomId = participantsCourse?.classroom?.id ?? null;
+
+  const classroomStudentsQuery = useQuery({
+    queryKey: ['admin', 'lms-students', existingParticipantsClassroomId],
+    queryFn: () => {
+      if (!existingParticipantsClassroomId) return Promise.resolve<LmsStudentRow[]>([]);
+      return lmsAdminApi.students(existingParticipantsClassroomId).then((res) => res.data.students);
+    },
+    enabled: Boolean(participantsCourse && existingParticipantsClassroomId),
+  });
+
+  const knownStudentsQuery = useQuery({
+    queryKey: ['admin', 'lms-known-students'],
+    queryFn: () => lmsAdminApi.knownStudents().then((res) => res.data.students),
+    enabled: Boolean(participantsCourse && canEdit),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!participantsCourse) return;
+    if (!existingParticipantsClassroomId) {
+      setParticipantRows([]);
+      return;
+    }
+    if (classroomStudentsQuery.data) {
+      setParticipantRows(classroomStudentsQuery.data);
+    }
+  }, [participantsCourse, existingParticipantsClassroomId, classroomStudentsQuery.data]);
 
   const courses = coursesQuery.data ?? [];
   const rawLecturers = lecturersQuery.data ?? [];
@@ -335,6 +373,84 @@ export const AdminLmsJadwal: React.FC = () => {
     },
     onError: (error) =>
       setMeetingFormError(firstFieldError(toApiError(error)) ?? toApiError(error).message),
+  });
+
+  const knownStudents = knownStudentsQuery.data ?? [];
+
+  const availableStudents = useMemo(() => {
+    const selectedNims = new Set(participantRows.map((row) => row.nim));
+    return knownStudents.filter((student) => !selectedNims.has(student.nim));
+  }, [knownStudents, participantRows]);
+
+  const filteredCandidates = useMemo(() => {
+    const keyword = participantSearch.trim().toLowerCase();
+    if (!keyword) return availableStudents;
+    return availableStudents.filter(
+      (student) =>
+        student.nim.toLowerCase().includes(keyword) ||
+        student.name.toLowerCase().includes(keyword),
+    );
+  }, [availableStudents, participantSearch]);
+
+  const openParticipantsModal = (course: LmsCourseOffering) => {
+    setParticipantsCourse(course);
+    setCreatedClassroomId(null);
+    setParticipantRows([]);
+    setParticipantSearch('');
+    setParticipantFormError(null);
+  };
+
+  const closeParticipantsModal = () => {
+    setParticipantsCourse(null);
+    setCreatedClassroomId(null);
+    setParticipantRows([]);
+    setParticipantSearch('');
+    setParticipantFormError(null);
+  };
+
+  const addParticipant = (student: LmsStudentRow) => {
+    if (!student.nim) return;
+    setParticipantRows((prev) => {
+      if (prev.some((row) => row.nim === student.nim)) return prev;
+      return [...prev, student];
+    });
+  };
+
+  const addFilteredParticipants = () => {
+    if (filteredCandidates.length === 0) return;
+    setParticipantRows((prev) => {
+      const existing = new Set(prev.map((row) => row.nim));
+      const additions = filteredCandidates.filter((student) => student.nim && !existing.has(student.nim));
+      return additions.length > 0 ? [...prev, ...additions] : prev;
+    });
+    setParticipantSearch('');
+  };
+
+  const removeParticipant = (nim: string) => {
+    setParticipantRows((prev) => prev.filter((row) => row.nim !== nim));
+  };
+
+  const saveParticipantsMutation = useMutation({
+    mutationFn: async () => {
+      if (!participantsCourse) throw new Error('Mata kuliah belum dipilih.');
+      let targetClassroomId = participantsCourse.classroom?.id ?? createdClassroomId;
+      if (!targetClassroomId) {
+        const created = await lmsAdminApi.saveClassroom({ curriculumItemId: participantsCourse.id });
+        targetClassroomId = created.data.classroom.id;
+        setCreatedClassroomId(targetClassroomId);
+      }
+      await lmsAdminApi.saveStudents(targetClassroomId, participantRows);
+      return targetClassroomId;
+    },
+    onSuccess: (targetClassroomId) => {
+      toast.success('Peserta kelas berhasil disimpan dan dikirim ke LMS.');
+      closeParticipantsModal();
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'lms-courses'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'lms-students', targetClassroomId] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'lms-meetings'] });
+    },
+    onError: (error) =>
+      setParticipantFormError(firstFieldError(toApiError(error)) ?? toApiError(error).message),
   });
 
   const toggleCourse = (courseId: number) => {
@@ -574,6 +690,23 @@ export const AdminLmsJadwal: React.FC = () => {
                         >
                           <PencilSquareIcon className="h-3.5 w-3.5" />
                           Jadwal
+                        </button>
+                      ) : null}
+
+                      {isExpanded ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openParticipantsModal(course);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 hover:text-slate-900"
+                        >
+                          <UserGroupIcon className="h-3.5 w-3.5" />
+                          <span>Peserta</span>
+                          <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-slate-600">
+                            {classroom?._count.students ?? 0}
+                          </span>
                         </button>
                       ) : null}
 
@@ -1188,6 +1321,189 @@ export const AdminLmsJadwal: React.FC = () => {
               Kembalikan ke Jadwal Reguler
             </button>
           ) : null}
+        </div>
+      </FormModal>
+
+      {/* MODAL KELOLA PESERTA KELAS (ONE UNUSU) */}
+      <FormModal
+        open={participantsCourse !== null}
+        wide
+        title="Kelola Peserta Kelas"
+        description={
+          participantsCourse
+            ? `${participantsCourse.code} · ${participantsCourse.name} (Semester ${participantsCourse.semesterNumber ?? '-'})`
+            : undefined
+        }
+        submitLabel={canEdit ? 'Simpan Peserta' : 'Tutup'}
+        busy={saveParticipantsMutation.isPending || classroomStudentsQuery.isLoading}
+        error={
+          participantFormError ??
+          (classroomStudentsQuery.isError ? toApiError(classroomStudentsQuery.error).message : null)
+        }
+        onClose={closeParticipantsModal}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!canEdit) {
+            closeParticipantsModal();
+            return;
+          }
+          setParticipantFormError(null);
+          saveParticipantsMutation.mutate();
+        }}
+      >
+        <div className="space-y-4">
+          {participantsCourse && !participantsCourse.classroom ? (
+            <p className="rounded-lg border border-blue-200/80 bg-blue-50/70 px-3 py-2 text-xs text-[#1e3a8a]">
+              Kelas LMS untuk mata kuliah ini belum dibuat. Saat peserta disimpan, kelas akan dibuat otomatis dan disinkronkan ke LMS.
+            </p>
+          ) : null}
+
+          {canEdit ? (
+            <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label
+                  htmlFor="lms-cari-mahasiswa"
+                  className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600"
+                >
+                  <MagnifyingGlassIcon className="h-3.5 w-3.5" />
+                  Pilih Mahasiswa dari ONE UNUSU
+                </label>
+                {!knownStudentsQuery.isLoading && !knownStudentsQuery.isError ? (
+                  <span className="text-[11px] font-medium text-slate-500 tabular-nums">
+                    {availableStudents.length} tersedia dari {knownStudents.length} mahasiswa
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  id="lms-cari-mahasiswa"
+                  type="search"
+                  className="field-input flex-1 bg-white"
+                  placeholder="Cari NIM atau nama mahasiswa ONE UNUSU..."
+                  disabled={classroomStudentsQuery.isLoading}
+                  value={participantSearch}
+                  onChange={(event) => setParticipantSearch(event.target.value)}
+                />
+                {participantSearch.trim() !== '' &&
+                filteredCandidates.length > 1 &&
+                filteredCandidates.length <= 50 ? (
+                  <button
+                    type="button"
+                    disabled={classroomStudentsQuery.isLoading}
+                    onClick={addFilteredParticipants}
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#1e3a8a]/30 bg-blue-50 px-3 py-2 text-xs font-semibold text-[#1e3a8a] transition-colors hover:bg-blue-100 disabled:opacity-50"
+                  >
+                    <PlusIcon className="h-3.5 w-3.5" />
+                    Tambah Semua ({filteredCandidates.length})
+                  </button>
+                ) : null}
+              </div>
+
+              {knownStudentsQuery.isLoading ? (
+                <p className="py-2 text-xs text-slate-500">Memuat daftar mahasiswa aktif dari ONE UNUSU...</p>
+              ) : knownStudentsQuery.isError ? (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                  <span>{toApiError(knownStudentsQuery.error).message}</span>
+                  <button
+                    type="button"
+                    onClick={() => void knownStudentsQuery.refetch()}
+                    className="shrink-0 font-semibold underline hover:text-rose-950"
+                  >
+                    Coba lagi
+                  </button>
+                </div>
+              ) : filteredCandidates.length === 0 ? (
+                <p className="py-1 text-xs text-slate-500 italic">
+                  {participantSearch.trim()
+                    ? 'Tidak ada mahasiswa ONE UNUSU yang cocok atau semuanya sudah terdaftar.'
+                    : 'Seluruh mahasiswa dari ONE UNUSU sudah masuk ke kelas ini.'}
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  <ul className="max-h-44 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                    {filteredCandidates.slice(0, 25).map((student) => (
+                      <li
+                        key={student.nim}
+                        className="flex items-center justify-between gap-3 px-3 py-2 text-xs hover:bg-blue-50/50"
+                      >
+                        <div className="min-w-0 truncate text-slate-700">
+                          <span className="font-mono font-semibold text-slate-900">{student.nim}</span>
+                          <span className="mx-1.5 text-slate-300">·</span>
+                          <span>{student.name}</span>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={classroomStudentsQuery.isLoading}
+                          onClick={() => addParticipant(student)}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-[#1e3a8a] transition-colors hover:border-[#1e3a8a]/40 hover:bg-blue-50 disabled:opacity-50"
+                        >
+                          <PlusIcon className="h-3.5 w-3.5" />
+                          Tambah
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {filteredCandidates.length > 25 ? (
+                    <p className="text-[11px] text-slate-500">
+                      Menampilkan 25 dari {filteredCandidates.length} mahasiswa. Ketik NIM atau nama untuk mempersempit hasil.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/70 px-4 py-2.5">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                Daftar Peserta Terdaftar ({participantRows.length})
+              </h4>
+              {canEdit && participantRows.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setParticipantRows([])}
+                  className="text-[11px] font-semibold text-rose-600 hover:text-rose-800"
+                >
+                  Kosongkan
+                </button>
+              ) : null}
+            </div>
+
+            {classroomStudentsQuery.isLoading ? (
+              <p className="p-4 text-xs text-slate-500">Memuat daftar peserta kelas...</p>
+            ) : participantRows.length === 0 ? (
+              <p className="p-4 text-xs text-slate-500 italic">
+                Belum ada mahasiswa yang ditambahkan ke kelas ini.
+              </p>
+            ) : (
+              <ul className="max-h-56 divide-y divide-slate-100 overflow-y-auto">
+                {participantRows.map((student, index) => (
+                  <li
+                    key={student.nim}
+                    className="flex items-center justify-between gap-3 px-4 py-2 text-xs"
+                  >
+                    <span className="min-w-0 truncate text-slate-700">
+                      <span className="mr-2 font-mono text-slate-400">{index + 1}.</span>
+                      <span className="font-mono font-semibold text-slate-900">{student.nim}</span>
+                      <span className="mx-1.5 text-slate-300">·</span>
+                      <span>{student.name}</span>
+                    </span>
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => removeParticipant(student.nim)}
+                        className="rounded-md p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
+                        aria-label={`Hapus ${student.name} dari kelas`}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </FormModal>
     </AdminLayout>
