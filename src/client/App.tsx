@@ -50,6 +50,7 @@ import { AdminContact } from './pages/admin/AdminContact';
 import { AdminMedia } from './pages/admin/AdminMedia';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminBuilder } from './pages/admin/AdminBuilder';
+import { AdminWidgetBank } from './pages/admin/AdminWidgetBank';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminPortalHero } from './pages/admin/AdminPortalHero';
 import { AdminNavigation } from './pages/admin/AdminNavigation';
@@ -155,6 +156,16 @@ export const App: React.FC = () => {
           <RequireAuth>
             <RequirePermission anyOf={['builder.view']}>
               <AdminBuilder />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/widget-bank"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['builder.view']}>
+              <AdminWidgetBank />
             </RequirePermission>
           </RequireAuth>
         }

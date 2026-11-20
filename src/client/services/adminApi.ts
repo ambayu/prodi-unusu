@@ -1,5 +1,6 @@
 import { api } from './api';
 import type { AdminMenuItem, AuthUser } from '../../shared/types/index';
+import type { CustomLayoutTemplateConfig } from '../../shared/schemas/builder';
 
 // ---------------------------------------------------------
 // Builder
@@ -46,6 +47,17 @@ export interface WidgetDefinition {
   variants: Array<{ code: string; name: string; previewUrl: string | null }>;
 }
 
+export interface WidgetTemplateItem {
+  id: number;
+  name: string;
+  description: string | null;
+  config: CustomLayoutTemplateConfig;
+  usageCount: number;
+  usedInPages: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const builderApi = {
   pages: () => api.get<{ pages: BuilderPage[] }>('/admin/pages'),
   page: (id: number) => api.get<{ page: BuilderPage }>(`/admin/pages/${id}`),
@@ -73,6 +85,20 @@ export const builderApi = {
     api.put(`/admin/sections/${sectionId}/widgets/reorder`, { items }),
 
   widgets: () => api.get<{ widgets: WidgetDefinition[] }>('/admin/widgets'),
+
+  widgetBank: () => api.get<{ templates: WidgetTemplateItem[] }>('/admin/widget-bank'),
+  createWidgetTemplate: (data: {
+    name: string;
+    description?: string | null;
+    config: CustomLayoutTemplateConfig;
+  }) => api.post<{ template: WidgetTemplateItem }>('/admin/widget-bank', data),
+  updateWidgetTemplate: (
+    id: number,
+    data: { name?: string; description?: string | null; config?: CustomLayoutTemplateConfig },
+  ) => api.put<{ template: WidgetTemplateItem }>(`/admin/widget-bank/${id}`, data),
+  duplicateWidgetTemplate: (id: number) =>
+    api.post<{ template: WidgetTemplateItem }>(`/admin/widget-bank/${id}/duplicate`),
+  deleteWidgetTemplate: (id: number) => api.delete(`/admin/widget-bank/${id}`),
 };
 
 // ---------------------------------------------------------
@@ -928,6 +954,18 @@ export const adminMenuApi = {
             icon: 'AdjustmentsHorizontalIcon',
             parentKey: null,
             sortOrder: 20,
+            section: 'WEBSITE',
+            requiredPermission: 'builder.view',
+            scopeType: 'prodi',
+          },
+          {
+            menuKey: 'builder.widget_bank',
+            label: 'Bank Widget',
+            desc: 'Buat & simpan widget susunan kolom',
+            route: '/admin/widget-bank',
+            icon: 'Squares2X2Icon',
+            parentKey: null,
+            sortOrder: 20.5,
             section: 'WEBSITE',
             requiredPermission: 'builder.view',
             scopeType: 'prodi',

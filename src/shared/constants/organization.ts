@@ -231,6 +231,14 @@ export const WIDGETS: WidgetSeed[] = [
     defaultConfig: { title: '', body: '', buttonLabel: '', buttonUrl: '' },
     variants: [{ code: 'solid', name: 'Solid' }],
   },
+  {
+    code: 'custom_layout',
+    name: 'Bank Widget Kustom',
+    category: 'Supporting',
+    description: 'Widget susunan kolom buatan sendiri dari Bank Widget.',
+    defaultConfig: { templateId: 0, templateName: '' },
+    variants: [],
+  },
 ];
 
 /** Preset permission group Editor (docs/rbac bagian 7). */
@@ -284,6 +292,7 @@ export const ADMIN_MENUS: Array<{
   { menuKey: 'dashboard', label: 'Dashboard', route: '/admin', icon: 'HomeIcon', sortOrder: 1, requiredPermission: 'dashboard.view', scopeType: 'prodi' },
 
   { menuKey: 'builder', label: 'Page Builder & Navigasi', route: '/admin/builder', icon: 'AdjustmentsHorizontalIcon', sortOrder: 20, requiredPermission: 'builder.view', scopeType: 'prodi' },
+  { menuKey: 'builder.widget_bank', label: 'Bank Widget', route: '/admin/widget-bank', icon: 'Squares2X2Icon', sortOrder: 20.5, requiredPermission: 'builder.view', scopeType: 'prodi' },
   { menuKey: 'website.settings', label: 'Identitas, Tema & SEO', route: '/admin/pengaturan', icon: 'Cog6ToothIcon', sortOrder: 21, requiredPermission: 'website.view', scopeType: 'prodi' },
 
   { menuKey: 'content', label: 'Konten', route: '/admin/konten', icon: 'DocumentTextIcon', sortOrder: 30, requiredPermission: 'profile.view', scopeType: 'prodi' },

@@ -67,6 +67,116 @@ export const ctaBannerConfigSchema = z.object({
   backgroundColor: hexColorSchema.optional(),
 });
 
+// ---------------------------------------------------------
+// Bank Widget Kustom (Custom Layout Rows & Blocks)
+// ---------------------------------------------------------
+
+export const customRowLayoutSchema = z.enum([
+  '1-col',
+  '2-col',
+  '2-col-left',
+  '2-col-right',
+  '3-col',
+]);
+
+export const customRowBackgroundSchema = z.enum(['white', 'soft', 'tinted']);
+
+const customTextBlockSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  type: z.literal('text'),
+  eyebrow: z.string().trim().max(100).default(''),
+  title: z.string().trim().max(200).default(''),
+  body: z.string().trim().max(4000).default(''),
+  align: z.enum(['left', 'center']).default('left'),
+});
+
+const customImageBlockSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  type: z.literal('image'),
+  imageUrl: safeUrlSchema.default(''),
+  alt: z.string().trim().max(200).default(''),
+  caption: z.string().trim().max(300).default(''),
+  ratio: z.enum(['auto', '16:9', '4:3', '1:1']).default('4:3'),
+});
+
+const customButtonBlockSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  type: z.literal('button'),
+  label: z.string().trim().max(80).default('Pelajari Selengkapnya'),
+  url: safeUrlSchema.default('/'),
+  style: z.enum(['primary', 'outline']).default('primary'),
+  align: z.enum(['left', 'center']).default('left'),
+});
+
+const customListBlockSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  type: z.literal('list'),
+  title: z.string().trim().max(160).default(''),
+  items: z.array(z.string().trim().max(300)).max(20).default([]),
+  style: z.enum(['check', 'number']).default('check'),
+});
+
+const customStatBlockSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  type: z.literal('stat'),
+  value: z.string().trim().max(40).default('100%'),
+  label: z.string().trim().max(100).default('Judul Sorotan'),
+  description: z.string().trim().max(300).default(''),
+});
+
+const customYoutubeBlockSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  type: z.literal('youtube'),
+  url: safeUrlSchema.default(''),
+  caption: z.string().trim().max(240).default(''),
+});
+
+export const customBlockSchema = z.discriminatedUnion('type', [
+  customTextBlockSchema,
+  customImageBlockSchema,
+  customButtonBlockSchema,
+  customListBlockSchema,
+  customStatBlockSchema,
+  customYoutubeBlockSchema,
+]);
+
+export const customRowSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  layout: customRowLayoutSchema.default('1-col'),
+  background: customRowBackgroundSchema.default('white'),
+  columns: z.array(z.array(customBlockSchema).max(12)).min(1).max(3),
+});
+
+export const customLayoutTemplateConfigSchema = z.object({
+  rows: z.array(customRowSchema).max(12).default([]),
+});
+
+export const createWidgetTemplateSchema = z.object({
+  name: z.string().trim().min(2, 'Nama widget minimal 2 karakter.').max(150),
+  description: z.string().trim().max(400).nullable().optional(),
+  config: customLayoutTemplateConfigSchema,
+});
+
+export const updateWidgetTemplateSchema = createWidgetTemplateSchema.partial();
+
+export const customLayoutWidgetConfigSchema = z.object({
+  templateId: z.coerce.number().int().positive('Pilih widget dari Bank Widget terlebih dahulu.'),
+  templateName: z.string().trim().max(150).optional(),
+});
+
+export type CustomRowLayout = z.infer<typeof customRowLayoutSchema>;
+export type CustomRowBackground = z.infer<typeof customRowBackgroundSchema>;
+export type CustomBlock = z.infer<typeof customBlockSchema>;
+export type CustomRow = z.infer<typeof customRowSchema>;
+export type CustomLayoutTemplateConfig = z.infer<typeof customLayoutTemplateConfigSchema>;
+
+/** Jumlah kolom yang sesuai untuk tiap pilihan tata letak baris. */
+export function columnCountForLayout(layout: CustomRowLayout): 1 | 2 | 3 {
+  if (layout === '1-col') return 1;
+  if (layout === '3-col') return 3;
+  return 2;
+}
+
 /**
  * Registry skema konfigurasi per kode widget.
  *
@@ -85,6 +195,7 @@ export const WIDGET_CONFIG_SCHEMAS: Record<string, z.ZodTypeAny> = {
   gallery_grid: dataWidgetConfigSchema,
   contact_information: contactWidgetConfigSchema,
   cta_banner: ctaBannerConfigSchema,
+  custom_layout: customLayoutWidgetConfigSchema,
 };
 
 export const createPageSchema = z.object({

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import {
   validateWidgetConfig,
   heroSliderConfigSchema,
@@ -6,6 +6,8 @@ import {
   aboutProdiConfigSchema,
   createPageSchema,
   createSectionWidgetSchema,
+  createWidgetTemplateSchema,
+  columnCountForLayout,
 } from '../src/shared/schemas/builder';
 import { hostnameSchema, safeUrlSchema, hexColorSchema } from '../src/shared/schemas/common';
 import { loginSchema, ssoExchangeSchema } from '../src/shared/schemas/auth';
@@ -149,3 +151,55 @@ describe('validasi input umum', () => {
     expect(ssoExchangeSchema.safeParse({ client_id: 'prodi-unusu', token: 'abc' }).success).toBe(true);
   });
 });
+
+describe('validasi Bank Widget kustom', () => {
+  it('menerima konfigurasi template dengan baris dua kolom dan mengisi nilai bawaan', () => {
+    const result = createWidgetTemplateSchema.safeParse({
+      name: 'Sambutan',
+      config: {
+        rows: [
+          {
+            id: 'row-1',
+            layout: '2-col',
+            background: 'white',
+            columns: [
+              [{ id: 'b1', type: 'text', title: 'Sambutan', body: 'Halo', align: 'center' }],
+              [{ id: 'b2', type: 'image', imageUrl: '/a.jpg', ratio: '16:9' }],
+            ],
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const row = result.data.config.rows[0];
+      expect(row.columns).toHaveLength(2);
+      expect(row.columns[1][0]).toMatchObject({ type: 'image', caption: '' });
+    }
+  });
+
+  it('menyimpan referensi template pada widget custom_layout', () => {
+    const result = validateWidgetConfig('custom_layout', { templateId: '7', templateName: 'Sambutan' });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.templateId).toBe(7);
+  });
+
+  it('menolak templateId yang tidak diisi', () => {
+    expect(validateWidgetConfig('custom_layout', { templateId: 0 }).ok).toBe(false);
+  });
+
+  it('menolak tipe blok yang tidak dikenal di dalam template', () => {
+    const result = createWidgetTemplateSchema.safeParse({
+      name: 'Rusak',
+      config: { rows: [{ id: 'r', layout: '1-col', columns: [[{ id: 'x', type: 'script' }]] }] },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('memetakan jumlah kolom untuk setiap tata letak baris', () => {
+    expect(columnCountForLayout('1-col')).toBe(1);
+    expect(columnCountForLayout('2-col-left')).toBe(2);
+    expect(columnCountForLayout('3-col')).toBe(3);
+  });
+});
+

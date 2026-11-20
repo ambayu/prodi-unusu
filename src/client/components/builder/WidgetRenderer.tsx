@@ -24,6 +24,8 @@ import {
 import { useTenant } from '../../hooks/useSite';
 import { GambarTentang } from '../ui/GambarTentang';
 import { pickCurrentCurriculum } from '../../../shared/utils/curriculum';
+import { CustomLayoutWidget } from './CustomLayoutWidget';
+import type { CustomRow } from '../../../shared/schemas/builder';
 
 interface WidgetInstanceProps {
   widgetCode: string;
@@ -249,6 +251,18 @@ export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({ widgetCode, conf
           </div>
         </div>
       </section>
+    );
+  }
+
+  // 11B. BANK WIDGET KUSTOM (CUSTOM LAYOUT)
+  if (widgetCode === 'custom_layout') {
+    const rows = Array.isArray(config.rows) ? (config.rows as CustomRow[]) : [];
+    return (
+      <CustomLayoutWidget
+        rows={rows}
+        primaryColor={primaryColor}
+        accentColor={accentColor}
+      />
     );
   }
 

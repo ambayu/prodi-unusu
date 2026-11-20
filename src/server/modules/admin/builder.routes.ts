@@ -9,12 +9,17 @@ import {
   createPageSchema,
   createSectionSchema,
   createSectionWidgetSchema,
+  createWidgetTemplateSchema,
+  customLayoutTemplateConfigSchema,
+  customLayoutWidgetConfigSchema,
   reorderSectionsSchema,
   reorderWidgetsSchema,
   updatePageSchema,
   updateSectionSchema,
   updateSectionWidgetSchema,
+  updateWidgetTemplateSchema,
   validateWidgetConfig,
+  type CustomLayoutTemplateConfig,
 } from '../../../shared/schemas/builder.js';
 import { idParamSchema } from '../../../shared/schemas/common.js';
 import {
@@ -25,6 +30,57 @@ import {
 } from '../../services/pageService.js';
 
 const router = Router();
+
+/** Memastikan master widget `custom_layout` tersedia di tabel `widgets`. */
+async function ensureCustomLayoutWidget() {
+  return prisma.widget.upsert({
+    where: { code: 'custom_layout' },
+    create: {
+      code: 'custom_layout',
+      name: 'Bank Widget Kustom',
+      category: 'Supporting',
+      description: 'Widget susunan kolom buatan sendiri dari Bank Widget program studi.',
+      defaultJson: JSON.stringify({ templateId: 0, templateName: '' }),
+      isActive: true,
+    },
+    update: { isActive: true },
+  });
+}
+
+function parseTemplateConfig(raw: string): CustomLayoutTemplateConfig {
+  const parsed = customLayoutTemplateConfigSchema.safeParse(JSON.parse(raw) as unknown);
+  return parsed.success ? parsed.data : { rows: [] };
+}
+
+/** Memetakan jumlah dan nama halaman pemakai setiap template Bank Widget milik tenant. */
+async function collectTemplateUsage(studyProgramId: number): Promise<Map<number, string[]>> {
+  const instances = await prisma.sectionWidget.findMany({
+    where: {
+      widget: { code: 'custom_layout' },
+      pageSection: { page: { studyProgramId } },
+    },
+    select: {
+      configJson: true,
+      pageSection: { select: { page: { select: { title: true } } } },
+    },
+  });
+
+  const usage = new Map<number, Set<string>>();
+  for (const inst of instances) {
+    try {
+      const cfg = JSON.parse(inst.configJson) as { templateId?: unknown };
+      const tid = Number(cfg?.templateId);
+      if (Number.isInteger(tid) && tid > 0) {
+        if (!usage.has(tid)) usage.set(tid, new Set());
+        usage.get(tid)!.add(inst.pageSection.page.title);
+      }
+    } catch {
+      // Abaikan configJson yang tidak valid agar listing tidak gagal.
+    }
+  }
+
+  return new Map([...usage.entries()].map(([tid, pages]) => [tid, [...pages]]));
+}
 
 /** Mengambil page dengan verifikasi kepemilikan tenant. */
 async function requireOwnedPage(pageId: number, studyProgramId: number) {
@@ -266,7 +322,10 @@ router.post(
     }>(req);
     await requireOwnedSection(id, studyProgramId);
 
-    const widget = await prisma.widget.findUnique({ where: { code: body.widgetCode } });
+    const widget =
+      body.widgetCode === 'custom_layout'
+        ? await ensureCustomLayoutWidget()
+        : await prisma.widget.findUnique({ where: { code: body.widgetCode } });
     if (!widget || !widget.isActive) {
       throw AppError.badRequest(`Widget "${body.widgetCode}" tidak tersedia di library.`, 'WIDGET_NOT_FOUND');
     }
@@ -288,6 +347,20 @@ router.post(
       throw AppError.unprocessable('Konfigurasi widget tidak valid.', { config: validated.errors });
     }
 
+    const finalConfig: Record<string, unknown> = { ...validated.data };
+    if (body.widgetCode === 'custom_layout') {
+      const templateId = Number(finalConfig.templateId);
+      const ownedTemplate = await prisma.widgetTemplate.findFirst({
+        where: { id: templateId, studyProgramId, isActive: true },
+        select: { id: true, name: true },
+      });
+      if (!ownedTemplate) {
+        throw AppError.badRequest('Template Bank Widget tidak ditemukan pada program studi ini.', 'TEMPLATE_NOT_FOUND');
+      }
+      finalConfig.templateId = ownedTemplate.id;
+      finalConfig.templateName = ownedTemplate.name;
+    }
+
     const lastWidget = await prisma.sectionWidget.findFirst({
       where: { pageSectionId: id },
       orderBy: { sortOrder: 'desc' },
@@ -300,7 +373,7 @@ router.post(
         widgetId: widget.id,
         variantCode: body.variantCode ?? null,
         sortOrder: lastWidget ? lastWidget.sortOrder + 1 : body.sortOrder,
-        configJson: JSON.stringify(validated.data),
+        configJson: JSON.stringify(finalConfig),
       },
     });
 
@@ -350,11 +423,30 @@ router.put(
     }
 
     if (body.config !== undefined) {
-      const validated = validateWidgetConfig(instance.widget.code, body.config);
+      // Widget Bank Widget hanya menyimpan referensi template; isinya divalidasi
+      // oleh `createWidgetTemplateSchema` agar bentuk lama yang rusak tidak
+      // ditimpa nilai bawaan menjadi template kosong.
+      const validated =
+        instance.widget.code === 'custom_layout'
+          ? { ok: true as const, data: body.config }
+          : validateWidgetConfig(instance.widget.code, body.config);
       if (!validated.ok) {
         throw AppError.unprocessable('Konfigurasi widget tidak valid.', { config: validated.errors });
       }
-      data.configJson = JSON.stringify(validated.data);
+      const nextConfig: Record<string, unknown> = { ...validated.data };
+      if (instance.widget.code === 'custom_layout') {
+        const templateId = Number(nextConfig.templateId);
+        const ownedTemplate = await prisma.widgetTemplate.findFirst({
+          where: { id: templateId, studyProgramId, isActive: true },
+          select: { id: true, name: true },
+        });
+        if (!ownedTemplate) {
+          throw AppError.badRequest('Template Bank Widget tidak ditemukan pada program studi ini.', 'TEMPLATE_NOT_FOUND');
+        }
+        nextConfig.templateId = ownedTemplate.id;
+        nextConfig.templateName = ownedTemplate.name;
+      }
+      data.configJson = JSON.stringify(nextConfig);
     }
 
     const updated = await prisma.sectionWidget.update({ where: { id }, data });
@@ -603,13 +695,13 @@ router.post(
   }),
 );
 
-/** GET /api/v1/admin/widgets: katalog widget dan variannya untuk library builder. */
+/** GET /api/v1/admin/widgets: katalog widget bawaan dan variannya untuk library builder. */
 router.get(
   '/widgets',
   requirePermission('widgets.view'),
   asyncHandler(async (_req, res) => {
     const widgets = await prisma.widget.findMany({
-      where: { isActive: true },
+      where: { isActive: true, code: { not: 'custom_layout' } },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
       include: {
         variants: {
@@ -621,6 +713,233 @@ router.get(
     });
 
     res.json({ success: true, widgets });
+  }),
+);
+
+// ---------------------------------------------------------
+// Bank Widget Kustom per Program Studi
+// ---------------------------------------------------------
+
+/** GET /api/v1/admin/widget-bank: daftar widget kustom milik program studi. */
+router.get(
+  '/widget-bank',
+  requirePermission('builder.view'),
+  asyncHandler(async (req, res) => {
+    const studyProgramId = scopedTenantId(req);
+    const [templates, usageMap] = await Promise.all([
+      prisma.widgetTemplate.findMany({
+        where: { studyProgramId, isActive: true },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      }),
+      collectTemplateUsage(studyProgramId),
+    ]);
+
+    res.json({
+      success: true,
+      templates: templates.map((tpl) => {
+        const usedInPages = usageMap.get(tpl.id) ?? [];
+        return {
+          id: tpl.id,
+          name: tpl.name,
+          description: tpl.description,
+          config: parseTemplateConfig(tpl.configJson),
+          usageCount: usedInPages.length,
+          usedInPages,
+          createdAt: tpl.createdAt,
+          updatedAt: tpl.updatedAt,
+        };
+      }),
+    });
+  }),
+);
+
+/** POST /api/v1/admin/widget-bank: simpan widget kustom baru ke Bank Widget. */
+router.post(
+  '/widget-bank',
+  requirePermission('builder.create'),
+  validate({ body: createWidgetTemplateSchema }),
+  asyncHandler(async (req, res) => {
+    const studyProgramId = scopedTenantId(req);
+    const body = getBody<{
+      name: string;
+      description?: string | null;
+      config: CustomLayoutTemplateConfig;
+    }>(req);
+
+    await ensureCustomLayoutWidget();
+
+    const created = await prisma.widgetTemplate.create({
+      data: {
+        studyProgramId,
+        name: body.name,
+        description: body.description?.trim() || null,
+        configJson: JSON.stringify(body.config),
+      },
+    });
+
+    await recordAudit({
+      req,
+      action: 'CREATE',
+      module: 'BUILDER',
+      targetType: 'widget_template',
+      targetId: created.id,
+      details: { name: created.name },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Widget berhasil disimpan ke Bank Widget.',
+      template: {
+        id: created.id,
+        name: created.name,
+        description: created.description,
+        config: body.config,
+        usageCount: 0,
+        usedInPages: [],
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      },
+    });
+  }),
+);
+
+/** PUT /api/v1/admin/widget-bank/:id: perbarui widget kustom di Bank Widget. */
+router.put(
+  '/widget-bank/:id',
+  requirePermission('builder.update'),
+  validate({ params: idParamSchema, body: updateWidgetTemplateSchema }),
+  asyncHandler(async (req, res) => {
+    const studyProgramId = scopedTenantId(req);
+    const { id } = getParams<{ id: number }>(req);
+    const body = getBody<{
+      name?: string;
+      description?: string | null;
+      config?: CustomLayoutTemplateConfig;
+    }>(req);
+
+    const existing = await prisma.widgetTemplate.findFirst({
+      where: { id, studyProgramId, isActive: true },
+    });
+    if (!existing) {
+      throw AppError.notFound('Widget tidak ditemukan pada Bank Widget program studi ini.');
+    }
+
+    const data: Record<string, unknown> = {};
+    if (body.name !== undefined) data.name = body.name;
+    if (body.description !== undefined) data.description = body.description?.trim() || null;
+    if (body.config !== undefined) data.configJson = JSON.stringify(body.config);
+
+    const updated = await prisma.widgetTemplate.update({ where: { id }, data });
+
+    await recordAudit({
+      req,
+      action: 'UPDATE',
+      module: 'BUILDER',
+      targetType: 'widget_template',
+      targetId: id,
+      details: { name: updated.name },
+    });
+
+    const usageMap = await collectTemplateUsage(studyProgramId);
+    const usedInPages = usageMap.get(id) ?? [];
+
+    res.json({
+      success: true,
+      message: 'Perubahan widget berhasil disimpan.',
+      template: {
+        id: updated.id,
+        name: updated.name,
+        description: updated.description,
+        config: parseTemplateConfig(updated.configJson),
+        usageCount: usedInPages.length,
+        usedInPages,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt,
+      },
+    });
+  }),
+);
+
+/** POST /api/v1/admin/widget-bank/:id/duplicate: menggandakan template di Bank Widget. */
+router.post(
+  '/widget-bank/:id/duplicate',
+  requirePermission('builder.create'),
+  validate({ params: idParamSchema }),
+  asyncHandler(async (req, res) => {
+    const studyProgramId = scopedTenantId(req);
+    const { id } = getParams<{ id: number }>(req);
+
+    const source = await prisma.widgetTemplate.findFirst({
+      where: { id, studyProgramId, isActive: true },
+    });
+    if (!source) {
+      throw AppError.notFound('Widget tidak ditemukan pada Bank Widget program studi ini.');
+    }
+
+    const copyName = `${source.name} (Salinan)`.slice(0, 150);
+    const created = await prisma.widgetTemplate.create({
+      data: {
+        studyProgramId,
+        name: copyName,
+        description: source.description,
+        configJson: source.configJson,
+      },
+    });
+
+    await recordAudit({
+      req,
+      action: 'CREATE',
+      module: 'BUILDER',
+      targetType: 'widget_template',
+      targetId: created.id,
+      details: { duplicatedFrom: source.id },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Widget berhasil digandakan.',
+      template: {
+        id: created.id,
+        name: created.name,
+        description: created.description,
+        config: parseTemplateConfig(created.configJson),
+        usageCount: 0,
+        usedInPages: [],
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      },
+    });
+  }),
+);
+
+/** DELETE /api/v1/admin/widget-bank/:id: menghapus template jika tidak sedang terpasang. */
+router.delete(
+  '/widget-bank/:id',
+  requirePermission('builder.delete'),
+  validate({ params: idParamSchema }),
+  asyncHandler(async (req, res) => {
+    const studyProgramId = scopedTenantId(req);
+    const { id } = getParams<{ id: number }>(req);
+
+    const existing = await prisma.widgetTemplate.findFirst({
+      where: { id, studyProgramId, isActive: true },
+    });
+    if (!existing) {
+      throw AppError.notFound('Widget tidak ditemukan pada Bank Widget program studi ini.');
+    }
+
+    const usageMap = await collectTemplateUsage(studyProgramId);
+    const usedInPages = usageMap.get(id) ?? [];
+    if (usedInPages.length > 0) {
+      throw AppError.badRequest(
+        `Widget sedang dipakai di halaman: ${usedInPages.join(', ')}. Lepas dari Page Builder terlebih dahulu sebelum menghapus.`,
+        'TEMPLATE_IN_USE',
+      );
+    }
+
+    await prisma.widgetTemplate.delete({ where: { id } });
+    await recordAudit({ req, action: 'DELETE', module: 'BUILDER', targetType: 'widget_template', targetId: id });
+    res.json({ success: true, message: 'Widget berhasil dihapus dari Bank Widget.' });
   }),
 );
 

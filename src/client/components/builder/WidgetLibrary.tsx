@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   AcademicCapIcon,
   BuildingOffice2Icon,
@@ -18,12 +19,23 @@ import {
 } from '@heroicons/react/24/outline';
 import type { WidgetDefinition } from '../../services/adminApi';
 
+export interface WidgetTemplateOption {
+  id: number;
+  name: string;
+  description: string | null;
+  usageCount: number;
+}
+
 interface WidgetLibraryProps {
   widgets: WidgetDefinition[];
   /** Nama tampilan widget (label sidebar bila ada). */
   namaTampil: (widget: WidgetDefinition) => string;
   /** Null bila pengguna tidak boleh menambah seksi. */
   onPilih: ((widget: WidgetDefinition) => void) | null;
+  /** Widget dari Bank Widget; hanya tampil bila pengguna punya akses builder. */
+  bankTemplates?: WidgetTemplateOption[];
+  /** Menambahkan template Bank Widget ke halaman. */
+  onPilihBank?: ((template: WidgetTemplateOption) => void) | null;
 }
 
 /** Ikon per kode widget; widget baru memakai Squares2X2Icon. */
@@ -54,7 +66,13 @@ const LABEL_KATEGORI: Record<string, string> = {
 };
 
 /** Pustaka widget: daftar semua widget yang tersedia, dikelompokkan per kategori. */
-export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({ widgets, namaTampil, onPilih }) => {
+export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
+  widgets,
+  namaTampil,
+  onPilih,
+  bankTemplates = [],
+  onPilihBank = null,
+}) => {
   const [terbuka, setTerbuka] = useState(false);
 
   const perKategori = widgets.reduce<Record<string, WidgetDefinition[]>>((hasil, widget) => {
@@ -92,6 +110,51 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({ widgets, namaTampi
 
       {terbuka ? (
         <div className="space-y-4 border-t border-slate-200/80 px-5 py-4">
+          {onPilihBank ? (
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#1e3a8a]">
+                  Bank Widget Prodi
+                </p>
+                <Link
+                  to="/admin/widget-bank"
+                  className="text-[10px] font-bold text-slate-500 underline hover:text-[#1e3a8a]"
+                >
+                  Kelola Bank Widget
+                </Link>
+              </div>
+              {bankTemplates.length === 0 ? (
+                <p className="rounded-[10px] border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-500">
+                  Belum ada widget susunan kolom. Buat sekali di Bank Widget lalu pakai di halaman mana pun.
+                </p>
+              ) : (
+                <ul className="grid gap-2.5 sm:grid-cols-2">
+                  {bankTemplates.map((template) => (
+                    <li
+                      key={template.id}
+                      className="flex items-start justify-between gap-3 rounded-[12px] border border-blue-200/80 bg-blue-50/40 px-3.5 py-3 transition-all hover:border-[#1e3a8a]/40 hover:shadow-xs"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-bold text-slate-900">{template.name}</p>
+                        <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-500">
+                          {template.description || 'Widget kustom dari Bank Widget.'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onPilihBank(template)}
+                        aria-label={`Tambah widget ${template.name}`}
+                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-[8px] bg-[#1e3a8a] px-2.5 text-[11px] font-bold text-white transition-colors hover:bg-[#172f6e]"
+                      >
+                        <PlusIcon className="h-3 w-3" />
+                        Pakai
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
           {widgets.length === 0 ? <p className="text-xs text-slate-500">Belum ada widget terdaftar.</p> : null}
           {Object.entries(perKategori).map(([kategori, daftar]) => (
             <div key={kategori}>

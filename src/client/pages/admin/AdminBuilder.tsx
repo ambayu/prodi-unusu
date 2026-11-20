@@ -93,6 +93,7 @@ const WIDGET_SIDEBAR_LABELS: Record<string, string> = {
   vision_mission: 'Komitmen Akademik & Visi Misi',
   statistics: 'Statistik Prodi',
   cta_banner: 'Banner Ajakan (CTA)',
+  custom_layout: 'Widget Susunan Kolom',
 };
 
 /** Nama widget yang dipakai di dropdown & kartu: label sidebar untuk widget dinamis. */
@@ -212,6 +213,15 @@ function getWidgetOriginMeta(widgetCode: string): {
         badgeClass: 'bg-pink-50 text-pink-700 border-pink-200',
         sourceDesc: 'Ajakan aksi / PMB & tautan diisi langsung di Page Builder.',
       };
+    case 'custom_layout':
+      return {
+        type: 'custom',
+        badge: 'Dari: Bank Widget',
+        badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+        sourceDesc: 'Susunan kolom dari Bank Widget; ubah isinya sekali untuk semua halaman.',
+        manageRoute: '/admin/widget-bank',
+        manageLabel: 'Buka Bank Widget',
+      };
     default:
       return {
         type: 'custom',
@@ -226,6 +236,7 @@ function getWidgetOriginMeta(widgetCode: string): {
 function summarize(config: Record<string, unknown>): string {
   const title = typeof config.title === 'string' ? config.title : '';
   if (title) return title;
+  if (typeof config.templateName === 'string' && config.templateName) return `Bank Widget: ${config.templateName}`;
   if (Array.isArray(config.slides)) return `${config.slides.length} slide`;
   if (Array.isArray(config.items)) return `${config.items.length} item`;
   if (typeof config.vision === 'string' && config.vision) return 'Visi dan misi terisi';
@@ -437,6 +448,8 @@ export const AdminBuilder: React.FC = () => {
     widgetTitle: '',
     /** Deskripsi singkat / pengantar seksi pada website publik. */
     widgetDescription: '',
+    /** Template Bank Widget yang dipakai bila `widgetCode` bernilai `custom_layout`. */
+    templateId: '' as string | number,
   });
   const [widgetFormOpen, setWidgetFormOpen] = useState(false);
   const [widgetSectionId, setWidgetSectionId] = useState<number | null>(null);
@@ -445,6 +458,8 @@ export const AdminBuilder: React.FC = () => {
     variantCode: '',
     widgetTitle: '',
     widgetDescription: '',
+    /** Template Bank Widget yang dipakai bila `widgetCode` bernilai `custom_layout`. */
+    templateId: '' as string | number,
   });
   const [configTarget, setConfigTarget] = useState<BuilderWidgetInstance | null>(null);
   const [configFormState, setConfigFormState] = useState<Record<string, any>>({});
@@ -519,6 +534,12 @@ export const AdminBuilder: React.FC = () => {
     queryFn: () => builderApi.widgets().then((res) => res.data.widgets),
   });
 
+  // Widget susunan kolom milik prodi, ditawarkan langsung di dalam Page Builder.
+  const bankQuery = useQuery({
+    queryKey: ['admin', 'widget-bank', activeTenantId],
+    queryFn: () => builderApi.widgetBank().then((res) => res.data.templates),
+  });
+
   const menusQuery = useQuery({
     queryKey: ['admin', 'menus', activeTenantId],
     queryFn: () => settingsApi.menus().then((res) => res.data.menus),
@@ -575,6 +596,12 @@ export const AdminBuilder: React.FC = () => {
           config.subtitle = customDescription;
           config.description = customDescription;
         }
+        if (sectionDraft.widgetCode === 'custom_layout') {
+          if (!sectionDraft.templateId) {
+            throw new Error('Pilih widget dari Bank Widget terlebih dahulu.');
+          }
+          config = { templateId: Number(sectionDraft.templateId) };
+        }
         await builderApi.addWidget(createdSectionId, {
           widgetCode: sectionDraft.widgetCode,
           variantCode: null,
@@ -592,6 +619,7 @@ export const AdminBuilder: React.FC = () => {
         widgetCode: 'about_prodi',
         widgetTitle: '',
         widgetDescription: '',
+        templateId: '',
       });
       refresh();
     },
@@ -618,6 +646,12 @@ export const AdminBuilder: React.FC = () => {
         config.subtitle = customDescription;
         config.description = customDescription;
       }
+      if (widgetDraft.widgetCode === 'custom_layout') {
+        if (!widgetDraft.templateId) {
+          throw new Error('Pilih widget dari Bank Widget terlebih dahulu.');
+        }
+        config = { templateId: Number(widgetDraft.templateId) };
+      }
       return builderApi.addWidget(widgetSectionId!, {
         widgetCode: widgetDraft.widgetCode,
         variantCode: widgetDraft.variantCode || null,
@@ -627,7 +661,7 @@ export const AdminBuilder: React.FC = () => {
     onSuccess: () => {
       toast.success('Widget berhasil ditambahkan.');
       setWidgetFormOpen(false);
-      setWidgetDraft({ widgetCode: 'about_prodi', variantCode: '', widgetTitle: '', widgetDescription: '' });
+      setWidgetDraft({ widgetCode: 'about_prodi', variantCode: '', widgetTitle: '', widgetDescription: '', templateId: '' });
       refresh();
     },
     onError: (error) => {
@@ -1327,7 +1361,11 @@ export const AdminBuilder: React.FC = () => {
                 <span className="ml-1.5 font-normal text-blue-800">— {tenant.facultyName}</span>
               </p>
               <a
-                href={tenant.domain ? `http://${tenant.domain}:5180/` : 'http://localhost:5180/'}
+                href={
+                  tenant.domain
+                    ? `${window.location.protocol}//${tenant.domain}${window.location.port ? `:${window.location.port}` : ''}/`
+                    : `${window.location.origin}/`
+                }
                 target="_blank"
                 rel="noreferrer"
                 className="text-[11px] font-bold text-blue-900 underline hover:text-blue-950"
@@ -1697,6 +1735,7 @@ export const AdminBuilder: React.FC = () => {
                           widgetCode: defaultWidget ? defaultWidget.code : 'about_prodi',
                           widgetTitle: '',
                           widgetDescription: '',
+                          templateId: '',
                         });
                         setSectionFormOpen(true);
                       }}
@@ -1711,6 +1750,22 @@ export const AdminBuilder: React.FC = () => {
                 <WidgetLibrary
                   widgets={widgetsQuery.data ?? []}
                   namaTampil={(w) => getWidgetDisplayName(w.code, w.name)}
+                  bankTemplates={bankQuery.data ?? []}
+                  onPilihBank={
+                    has('builder.create')
+                      ? (template) => {
+                          setSectionDraft({
+                            sectionKey: 'bank-widget',
+                            title: `Seksi ${template.name}`,
+                            widgetCode: 'custom_layout',
+                            widgetTitle: '',
+                            widgetDescription: '',
+                            templateId: template.id,
+                          });
+                          setSectionFormOpen(true);
+                        }
+                      : null
+                  }
                   onPilih={
                     has('builder.create')
                       ? (w) => {
@@ -1720,6 +1775,7 @@ export const AdminBuilder: React.FC = () => {
                             widgetCode: w.code,
                             widgetTitle: '',
                             widgetDescription: '',
+                            templateId: '',
                           });
                           setSectionFormOpen(true);
                         }
@@ -1782,6 +1838,7 @@ export const AdminBuilder: React.FC = () => {
                                     variantCode: '',
                                     widgetTitle: '',
                                     widgetDescription: '',
+                                    templateId: '',
                                   });
                                   setWidgetFormOpen(true);
                                 }}
@@ -1980,6 +2037,7 @@ export const AdminBuilder: React.FC = () => {
                 ...sectionDraft,
                 widgetCode: code,
                 sectionKey: code.replace(/_/g, '-'),
+                templateId: '',
                 title: found?.name
                   ? `Seksi ${getWidgetDisplayName(code, found.name)}`
                   : sectionDraft.title,
@@ -2027,6 +2085,39 @@ export const AdminBuilder: React.FC = () => {
             </div>
           );
         })()}
+
+        {sectionDraft.widgetCode === 'custom_layout' ? (
+          <Field
+            label="Pilih dari Bank Widget"
+            htmlFor="section-bank-template"
+            required
+            hint="Isi widget dikelola di Bank Widget; perubahan di sana berlaku untuk semua halaman."
+          >
+            {bankQuery.data && bankQuery.data.length > 0 ? (
+              <select
+                id="section-bank-template"
+                className="field-input"
+                value={String(sectionDraft.templateId)}
+                onChange={(event) => setSectionDraft({ ...sectionDraft, templateId: event.target.value })}
+              >
+                <option value="">Pilih widget...</option>
+                {bankQuery.data.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-500">
+                Bank Widget masih kosong.{' '}
+                <a href="/admin/widget-bank" className="font-bold text-[#1e3a8a] underline">
+                  Buat widget pertama
+                </a>{' '}
+                terlebih dahulu.
+              </p>
+            )}
+          </Field>
+        ) : null}
 
         <Field
           label="Judul Tampilan Widget"
@@ -2094,7 +2185,7 @@ export const AdminBuilder: React.FC = () => {
             placeholder="Pilih tipe widget..."
             searchPlaceholder="Cari tipe widget..."
             onChange={(code) => {
-              if (code) setWidgetDraft({ ...widgetDraft, widgetCode: code, variantCode: '' });
+              if (code) setWidgetDraft({ ...widgetDraft, widgetCode: code, variantCode: '', templateId: '' });
             }}
             options={(widgetsQuery.data ?? []).map((widget) => {
               const origin = getWidgetOriginMeta(widget.code);
@@ -2169,6 +2260,39 @@ export const AdminBuilder: React.FC = () => {
             }
           />
         </Field>
+
+        {widgetDraft.widgetCode === 'custom_layout' ? (
+          <Field
+            label="Pilih dari Bank Widget"
+            htmlFor="widget-bank-template"
+            required
+            hint="Widget dari Bank Widget dikelola terpusat; ubah isinya di menu Bank Widget agar semua halaman ikut berubah."
+          >
+            {bankQuery.data && bankQuery.data.length > 0 ? (
+              <select
+                id="widget-bank-template"
+                className="field-input"
+                value={String(widgetDraft.templateId)}
+                onChange={(event) => setWidgetDraft({ ...widgetDraft, templateId: event.target.value })}
+              >
+                <option value="">Pilih widget...</option>
+                {bankQuery.data.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-500">
+                Bank Widget masih kosong.{' '}
+                <a href="/admin/widget-bank" className="font-bold text-[#1e3a8a] underline">
+                  Buat widget pertama
+                </a>{' '}
+                terlebih dahulu.
+              </p>
+            )}
+          </Field>
+        ) : null}
 
         {selectedWidgetDefinition?.variants.length ? (
           <Field label="Varian tampilan" htmlFor="widget-variant">

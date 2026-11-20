@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AcademicCapIcon,
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
   CalendarDaysIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -40,6 +42,8 @@ import {
 } from '../../services/lmsAdminApi';
 import { curriculumApi } from '../../services/contentApi';
 import { pickCurrentCurriculum } from '../../../shared/utils/curriculum';
+import { createXlsxBlob, downloadBlob, readXlsxRows } from '../../utils/xlsx';
+import { buildStudentImportReport, type StudentImportReport } from '../../utils/studentImport';
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -129,6 +133,10 @@ export const AdminLmsJadwal: React.FC = () => {
   const [participantSearch, setParticipantSearch] = useState('');
   const [candidatePage, setCandidatePage] = useState(1);
   const [participantFormError, setParticipantFormError] = useState<string | null>(null);
+  const [importReport, setImportReport] = useState<StudentImportReport | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const curriculumsQuery = useQuery({
     queryKey: ['admin', 'curriculums'],
@@ -418,6 +426,8 @@ export const AdminLmsJadwal: React.FC = () => {
     setParticipantSearch('');
     setCandidatePage(1);
     setParticipantFormError(null);
+    setImportReport(null);
+    setImportError(null);
   };
 
   const closeParticipantsModal = () => {
@@ -427,6 +437,8 @@ export const AdminLmsJadwal: React.FC = () => {
     setParticipantSearch('');
     setCandidatePage(1);
     setParticipantFormError(null);
+    setImportReport(null);
+    setImportError(null);
   };
 
   const addParticipant = (student: LmsStudentRow) => {
@@ -450,6 +462,44 @@ export const AdminLmsJadwal: React.FC = () => {
 
   const removeParticipant = (nim: string) => {
     setParticipantRows((prev) => prev.filter((row) => row.nim !== nim));
+  };
+
+  const downloadParticipantTemplate = () => {
+    downloadBlob(
+      createXlsxBlob({ name: 'Peserta', rows: [['NIM', 'Nama Mahasiswa']] }),
+      'template-import-peserta-kelas.xlsx',
+    );
+  };
+
+  const handleParticipantFile = async (file: File) => {
+    setImportError(null);
+    setImportReport(null);
+
+    if (!/\.xlsx$/i.test(file.name)) {
+      setImportError('Berkas harus berformat .xlsx (Excel 2007 atau lebih baru).');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const rows = await readXlsxRows(file);
+      const report = buildStudentImportReport(rows, knownStudents, participantRows);
+      setImportReport(report);
+
+      if (report.matched.length > 0) {
+        setParticipantRows((prev) => {
+          const existing = new Set(prev.map((row) => row.nim));
+          const additions = report.matched.filter((student) => !existing.has(student.nim));
+          return additions.length > 0 ? [...prev, ...additions] : prev;
+        });
+        setCandidatePage(1);
+        toast.success(`${report.matched.length} peserta ditambahkan dari ${file.name}.`);
+      }
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'Berkas gagal dibaca.');
+    } finally {
+      setImporting(false);
+    }
   };
 
   const saveParticipantsMutation = useMutation({
@@ -691,14 +741,18 @@ export const AdminLmsJadwal: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border border-blue-200/80 bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1e3a8a] ${
-                          hasLecturer ? '' : 'italic'
+                        className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold ${
+                          hasLecturer
+                            ? 'border-[#1e3a8a]/20 bg-[#eff6ff] text-[#1e3a8a]'
+                            : 'border-slate-200 bg-slate-50 text-slate-500 italic'
                         }`}
                       >
-                        <AcademicCapIcon className="h-3.5 w-3.5" />
-                        {hasLecturer ? dosenName : 'Belum ada dosen'}
+                        <AcademicCapIcon className="h-3.5 w-3.5 shrink-0" />
+                        <span className="max-w-[200px] truncate">
+                          {hasLecturer ? dosenName : 'Belum ada dosen'}
+                        </span>
                       </span>
 
                       {isExpanded && canEdit ? (
@@ -708,10 +762,10 @@ export const AdminLmsJadwal: React.FC = () => {
                             event.stopPropagation();
                             openEditModal(course);
                           }}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 hover:text-slate-900"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#1e3a8a]/25 bg-white px-3 text-xs font-semibold text-[#1e3a8a] shadow-2xs transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] hover:text-white"
                         >
-                          <PencilSquareIcon className="h-3.5 w-3.5" />
-                          Jadwal
+                          <PencilSquareIcon className="h-3.5 w-3.5 shrink-0" />
+                          <span>Jadwal</span>
                         </button>
                       ) : null}
 
@@ -722,11 +776,11 @@ export const AdminLmsJadwal: React.FC = () => {
                             event.stopPropagation();
                             openParticipantsModal(course);
                           }}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 hover:text-slate-900"
+                          className="group inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#1e3a8a] bg-[#1e3a8a] px-3 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-[#172f6e]"
                         >
-                          <UserGroupIcon className="h-3.5 w-3.5" />
+                          <UserGroupIcon className="h-3.5 w-3.5 shrink-0 text-[#fbbf24]" />
                           <span>Peserta</span>
-                          <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-slate-600">
+                          <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md bg-[#fbbf24] px-1 text-[10px] font-extrabold tabular-nums text-[#1e3a8a]">
                             {classroom?._count.students ?? 0}
                           </span>
                         </button>
@@ -743,14 +797,14 @@ export const AdminLmsJadwal: React.FC = () => {
                           aria-expanded={meetingsOpen}
                           aria-controls={`pertemuan-kelas-${classroom.id}`}
                           aria-label={meetingsOpen ? 'Tutup 16 pertemuan' : 'Lihat 16 pertemuan'}
-                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold shadow-2xs transition-colors ${
                             meetingsOpen
                               ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white'
-                              : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                              : 'border-[#1e3a8a]/25 bg-white text-[#1e3a8a] hover:border-[#1e3a8a] hover:bg-[#eff6ff]'
                           }`}
                         >
-                          <ClipboardDocumentListIcon className="h-3.5 w-3.5" />
-                          Pertemuan
+                          <ClipboardDocumentListIcon className="h-3.5 w-3.5 shrink-0" />
+                          <span>Pertemuan</span>
                         </button>
                       ) : null}
                     </div>
@@ -1391,6 +1445,83 @@ export const AdminLmsJadwal: React.FC = () => {
                   </span>
                 ) : null}
               </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={downloadParticipantTemplate}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-900"
+                >
+                  <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+                  Template Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => importInputRef.current?.click()}
+                  disabled={importing || knownStudentsQuery.isLoading || knownStudentsQuery.isError}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#1e3a8a]/30 bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-[#1e3a8a] transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ArrowUpTrayIcon className="h-3.5 w-3.5" />
+                  {importing ? 'Membaca berkas...' : 'Impor Excel'}
+                </button>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  className="hidden"
+                  aria-label="Unggah berkas Excel peserta kelas"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (file) void handleParticipantFile(file);
+                  }}
+                />
+              </div>
+
+              {importError ? (
+                <p
+                  role="alert"
+                  className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-800"
+                >
+                  {importError}
+                </p>
+              ) : null}
+
+              {importReport ? (
+                <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold tabular-nums">
+                    <span className="text-emerald-700">{importReport.matched.length} ditambahkan</span>
+                    <span className="text-slate-500">
+                      {importReport.alreadyRegistered.length} sudah terdaftar
+                    </span>
+                    <span className={importReport.unmatched.length > 0 ? 'text-rose-700' : 'text-slate-500'}>
+                      {importReport.unmatched.length} tidak ditemukan
+                    </span>
+                    {importReport.duplicateNims.length > 0 ? (
+                      <span className="text-amber-700">
+                        {importReport.duplicateNims.length} NIM ganda di berkas
+                      </span>
+                    ) : null}
+                    {importReport.rowsWithoutNim > 0 ? (
+                      <span className="text-amber-700">
+                        {importReport.rowsWithoutNim} baris tanpa NIM
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {importReport.unmatched.length > 0 ? (
+                    <ul className="max-h-24 space-y-0.5 overflow-y-auto border-t border-rose-200 pt-1.5 text-[11px] text-rose-700">
+                      {importReport.unmatched.map((row) => (
+                        <li key={row.nim} className="truncate">
+                          <span className="font-mono font-bold">{row.nim}</span>
+                          {row.name ? <span className="font-semibold"> · {row.name}</span> : null}
+                          <span className="ml-1 text-rose-500">tidak terdaftar di ONE UNUSU</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
 
               <input
                 id="lms-cari-mahasiswa"

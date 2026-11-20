@@ -97,6 +97,7 @@ model StudyProgram {
   permissionGroups    PermissionGroup[]
   ProfileContent      ProfileContent?
   VisionMission       VisionMission?
+  widgetTemplates     WidgetTemplate[]
 
   @@index([facultyId])
   @@index([status])
@@ -494,6 +495,23 @@ model SectionWidget {
 
   @@index([pageSectionId, isActive, sortOrder])
   @@map("section_widgets")
+}
+
+// Bank Widget kustom per program studi yang dapat dipakai ulang di Page Builder.
+model WidgetTemplate {
+  id             Int      @id @default(autoincrement())
+  studyProgramId Int      @map("study_program_id")
+  name           String   @db.VarChar(150)
+  description    String?  @db.VarChar(400)
+  configJson     String   @map("config_json") @db.Text
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  studyProgram StudyProgram @relation(fields: [studyProgramId], references: [id], onDelete: Cascade)
+
+  @@index([studyProgramId, isActive])
+  @@map("widget_templates")
 }
 
 // ---------------------------------------------------------

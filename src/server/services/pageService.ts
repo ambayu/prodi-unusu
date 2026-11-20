@@ -110,6 +110,63 @@ function mapPage(page: {
 }
 
 /**
+ * Menyisipkan struktur baris terbaru dari Bank Widget (`widget_templates`)
+ * untuk setiap widget bertipe `custom_layout`. Satu query batch per halaman
+ * agar tidak ada N+1 query dan perubahan di Bank Widget langsung sinkron.
+ */
+async function hydrateCustomLayoutWidgets(
+  rendered: RenderedPage,
+  studyProgramId: number | null,
+): Promise<RenderedPage> {
+  const templateIds = new Set<number>();
+  for (const section of rendered.sections) {
+    for (const widget of section.widgets) {
+      if (widget.widgetCode !== 'custom_layout') continue;
+      const tid = Number(widget.config.templateId);
+      if (Number.isInteger(tid) && tid > 0) templateIds.add(tid);
+    }
+  }
+
+  if (templateIds.size === 0) return rendered;
+
+  const templates = await prisma.widgetTemplate.findMany({
+    where: {
+      id: { in: [...templateIds] },
+      isActive: true,
+      ...(studyProgramId !== null ? { studyProgramId } : {}),
+    },
+    select: { id: true, name: true, description: true, configJson: true },
+  });
+
+  const byId = new Map(templates.map((tpl) => [tpl.id, tpl]));
+
+  return {
+    ...rendered,
+    sections: rendered.sections.map((section) => ({
+      ...section,
+      widgets: section.widgets.map((widget) => {
+        if (widget.widgetCode !== 'custom_layout') return widget;
+        const tid = Number(widget.config.templateId);
+        const tpl = byId.get(tid);
+        if (!tpl) {
+          return { ...widget, config: { ...widget.config, rows: [] } };
+        }
+        const tplConfig = parseConfig(tpl.configJson);
+        return {
+          ...widget,
+          config: {
+            ...widget.config,
+            templateId: tpl.id,
+            templateName: tpl.name,
+            rows: Array.isArray(tplConfig.rows) ? tplConfig.rows : [],
+          },
+        };
+      }),
+    })),
+  };
+}
+
+/**
  * Versi publik sebuah halaman. Hanya mengembalikan halaman yang sudah terbit.
  *
  * `facultyId` opsional dipakai website fakultas: halaman milik fakultas tidak
@@ -130,7 +187,8 @@ export async function getPublishedPageBySlug(
     include: pageWithSections,
   });
 
-  return page ? mapPage(page) : null;
+  if (!page) return null;
+  return hydrateCustomLayoutWidgets(mapPage(page), studyProgramId);
 }
 
 /** Versi lengkap termasuk draft. Dipakai builder dan preview. */
@@ -140,7 +198,8 @@ export async function getPageForEditing(studyProgramId: number, slug: string): P
     include: pageWithSections,
   });
 
-  return page ? mapPage(page) : null;
+  if (!page) return null;
+  return hydrateCustomLayoutWidgets(mapPage(page), studyProgramId);
 }
 
 /** Daftar halaman tenant beserta jumlah section untuk panel admin. */
