@@ -1,6 +1,14 @@
 ﻿import React from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import {
+  AcademicCapIcon,
+  ArrowRightIcon,
+  CheckBadgeIcon,
+  EyeIcon,
+  FlagIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { GambarTentang } from '../../components/ui/GambarTentang';
 import { useSeo } from '../../hooks/useSeo';
@@ -9,31 +17,17 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States
 import { profileApi } from '../../services/contentApi';
 import { toApiError } from '../../services/api';
 
-/**
- * Gambar pendukung bawaan halaman visi & misi.
- *
- * Sama dengan halaman profil: memakai gambar gedung portal `/tentang` agar
- * seluruh halaman fakultas/prodi memiliki identitas visual yang seragam.
- */
 const DEFAULT_VISION_IMAGE = '/tentang-custom.png';
 
 /**
  * Mengubah isi kolom `missions` menjadi daftar butir misi.
- *
- * Data tersimpan dalam dua bentuk berbeda, tergantung cara pengisiannya:
- *  - teks biasa dengan satu butir per baris (hasil editor lama);
- *  - JSON array string, mis. `["Butir pertama.","Butir kedua."]`.
- *
- * Bentuk kedua dulu tidak dikenali sehingga yang tampil di halaman publik
- * adalah deretan tanda kutip dan koma mentah. Sekarang kedua bentuk dibaca
- * dengan hasil yang sama.
+ * Mendukung teks biasa per baris maupun JSON array string dari editor lama.
  */
 function uraikanMisi(missions: string): string[] {
   if (!missions.trim()) return [];
 
   const teks = missions.trim();
 
-  // Bentuk JSON array.
   if (teks.startsWith('[')) {
     try {
       const parsed = JSON.parse(teks);
@@ -44,11 +38,10 @@ function uraikanMisi(missions: string): string[] {
           .filter(Boolean);
       }
     } catch {
-      // Bukan JSON yang sah: jatuh ke pemecahan per baris di bawah.
+      // Bukan JSON valid — lanjut ke pemecahan per baris di bawah.
     }
   }
 
-  // Bentuk teks biasa, satu butir per baris.
   return teks
     .split('\n')
     .map((line) => line.replace(/^[-•*\d.)\s]+/, '').trim())
@@ -60,6 +53,7 @@ export const VisionMissionPage: React.FC = () => {
   const { tenant } = useTenant();
   const isFaculty = tenant?.tenantType === 'faculty';
   const unitLabel = isFaculty ? 'Fakultas' : 'Program Studi';
+  const primary = tenant?.theme?.primaryColor ?? '#1e3a8a';
   const accent = tenant?.theme?.accentColor ?? '#fbbf24';
 
   useSeo({
@@ -82,116 +76,218 @@ export const VisionMissionPage: React.FC = () => {
   const goals = typeof visionMission?.strategicGoals === 'string' ? visionMission.strategicGoals : '';
 
   const missionList = uraikanMisi(missions);
-
-  const hasContent = vision || missionList.length > 0 || objectives || goals;
+  const hasContent = Boolean(vision || missionList.length > 0 || objectives || goals);
 
   const heroGambar =
     (typeof profileRaw?.heroImageUrl === 'string' && profileRaw.heroImageUrl.trim()) ||
     DEFAULT_VISION_IMAGE;
 
   return (
-    <>
+    <div className="min-h-[70vh] bg-[#FCFDFA]">
       <PageHeader
         eyebrow="Informasi"
         title="Visi & Misi"
         description={`Arah pengembangan dan komitmen ${unitLabel.toLowerCase()} dalam penyelenggaraan Tridharma Perguruan Tinggi.`}
       />
 
-      {/*
-        Section pembungkus sengaja TANPA `max-w-7xl`: foto pendukung harus
-        menyentuh tepi layar. Batas lebar hanya diterapkan pada teks di
-        dalamnya, supaya uraian tetap nyaman dibaca.
-
-        Jarak atas (`pt-10 sm:pt-14`) memberi napas antara banner judul dan
-        foto/konten di bawahnya. Tanpa ini gambar langsung menempel ke banner
-        sehingga halaman terasa sesak.
-      */}
-      <section className="pt-10 pb-14 sm:pt-14">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
         {profileQuery.isLoading ? (
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-10 shadow-xs sm:p-12">
             <LoadingState label="Memuat visi dan misi" rows={2} />
           </div>
         ) : profileQuery.isError ? (
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-10 shadow-xs sm:p-12">
             <ErrorState
               message={toApiError(profileQuery.error).message}
               onRetry={() => void profileQuery.refetch()}
             />
           </div>
         ) : !hasContent ? (
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-10 shadow-xs sm:p-12">
             <EmptyState
               title="Visi dan misi belum tersedia"
               description={`${unitLabel} belum mengisi konten visi dan misi.`}
             />
           </div>
         ) : (
-          /*
-           * Tata letak dua kolom: gambar di samping kiri, uraian visi-misi di
-           * kanan.
-           *
-           * Gambar sengaja TIDAK dibungkus card: tanpa `rounded`, tanpa border,
-           * dan kolomnya menyentuh tepi layar — hanya sisi kanannya yang diberi
-           * batas agar tetap terpisah dari teks. Di layar kecil gambar tampil
-           * lebih dahulu, juga tanpa bingkai.
-           */
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-10">
-            <aside className="lg:col-span-6 xl:col-span-5 lg:relative">
-              <figure className="lg:absolute lg:inset-0">
-                <GambarTentang
-                  src={heroGambar}
-                  alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
-                  className="mx-auto h-auto w-full max-w-md object-contain lg:h-full lg:max-w-none"
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start lg:gap-10">
+            {/* Kolom Kiri: Kartu Visual & Identitas */}
+            <aside className="lg:sticky lg:top-28 lg:col-span-5">
+              <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
+                <div
+                  className="h-1.5 w-full"
+                  style={{
+                    backgroundImage: `linear-gradient(90deg, ${primary} 0%, ${primary}cc 68%, ${accent} 100%)`,
+                  }}
                 />
-              </figure>
+                <div className="bg-slate-50/70 p-4 sm:p-5">
+                  <figure className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200/70">
+                    <GambarTentang
+                      src={heroGambar}
+                      alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
+                      className="h-auto w-full object-contain"
+                    />
+                  </figure>
+                </div>
+
+                <div className="border-t border-slate-100 p-5 sm:p-6">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider"
+                      style={{
+                        backgroundColor: `${primary}10`,
+                        borderColor: `${primary}26`,
+                        color: primary,
+                      }}
+                    >
+                      <AcademicCapIcon className="h-3.5 w-3.5" />
+                      <span>{isFaculty ? 'Fakultas' : `Program ${tenant?.degree || 'S1'}`}</span>
+                    </span>
+                    {missionList.length > 0 ? (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600 tabular-nums">
+                        {missionList.length} Poin Misi
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <p className="mt-3 text-lg font-extrabold tracking-tight text-slate-950">
+                    {isFaculty ? tenant?.name : `${unitLabel} ${tenant?.name || ''}`.trim()}
+                  </p>
+                  <p className="mt-1 text-[13.5px] font-medium text-slate-500">
+                    {tenant?.websiteSetting?.facultyName || tenant?.facultyName || 'Universitas Nahdlatul Ulama Sumatera Utara'}
+                  </p>
+
+                  <div className="mt-5 border-t border-slate-100 pt-4">
+                    <Link
+                      to="/profil"
+                      className="group inline-flex items-center gap-1.5 text-[13px] font-bold transition hover:opacity-80"
+                      style={{ color: primary }}
+                    >
+                      <span>Lihat Profil &amp; Sejarah {unitLabel}</span>
+                      <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </aside>
 
-            <div className="space-y-6 px-4 pb-14 sm:px-6 lg:col-span-6 lg:pr-8 xl:col-span-7">
+            {/* Kolom Kanan: Visi, Misi, Tujuan & Sasaran Strategis */}
+            <div className="space-y-6 lg:col-span-7">
               {vision ? (
-                <div className="rounded-2xl p-8" style={{ backgroundColor: accent }}>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-900/70">Visi</p>
-                  <p className="mt-3 text-base font-semibold leading-relaxed text-slate-950 sm:text-lg">
-                    {vision}
-                  </p>
-                </div>
+                <article
+                  className="relative overflow-hidden rounded-3xl p-7 text-white shadow-sm sm:p-8"
+                  style={{ backgroundColor: primary }}
+                >
+                  <div
+                    className="pointer-events-none absolute inset-0 opacity-[0.16]"
+                    style={{
+                      backgroundImage: `radial-gradient(${accent} 1px, transparent 1px)`,
+                      backgroundSize: '20px 20px',
+                    }}
+                    aria-hidden="true"
+                  />
+                  <div className="relative">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15"
+                        style={{ color: accent }}
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </span>
+                      <h2
+                        className="border-l-2 pl-2.5 text-xs font-extrabold uppercase tracking-widest"
+                        style={{ borderColor: accent, color: accent }}
+                      >
+                        Visi {unitLabel}
+                      </h2>
+                    </div>
+                    <p className="mt-4 text-lg font-bold leading-relaxed text-white sm:text-xl">
+                      &ldquo;{vision}&rdquo;
+                    </p>
+                  </div>
+                </article>
               ) : null}
 
               {missionList.length > 0 ? (
-                <div className="rounded-2xl border border-slate-200 bg-white p-8">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Misi</p>
-                  <ol className="mt-4 space-y-3">
+                <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xs">
+                  <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/70 px-6 py-4">
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                      style={{ backgroundColor: `${primary}14`, color: primary }}
+                    >
+                      <CheckBadgeIcon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900">
+                        Misi {unitLabel}
+                      </h2>
+                    </div>
+                  </div>
+                  <ol className="divide-y divide-slate-100">
                     {missionList.map((mission, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <CheckCircleIcon className="mt-0.5 h-5 w-5 shrink-0" style={{ color: accent }} />
-                        <span className="text-sm leading-relaxed text-slate-700">{mission}</span>
+                      <li key={index} className="flex items-start gap-4 px-6 py-4 sm:px-7">
+                        <span
+                          className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-mono text-[12px] font-extrabold tabular-nums"
+                          style={{
+                            backgroundColor: `${primary}12`,
+                            color: primary,
+                          }}
+                        >
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <span className="text-[15px] leading-relaxed text-slate-700">{mission}</span>
                       </li>
                     ))}
                   </ol>
-                </div>
+                </article>
               ) : null}
 
               {objectives ? (
-                <div className="rounded-2xl border border-slate-200 bg-white p-8">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Tujuan</p>
-                  <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-700">
-                    {objectives}
-                  </p>
-                </div>
+                <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xs">
+                  <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/70 px-6 py-4">
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                      style={{ backgroundColor: `${primary}14`, color: primary }}
+                    >
+                      <FlagIcon className="h-5 w-5" />
+                    </span>
+                    <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900">
+                      Tujuan
+                    </h2>
+                  </div>
+                  <div className="px-6 py-5 sm:px-7 sm:py-6">
+                    <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-700">
+                      {objectives}
+                    </p>
+                  </div>
+                </article>
               ) : null}
 
               {goals ? (
-                <div className="rounded-2xl border border-slate-200 bg-white p-8">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Sasaran Strategis
-                  </p>
-                  <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-700">{goals}</p>
-                </div>
+                <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xs">
+                  <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/70 px-6 py-4">
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                      style={{ backgroundColor: `${primary}14`, color: primary }}
+                    >
+                      <SparklesIcon className="h-5 w-5" />
+                    </span>
+                    <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900">
+                      Sasaran Strategis
+                    </h2>
+                  </div>
+                  <div className="px-6 py-5 sm:px-7 sm:py-6">
+                    <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-700">
+                      {goals}
+                    </p>
+                  </div>
+                </article>
               ) : null}
             </div>
           </div>
         )}
       </section>
-    </>
+    </div>
   );
 };
 

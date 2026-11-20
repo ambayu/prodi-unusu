@@ -13,6 +13,7 @@ import {
   IdentificationIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { useSeo } from '../../hooks/useSeo';
 import { useTenant } from '../../hooks/useSite';
 import { ErrorState, LoadingState } from '../../components/ui/States';
@@ -176,53 +177,35 @@ export const LecturerDetailPage: React.FC = () => {
   const activePublications = publicationLinks.filter((item) => Boolean(item.href));
 
   return (
-    <div className="bg-editorial-paper min-h-[70vh]">
-      {/* Banner Header Bertekstur Arsitektural Adaptif Tema */}
-      <header
-        className="relative overflow-hidden pb-24 pt-10 sm:pb-28 sm:pt-12"
-        style={{
-          background: `linear-gradient(135deg, ${primary} 0%, ${primary}e6 58%, #0f172a 100%)`,
-        }}
-      >
-        <img
-          src="/assets/visual/lecturer-card-texture.png"
-          alt=""
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-30 mix-blend-screen"
-        />
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] opacity-90"
-          style={{
-            background: `linear-gradient(90deg, transparent 0%, ${accent} 50%, transparent 100%)`,
-          }}
-        />
-
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <Link
-              to="/dosen"
-              className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[13px] font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
-            >
-              <ArrowLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-              <span>Kembali ke Direktori Dosen</span>
-            </Link>
-
-            <span className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-white/80">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
-              Profil Tenaga Pendidik
-            </span>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-[70vh] bg-[#FCFDFA]">
+      <PageHeader
+        eyebrow="Tenaga Pendidik"
+        title={dosen?.name || 'Profil Dosen'}
+        description={
+          dosen
+            ? `${dosen.academicRank || 'Dosen Tetap'} • ${dosen.studyProgramName || tenant?.name || 'Program Studi'}`
+            : 'Profil, riwayat akademik, bidang keahlian, dan indeks publikasi tenaga pengajar.'
+        }
+      />
 
       {/* Konten Utama */}
-      <section className="relative z-10 mx-auto -mt-16 max-w-7xl px-4 pb-16 sm:-mt-20 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <Link
+            to="/dosen"
+            className="group inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-[13px] font-bold text-slate-700 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+          >
+            <ArrowLeftIcon className="h-4 w-4 text-slate-500 transition-transform group-hover:-translate-x-0.5 group-hover:text-slate-900" />
+            <span>Kembali ke Direktori Dosen</span>
+          </Link>
+        </div>
+
         {isLoading ? (
-          <div className="rounded-3xl border border-slate-200/90 bg-white p-12 shadow-lg">
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-10 shadow-xs sm:p-12">
             <LoadingState label="Memuat profil data dosen..." rows={5} />
           </div>
         ) : isError || !dosen ? (
-          <div className="space-y-4 rounded-3xl border border-slate-200/90 bg-white p-12 shadow-lg">
+          <div className="space-y-4 rounded-3xl border border-slate-200/90 bg-white p-10 shadow-xs sm:p-12">
             <ErrorState
               message={error ? toApiError(error).message : 'Profil dosen tidak ditemukan atau belum aktif.'}
               onRetry={() => void refetch()}
@@ -238,14 +221,20 @@ export const LecturerDetailPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-7">
             {/* 1. KARTU HERO PROFIL UTAMA */}
-            <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-lg">
+            <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
+              <div
+                className="h-1.5 w-full"
+                style={{
+                  backgroundImage: `linear-gradient(90deg, ${primary} 0%, ${primary}cc 68%, ${accent} 100%)`,
+                }}
+              />
               <div className="p-6 sm:p-8 lg:p-10">
                 <div className="flex flex-col items-center gap-7 md:flex-row md:items-start md:gap-9">
                   {/* Foto Pas Foto Proporsional 3:4 */}
-                  <div className="w-44 shrink-0 sm:w-52">
-                    <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-100 p-1.5 shadow-lg ring-1 ring-slate-200/90">
+                  <div className="w-44 shrink-0 sm:w-48">
+                    <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-100 p-1.5 shadow-sm ring-1 ring-slate-200/90">
                       {dosen.photoUrl && !photoFailed ? (
                         <img
                           src={dosen.photoUrl}
@@ -256,15 +245,15 @@ export const LecturerDetailPage: React.FC = () => {
                       ) : (
                         <div
                           className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-xl p-5 text-center text-white"
-                          style={{
-                            background: `linear-gradient(145deg, ${primary} 0%, ${primary}d0 60%, #0f172a 100%)`,
-                          }}
+                          style={{ backgroundColor: primary }}
                         >
-                          <img
-                            src="/assets/visual/lecturer-card-texture.png"
-                            alt=""
+                          <div
+                            className="pointer-events-none absolute inset-0 opacity-[0.18]"
+                            style={{
+                              backgroundImage: `radial-gradient(${accent} 1px, transparent 1px)`,
+                              backgroundSize: '18px 18px',
+                            }}
                             aria-hidden="true"
-                            className="absolute inset-0 h-full w-full object-cover opacity-35 mix-blend-screen"
                           />
                           <span className="relative z-10 text-4xl font-extrabold tracking-wider">
                             {inisial}
@@ -274,16 +263,6 @@ export const LecturerDetailPage: React.FC = () => {
                           </span>
                         </div>
                       )}
-
-                      {dosen.academicRank ? (
-                        <div className="absolute inset-x-3 bottom-3 flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-center text-[11px] font-bold tracking-wide text-white backdrop-blur-md">
-                          <span
-                            className="h-1.5 w-1.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: accent }}
-                          />
-                          <span className="truncate">{dosen.academicRank}</span>
-                        </div>
-                      ) : null}
                     </div>
                   </div>
 
@@ -315,9 +294,9 @@ export const LecturerDetailPage: React.FC = () => {
                     </div>
 
                     {/* Nama & Afiliasi */}
-                    <h1 className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-3xl lg:text-[34px]">
+                    <h2 className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-3xl">
                       {dosen.name}
-                    </h1>
+                    </h2>
 
                     <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[14.5px] font-semibold text-slate-600 md:justify-start">
                       <span className="font-bold" style={{ color: primary }}>
@@ -333,29 +312,29 @@ export const LecturerDetailPage: React.FC = () => {
 
                     {/* Grid Metadata Ringkas (hanya tampilkan kolom yang informatif) */}
                     <div className="mt-6 grid grid-cols-1 gap-3 text-left sm:grid-cols-2 lg:grid-cols-3">
-                      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5">
+                      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5 transition-colors hover:border-slate-300/90 hover:bg-slate-50">
                         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                           <IdentificationIcon className="h-3.5 w-3.5" style={{ color: primary }} />
                           NIDN / NUPTK
                         </span>
-                        <span className="mt-1 block font-mono text-[14px] font-bold text-slate-950">
+                        <span className="mt-1.5 block font-mono text-[14px] font-bold text-slate-950">
                           {dosen.nidn || '-'}
                         </span>
                       </div>
 
                       {dosen.nip ? (
-                        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5">
+                        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5 transition-colors hover:border-slate-300/90 hover:bg-slate-50">
                           <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                             <IdentificationIcon className="h-3.5 w-3.5" style={{ color: primary }} />
                             NIP
                           </span>
-                          <span className="mt-1 block font-mono text-[14px] font-bold text-slate-950">
+                          <span className="mt-1.5 block font-mono text-[14px] font-bold text-slate-950">
                             {dosen.nip}
                           </span>
                         </div>
                       ) : null}
 
-                      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5">
+                      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5 transition-colors hover:border-slate-300/90 hover:bg-slate-50">
                         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                           <EnvelopeIcon className="h-3.5 w-3.5" style={{ color: primary }} />
                           Email Resmi
@@ -363,26 +342,26 @@ export const LecturerDetailPage: React.FC = () => {
                         {dosen.email ? (
                           <a
                             href={`mailto:${dosen.email}`}
-                            className="mt-1 block truncate text-[13.5px] font-bold hover:underline"
+                            className="mt-1.5 block truncate text-[13.5px] font-bold hover:underline"
                             style={{ color: primary }}
                             title={dosen.email}
                           >
                             {dosen.email}
                           </a>
                         ) : (
-                          <span className="mt-1 block text-[13.5px] font-medium text-slate-400">
+                          <span className="mt-1.5 block text-[13.5px] font-medium text-slate-400">
                             Belum tersedia
                           </span>
                         )}
                       </div>
 
-                      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5">
+                      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5 transition-colors hover:border-slate-300/90 hover:bg-slate-50">
                         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                           <MapPinIcon className="h-3.5 w-3.5" style={{ color: primary }} />
                           Domisili
                         </span>
                         <span
-                          className="mt-1 block truncate text-[13.5px] font-semibold text-slate-800"
+                          className="mt-1.5 block truncate text-[13.5px] font-semibold text-slate-800"
                           title={dosen.address || undefined}
                         >
                           {dosen.address || 'Medan, Sumatera Utara'}
@@ -417,17 +396,17 @@ export const LecturerDetailPage: React.FC = () => {
             <div className="grid grid-cols-1 gap-7 lg:grid-cols-12">
               {/* Kolom Kiri (4/12): Informasi Kepegawaian */}
               <div className="lg:col-span-4">
-                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
-                  <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/80 px-6 py-4">
+                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xs">
+                  <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/70 px-6 py-4">
                     <span
                       className="flex h-8 w-8 items-center justify-center rounded-xl"
                       style={{ backgroundColor: `${primary}14`, color: primary }}
                     >
                       <BuildingLibraryIcon className="h-4 w-4" />
                     </span>
-                    <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
+                    <h3 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
                       Informasi Kepegawaian
-                    </h2>
+                    </h3>
                   </div>
 
                   <dl className="divide-y divide-slate-100">
@@ -498,42 +477,42 @@ export const LecturerDetailPage: React.FC = () => {
               {/* Kolom Kanan (8/12): Biografi, Keahlian & Indeks Publikasi */}
               <div className="space-y-6 lg:col-span-8">
                 {/* Biografi Akademik */}
-                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
-                  <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/80 px-6 py-4">
+                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xs">
+                  <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/70 px-6 py-4">
                     <span
                       className="flex h-8 w-8 items-center justify-center rounded-xl"
                       style={{ backgroundColor: `${primary}14`, color: primary }}
                     >
                       <BookOpenIcon className="h-4 w-4" />
                     </span>
-                    <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
+                    <h3 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
                       Profil &amp; Biografi Akademik
-                    </h2>
+                    </h3>
                   </div>
                   <div className="p-6 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">
                     {dosen.bio ? (
                       <p>{dosen.bio}</p>
                     ) : (
-                      <p className="text-[13.5px] italic text-slate-400">
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-4 text-[13.5px] text-slate-500">
                         Biografi akademik belum dilengkapi pada portal ONE UNUSU.
-                      </p>
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {/* Bidang Keahlian (hanya tampil bila tersedia agar tidak menambah blok kosong) */}
                 {dosen.expertise ? (
-                  <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
-                    <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/80 px-6 py-4">
+                  <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xs">
+                    <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/70 px-6 py-4">
                       <span
                         className="flex h-8 w-8 items-center justify-center rounded-xl"
                         style={{ backgroundColor: `${primary}14`, color: primary }}
                       >
                         <BriefcaseIcon className="h-4 w-4" />
                       </span>
-                      <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
+                      <h3 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
                         Bidang Keahlian &amp; Fokus Riset
-                      </h2>
+                      </h3>
                     </div>
                     <div className="p-6">
                       {expertiseTags.length > 0 ? (
@@ -562,17 +541,17 @@ export const LecturerDetailPage: React.FC = () => {
                 ) : null}
 
                 {/* Indeks Riset & Publikasi Ilmiah */}
-                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
-                  <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/80 px-6 py-4">
+                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xs">
+                  <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/70 px-6 py-4">
                     <span
                       className="flex h-8 w-8 items-center justify-center rounded-xl"
                       style={{ backgroundColor: `${primary}14`, color: primary }}
                     >
                       <AcademicCapIcon className="h-4 w-4" />
                     </span>
-                    <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
+                    <h3 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
                       Indeks Riset &amp; Publikasi Ilmiah
-                    </h2>
+                    </h3>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3.5 p-6 sm:grid-cols-2">
@@ -583,7 +562,7 @@ export const LecturerDetailPage: React.FC = () => {
                           href={pub.href}
                           target="_blank"
                           rel="noreferrer"
-                          className="group flex items-center justify-between gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md"
+                          className="group flex items-center justify-between gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-sm"
                           style={{
                             backgroundColor: `${primary}08`,
                             borderColor: `${primary}28`,

@@ -1,5 +1,15 @@
 ﻿import React from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import {
+  AcademicCapIcon,
+  ArrowRightIcon,
+  BookOpenIcon,
+  BuildingOffice2Icon,
+  ClockIcon,
+  FlagIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { GambarTentang } from '../../components/ui/GambarTentang';
 import { useSeo } from '../../hooks/useSeo';
@@ -8,13 +18,6 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States
 import { profileApi } from '../../services/contentApi';
 import { toApiError } from '../../services/api';
 
-/**
- * Gambar pendukung bawaan halaman profil.
- *
- * Dipakai bila admin belum mengunggah `heroImageUrl`. Berkasnya sama dengan
- * gambar gedung pada portal `/tentang`, sehingga identitas visual antarhalaman
- * tetap seragam tanpa perlu menyiapkan berkas baru.
- */
 const DEFAULT_PROFILE_IMAGE = '/tentang-custom.png';
 
 /** Halaman publik profil program studi / fakultas. */
@@ -39,11 +42,15 @@ export const ProfilePage: React.FC = () => {
   const profile = profileQuery.data?.profile as Record<string, unknown> | null;
 
   const sections = [
-    { key: 'overview', label: `Deskripsi ${unitLabel}` },
-    { key: 'history', label: 'Sejarah' },
-    { key: 'objectives', label: 'Tujuan' },
-    { key: 'targets', label: 'Sasaran' },
-    { key: 'organization', label: isFaculty ? 'Struktur Dekanat & Pimpinan' : 'Struktur Organisasi' },
+    { key: 'overview', label: `Deskripsi ${unitLabel}`, icon: BookOpenIcon },
+    { key: 'history', label: 'Sejarah', icon: ClockIcon },
+    { key: 'objectives', label: 'Tujuan', icon: FlagIcon },
+    { key: 'targets', label: 'Sasaran', icon: SparklesIcon },
+    {
+      key: 'organization',
+      label: isFaculty ? 'Struktur Dekanat & Pimpinan' : 'Struktur Organisasi',
+      icon: BuildingOffice2Icon,
+    },
   ] as const;
 
   const filled = sections.filter((section) => {
@@ -51,101 +58,176 @@ export const ProfilePage: React.FC = () => {
     return typeof value === 'string' && value.trim() !== '';
   });
 
-  /**
-   * Gambar pendamping. Selalu ada — entah unggahan admin atau gambar bawaan —
-   * sehingga tata letak dua kolom tidak pernah melebar penuh tanpa gambar.
-   */
   const heroGambar =
     (typeof profile?.heroImageUrl === 'string' && profile.heroImageUrl.trim()) || DEFAULT_PROFILE_IMAGE;
 
   return (
-    <>
+    <div className="min-h-[70vh] bg-[#FCFDFA]">
       <PageHeader
         eyebrow="Profil"
         title={`Tentang ${unitLabel}`}
         description={`Sejarah, deskripsi, tujuan, sasaran, dan struktur organisasi ${unitLabel.toLowerCase()}.`}
       />
 
-      {/*
-        Section pembungkus sengaja TANPA `max-w-7xl`: foto pendukung harus
-        menyentuh tepi layar. Batas lebar hanya diterapkan pada teks di
-        dalamnya, supaya uraian tetap nyaman dibaca.
-
-        Jarak atas (`pt-10 sm:pt-14`) memberi napas antara banner judul dan
-        foto/konten di bawahnya. Tanpa ini gambar langsung menempel ke banner
-        sehingga halaman terasa sesak.
-      */}
-      <section className="py-10 sm:py-14">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
         {profileQuery.isLoading ? (
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-10 shadow-xs sm:p-12">
             <LoadingState label="Memuat profil" rows={3} />
           </div>
         ) : profileQuery.isError ? (
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-10 shadow-xs sm:p-12">
             <ErrorState
               message={toApiError(profileQuery.error).message}
               onRetry={() => void profileQuery.refetch()}
             />
           </div>
         ) : filled.length === 0 ? (
-          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-10 shadow-xs sm:p-12">
             <EmptyState
               title="Profil belum tersedia"
               description={`${unitLabel} belum mengisi konten profil. Silakan periksa kembali nanti.`}
             />
           </div>
         ) : (
-          /*
-           * Tata letak:
-           *  1. foto pendukung selebar layar, tanpa bingkai kartu;
-           *  2. uraian profil di bawahnya, dibatasi lebar baca.
-           */
-          /*
-           * Tata letak dua kolom: gambar di samping kiri, uraian profil di kanan.
-           *
-           * Gambar sengaja TIDAK dibungkus card: tanpa `rounded`, tanpa border,
-           * dan kolomnya menyentuh tepi layar — hanya sisinya yang diberi sudut
-           * agar tetap terpisah dari teks. Di layar kecil gambar tampil lebih
-           * dahulu, juga tanpa bingkai.
-           */
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-10">
-            <aside className="px-4 pb-6 lg:col-span-6 xl:col-span-5 lg:relative lg:pb-0">
-              <figure className="lg:absolute lg:inset-0">
-                <GambarTentang
-                  src={heroGambar}
-                  alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
-                  className="mx-auto h-auto w-full max-w-md object-contain lg:h-full lg:max-w-none"
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start lg:gap-10">
+            {/* Kolom Kiri: Kartu Visual & Identitas Singkat */}
+            <aside className="lg:sticky lg:top-28 lg:col-span-5">
+              <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
+                <div
+                  className="h-1.5 w-full"
+                  style={{
+                    backgroundImage: `linear-gradient(90deg, ${primary} 0%, ${primary}cc 68%, ${accent} 100%)`,
+                  }}
                 />
-              </figure>
+                <div className="bg-slate-50/70 p-4 sm:p-5">
+                  <figure className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200/70">
+                    <GambarTentang
+                      src={heroGambar}
+                      alt={`Foto pendukung ${unitLabel.toLowerCase()}`}
+                      className="h-auto w-full object-contain"
+                    />
+                  </figure>
+                </div>
+
+                <div className="border-t border-slate-100 p-5 sm:p-6">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider"
+                      style={{
+                        backgroundColor: `${primary}10`,
+                        borderColor: `${primary}26`,
+                        color: primary,
+                      }}
+                    >
+                      <AcademicCapIcon className="h-3.5 w-3.5" />
+                      <span>{isFaculty ? 'Fakultas' : `Program ${tenant?.degree || 'S1'}`}</span>
+                    </span>
+                    {tenant?.code ? (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-[11px] font-bold text-slate-600">
+                        {tenant.code}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <p className="mt-3 text-lg font-extrabold tracking-tight text-slate-950">
+                    {isFaculty ? tenant?.name : `${unitLabel} ${tenant?.name || ''}`.trim()}
+                  </p>
+                  <p className="mt-1 text-[13.5px] font-medium text-slate-500">
+                    {tenant?.websiteSetting?.facultyName || tenant?.facultyName || 'Universitas Nahdlatul Ulama Sumatera Utara'}
+                  </p>
+
+                  {filled.length > 1 ? (
+                    <div className="mt-5 border-t border-slate-100 pt-4">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Ringkasan Bagian
+                      </p>
+                      <div className="mt-2.5 flex flex-wrap gap-1.5">
+                        {filled.map((section) => (
+                          <a
+                            key={section.key}
+                            href={`#profil-${section.key}`}
+                            className="rounded-lg border border-slate-200/90 bg-slate-50/80 px-2.5 py-1 text-[12px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white hover:text-slate-950"
+                          >
+                            {section.label}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </aside>
 
-            <div className="space-y-8 px-4 pb-14 sm:px-6 lg:col-span-6 lg:pr-8 xl:col-span-7">
-              {filled.map((section) => (
-                <article key={section.key}>
-                  <h2
-                    className="border-l-2 pl-3 text-lg font-extrabold tracking-tight text-slate-900"
-                    style={{ borderColor: accent }}
+            {/* Kolom Kanan: Uraian Profil Terstruktur */}
+            <div className="space-y-6 lg:col-span-7">
+              {filled.map((section) => {
+                const Icon = section.icon;
+                return (
+                  <article
+                    key={section.key}
+                    id={`profil-${section.key}`}
+                    className="scroll-mt-28 overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xs transition-shadow hover:shadow-sm"
                   >
-                    {section.label}
-                  </h2>
-                  <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-700">
-                    {profile?.[section.key] as string}
-                  </p>
-                </article>
-              ))}
+                    <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/70 px-6 py-4">
+                      <span
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                        style={{ backgroundColor: `${primary}14`, color: primary }}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <h2 className="text-[15px] font-extrabold tracking-tight text-slate-900">
+                        {section.label}
+                      </h2>
+                    </div>
+                    <div className="px-6 py-5 sm:px-7 sm:py-6">
+                      <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-700">
+                        {profile?.[section.key] as string}
+                      </p>
+                    </div>
+                  </article>
+                );
+              })}
 
-              {/* Penanda warna tema agar halaman tetap terasa milik tenant ini */}
+              {/* Tautan lanjutan ke halaman Visi & Misi */}
               <div
-                className="rounded-2xl px-5 py-4 text-xs font-semibold text-white"
+                className="relative overflow-hidden rounded-3xl p-6 text-white shadow-sm sm:p-7"
                 style={{ backgroundColor: primary }}
               >
-                Ingin tahu arah pengembangan {unitLabel.toLowerCase()}? Lihat halaman Visi &amp; Misi.
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-[0.15]"
+                  style={{
+                    backgroundImage: `radial-gradient(${accent} 1px, transparent 1px)`,
+                    backgroundSize: '20px 20px',
+                  }}
+                  aria-hidden="true"
+                />
+                <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p
+                      className="text-[11px] font-extrabold uppercase tracking-wider"
+                      style={{ color: accent }}
+                    >
+                      Arah Pengembangan
+                    </p>
+                    <p className="mt-1 text-base font-bold text-white">
+                      Pelajari Visi, Misi &amp; Sasaran Strategis {unitLabel}
+                    </p>
+                  </div>
+                  <Link
+                    to="/visi-misi"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[13px] font-extrabold shadow-xs transition hover:bg-slate-50"
+                    style={{ color: primary }}
+                  >
+                    <span>Lihat Visi &amp; Misi</span>
+                    <ArrowRightIcon className="h-4 w-4" />
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
         )}
       </section>
-    </>
+    </div>
   );
 };
 
