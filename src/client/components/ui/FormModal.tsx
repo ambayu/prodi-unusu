@@ -21,6 +21,8 @@ interface FormModalProps {
   size?: 'md' | 'lg' | 'xl';
   /** Area isi lebih tinggi agar daftar panjang tidak terjepit. */
   tall?: boolean;
+  /** Utuh selebar layar untuk editor besar (studio); header, isi, dan footer tetap. */
+  fullscreen?: boolean;
 }
 
 /** Lebar maksimum tiap ukuran dialog. */
@@ -50,6 +52,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   wide = false,
   size,
   tall = false,
+  fullscreen = false,
 }) => {
   const sizeClass = SIZE_CLASS[size ?? (wide ? 'lg' : 'md')];
   const firstFieldRef = useRef<HTMLDivElement>(null);
@@ -85,7 +88,7 @@ export const FormModal: React.FC<FormModalProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto p-4 sm:p-6">
+    <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto p-0 sm:p-3">
       <div
         className="fixed inset-0 bg-black/40 backdrop-blur-[2px]"
         onClick={() => {
@@ -98,9 +101,13 @@ export const FormModal: React.FC<FormModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="form-modal-title"
-        className={`relative my-6 w-full overflow-hidden rounded-[16px] border border-slate-200/90 bg-white shadow-[0_24px_60px_-15px_rgba(15,23,42,0.28)] ${sizeClass}`}
+        className={`relative h-full w-full overflow-hidden bg-white shadow-[0_24px_60px_-15px_rgba(15,23,42,0.28)] ${
+          fullscreen
+            ? 'flex flex-col rounded-[16px] border border-slate-200/90'
+            : `my-6 rounded-[16px] border border-slate-200/90 ${sizeClass}`
+        }`}
       >
-        <div className="relative overflow-hidden border-b border-slate-200/90 bg-slate-50/70 px-6 py-4">
+        <div className="relative shrink-0 overflow-hidden border-b border-slate-200/90 bg-slate-50/70 px-6 py-4">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 select-none bg-cover bg-right bg-no-repeat opacity-60"
@@ -129,10 +136,12 @@ export const FormModal: React.FC<FormModalProps> = ({
           </div>
         </div>
 
-        <form onSubmit={onSubmit}>
+        <form onSubmit={onSubmit} className={fullscreen ? 'flex min-h-0 flex-1 flex-col' : undefined}>
           <div
             ref={firstFieldRef}
-            className={`space-y-4 overflow-y-auto px-6 py-5 ${tall ? 'max-h-[76vh]' : 'max-h-[65vh]'}`}
+            className={`space-y-4 overflow-y-auto px-6 py-5 ${
+              fullscreen ? 'min-h-0 flex-1' : tall ? 'max-h-[76vh]' : 'max-h-[65vh]'
+            }`}
           >
             {error ? (
               <div
@@ -145,7 +154,7 @@ export const FormModal: React.FC<FormModalProps> = ({
             {children}
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-[#CBD5E1] bg-slate-50/60 px-6 py-4">
+          <div className="flex shrink-0 justify-end gap-2 border-t border-[#CBD5E1] bg-slate-50/60 px-6 py-4">
             <button type="button" onClick={onClose} disabled={busy} className="btn-secondary">
               Batal
             </button>

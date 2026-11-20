@@ -774,6 +774,7 @@ export const AdminWidgetBank: React.FC = () => {
         busy={saveMutation.isPending}
         size="xl"
         tall
+        fullscreen
         onClose={() => {
           setEditorOpen(false);
           resetForm();
@@ -807,9 +808,9 @@ export const AdminWidgetBank: React.FC = () => {
           </Field>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,46%)_minmax(0,1fr)] lg:items-start">
           {/* Panel kiri: penyusun struktural */}
-          <div className="max-h-[62vh] space-y-3 overflow-y-auto pr-1">
+          <div className="space-y-3 pr-1 lg:sticky lg:top-0 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto">
             {rows.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center">
                 <p className="text-xs font-bold text-slate-700">Belum ada baris</p>
@@ -1029,8 +1030,7 @@ export const AdminWidgetBank: React.FC = () => {
             ) : null}
           </div>
 
-          {/* Panel kanan: pratinjau langsung */}
-          <div className="lg:sticky lg:top-4 lg:self-start">
+          {/* Panel kanan: pratinjau langsung */}          <div className="lg:sticky lg:top-4 lg:self-start">
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
               <div className="flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 px-3 py-2">
                 <span className="text-[11px] font-extrabold text-slate-700">Pratinjau Langsung</span>
@@ -1060,7 +1060,7 @@ export const AdminWidgetBank: React.FC = () => {
                 </div>
               </div>
               <div
-                className={`max-h-[62vh] overflow-y-auto overflow-x-hidden bg-white ${
+                className={`overflow-y-auto overflow-x-hidden bg-white ${
                   previewMode === 'mobile' ? 'px-6 py-4' : ''
                 }`}
               >
