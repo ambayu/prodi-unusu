@@ -4,6 +4,7 @@ import {
   AcademicCapIcon,
   CalendarDaysIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
   FunnelIcon,
@@ -42,6 +43,8 @@ import { pickCurrentCurriculum } from '../../../shared/utils/curriculum';
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
+/** Jumlah kandidat mahasiswa per halaman pada modal peserta kelas. */
+const CANDIDATE_PAGE_SIZE = 8;
 
 interface Draft {
   day: string;
@@ -124,6 +127,7 @@ export const AdminLmsJadwal: React.FC = () => {
   const [createdClassroomId, setCreatedClassroomId] = useState<number | null>(null);
   const [participantRows, setParticipantRows] = useState<LmsStudentRow[]>([]);
   const [participantSearch, setParticipantSearch] = useState('');
+  const [candidatePage, setCandidatePage] = useState(1);
   const [participantFormError, setParticipantFormError] = useState<string | null>(null);
 
   const curriculumsQuery = useQuery({
@@ -392,11 +396,27 @@ export const AdminLmsJadwal: React.FC = () => {
     );
   }, [availableStudents, participantSearch]);
 
+  /**
+   * Halaman kandidat selalu dijepit ke rentang valid agar penambahan peserta
+   * atau penyempitan pencarian tidak menyisakan halaman kosong.
+   */
+  const candidateTotalPages = Math.max(1, Math.ceil(filteredCandidates.length / CANDIDATE_PAGE_SIZE));
+  const candidatePageSafe = Math.min(candidatePage, candidateTotalPages);
+
+  const candidatePageItems = useMemo(() => {
+    const start = (candidatePageSafe - 1) * CANDIDATE_PAGE_SIZE;
+    return filteredCandidates.slice(start, start + CANDIDATE_PAGE_SIZE);
+  }, [filteredCandidates, candidatePageSafe]);
+
+  const candidateRangeStart = filteredCandidates.length === 0 ? 0 : (candidatePageSafe - 1) * CANDIDATE_PAGE_SIZE + 1;
+  const candidateRangeEnd = Math.min(candidatePageSafe * CANDIDATE_PAGE_SIZE, filteredCandidates.length);
+
   const openParticipantsModal = (course: LmsCourseOffering) => {
     setParticipantsCourse(course);
     setCreatedClassroomId(null);
     setParticipantRows([]);
     setParticipantSearch('');
+    setCandidatePage(1);
     setParticipantFormError(null);
   };
 
@@ -405,6 +425,7 @@ export const AdminLmsJadwal: React.FC = () => {
     setCreatedClassroomId(null);
     setParticipantRows([]);
     setParticipantSearch('');
+    setCandidatePage(1);
     setParticipantFormError(null);
   };
 
@@ -424,6 +445,7 @@ export const AdminLmsJadwal: React.FC = () => {
       return additions.length > 0 ? [...prev, ...additions] : prev;
     });
     setParticipantSearch('');
+    setCandidatePage(1);
   };
 
   const removeParticipant = (nim: string) => {
@@ -1327,7 +1349,8 @@ export const AdminLmsJadwal: React.FC = () => {
       {/* MODAL KELOLA PESERTA KELAS (ONE UNUSU) */}
       <FormModal
         open={participantsCourse !== null}
-        wide
+        size="xl"
+        tall
         title="Kelola Peserta Kelas"
         description={
           participantsCourse
@@ -1351,15 +1374,9 @@ export const AdminLmsJadwal: React.FC = () => {
           saveParticipantsMutation.mutate();
         }}
       >
-        <div className="space-y-4">
-          {participantsCourse && !participantsCourse.classroom ? (
-            <p className="rounded-lg border border-blue-200/80 bg-blue-50/70 px-3 py-2 text-xs text-[#1e3a8a]">
-              Kelas LMS untuk mata kuliah ini belum dibuat. Saat peserta disimpan, kelas akan dibuat otomatis dan disinkronkan ke LMS.
-            </p>
-          ) : null}
-
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
           {canEdit ? (
-            <div className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+            <div className="flex flex-col gap-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <label
                   htmlFor="lms-cari-mahasiswa"
@@ -1375,30 +1392,32 @@ export const AdminLmsJadwal: React.FC = () => {
                 ) : null}
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <input
-                  id="lms-cari-mahasiswa"
-                  type="search"
-                  className="field-input flex-1 bg-white"
-                  placeholder="Cari NIM atau nama mahasiswa ONE UNUSU..."
+              <input
+                id="lms-cari-mahasiswa"
+                type="search"
+                className="field-input bg-white"
+                placeholder="Cari NIM atau nama mahasiswa ONE UNUSU..."
+                disabled={classroomStudentsQuery.isLoading}
+                value={participantSearch}
+                onChange={(event) => {
+                  setParticipantSearch(event.target.value);
+                  setCandidatePage(1);
+                }}
+              />
+
+              {participantSearch.trim() !== '' &&
+              filteredCandidates.length > 1 &&
+              filteredCandidates.length <= 50 ? (
+                <button
+                  type="button"
                   disabled={classroomStudentsQuery.isLoading}
-                  value={participantSearch}
-                  onChange={(event) => setParticipantSearch(event.target.value)}
-                />
-                {participantSearch.trim() !== '' &&
-                filteredCandidates.length > 1 &&
-                filteredCandidates.length <= 50 ? (
-                  <button
-                    type="button"
-                    disabled={classroomStudentsQuery.isLoading}
-                    onClick={addFilteredParticipants}
-                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#1e3a8a]/30 bg-blue-50 px-3 py-2 text-xs font-semibold text-[#1e3a8a] transition-colors hover:bg-blue-100 disabled:opacity-50"
-                  >
-                    <PlusIcon className="h-3.5 w-3.5" />
-                    Tambah Semua ({filteredCandidates.length})
-                  </button>
-                ) : null}
-              </div>
+                  onClick={addFilteredParticipants}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#1e3a8a]/30 bg-blue-50 px-3 py-2 text-xs font-semibold text-[#1e3a8a] transition-colors hover:bg-blue-100 disabled:opacity-50"
+                >
+                  <PlusIcon className="h-3.5 w-3.5" />
+                  Tambah Semua Hasil Pencarian ({filteredCandidates.length})
+                </button>
+              ) : null}
 
               {knownStudentsQuery.isLoading ? (
                 <p className="py-2 text-xs text-slate-500">Memuat daftar mahasiswa aktif dari ONE UNUSU...</p>
@@ -1420,9 +1439,9 @@ export const AdminLmsJadwal: React.FC = () => {
                     : 'Seluruh mahasiswa dari ONE UNUSU sudah masuk ke kelas ini.'}
                 </p>
               ) : (
-                <div className="space-y-1.5">
-                  <ul className="max-h-44 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 bg-white">
-                    {filteredCandidates.slice(0, 25).map((student) => (
+                <div className="space-y-2">
+                  <ul className="max-h-[38vh] divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                    {candidatePageItems.map((student) => (
                       <li
                         key={student.nim}
                         className="flex items-center justify-between gap-3 px-3 py-2 text-xs hover:bg-blue-50/50"
@@ -1444,11 +1463,41 @@ export const AdminLmsJadwal: React.FC = () => {
                       </li>
                     ))}
                   </ul>
-                  {filteredCandidates.length > 25 ? (
-                    <p className="text-[11px] text-slate-500">
-                      Menampilkan 25 dari {filteredCandidates.length} mahasiswa. Ketik NIM atau nama untuk mempersempit hasil.
-                    </p>
-                  ) : null}
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-medium text-slate-500 tabular-nums">
+                      {candidateRangeStart}&ndash;{candidateRangeEnd} dari {filteredCandidates.length} mahasiswa
+                    </span>
+                    {candidateTotalPages > 1 ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCandidatePage(Math.max(1, candidatePageSafe - 1))
+                          }
+                          disabled={candidatePageSafe <= 1}
+                          aria-label="Halaman sebelumnya"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <ChevronLeftIcon className="h-4 w-4" />
+                        </button>
+                        <span className="min-w-[3.5rem] text-center text-[11px] font-semibold text-slate-600 tabular-nums">
+                          {candidatePageSafe} / {candidateTotalPages}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCandidatePage(Math.min(candidateTotalPages, candidatePageSafe + 1))
+                          }
+                          disabled={candidatePageSafe >= candidateTotalPages}
+                          aria-label="Halaman berikutnya"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <ChevronRightIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               )}
             </div>
@@ -1477,7 +1526,7 @@ export const AdminLmsJadwal: React.FC = () => {
                 Belum ada mahasiswa yang ditambahkan ke kelas ini.
               </p>
             ) : (
-              <ul className="max-h-56 divide-y divide-slate-100 overflow-y-auto">
+              <ul className="max-h-[46vh] divide-y divide-slate-100 overflow-y-auto">
                 {participantRows.map((student, index) => (
                   <li
                     key={student.nim}

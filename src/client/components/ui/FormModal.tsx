@@ -15,8 +15,20 @@ interface FormModalProps {
   onSubmit: (event: React.FormEvent) => void;
   onClose: () => void;
   children: React.ReactNode;
+  /** Alias lama untuk `size="lg"`. */
   wide?: boolean;
+  /** Lebar dialog; `xl` dipakai formulir yang menampilkan dua daftar berdampingan. */
+  size?: 'md' | 'lg' | 'xl';
+  /** Area isi lebih tinggi agar daftar panjang tidak terjepit. */
+  tall?: boolean;
 }
+
+/** Lebar maksimum tiap ukuran dialog. */
+const SIZE_CLASS: Record<'md' | 'lg' | 'xl', string> = {
+  md: 'max-w-xl',
+  lg: 'max-w-3xl',
+  xl: 'max-w-6xl',
+};
 
 /**
  * Modal formulir untuk tambah dan ubah data.
@@ -36,7 +48,10 @@ export const FormModal: React.FC<FormModalProps> = ({
   onClose,
   children,
   wide = false,
+  size,
+  tall = false,
 }) => {
+  const sizeClass = SIZE_CLASS[size ?? (wide ? 'lg' : 'md')];
   const firstFieldRef = useRef<HTMLDivElement>(null);
   /** Mencegah efek fokus/escape dipasang ulang setiap render (lihat deps di bawah). */
   const onCloseRef = useRef(onClose);
@@ -83,9 +98,7 @@ export const FormModal: React.FC<FormModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="form-modal-title"
-        className={`relative my-6 w-full overflow-hidden rounded-[16px] border border-slate-200/90 bg-white shadow-[0_24px_60px_-15px_rgba(15,23,42,0.28)] ${
-          wide ? 'max-w-3xl' : 'max-w-xl'
-        }`}
+        className={`relative my-6 w-full overflow-hidden rounded-[16px] border border-slate-200/90 bg-white shadow-[0_24px_60px_-15px_rgba(15,23,42,0.28)] ${sizeClass}`}
       >
         <div className="relative overflow-hidden border-b border-slate-200/90 bg-slate-50/70 px-6 py-4">
           <div
@@ -117,7 +130,10 @@ export const FormModal: React.FC<FormModalProps> = ({
         </div>
 
         <form onSubmit={onSubmit}>
-          <div ref={firstFieldRef} className="max-h-[65vh] space-y-4 overflow-y-auto px-6 py-5">
+          <div
+            ref={firstFieldRef}
+            className={`space-y-4 overflow-y-auto px-6 py-5 ${tall ? 'max-h-[76vh]' : 'max-h-[65vh]'}`}
+          >
             {error ? (
               <div
                 role="alert"
