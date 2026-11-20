@@ -442,6 +442,20 @@ export const CustomLayoutWidget: React.FC<CustomLayoutWidgetProps> = ({
                         blocks.map((block) => {
                           const isSelected = interactive && selectedBlockId === block.id;
                           if (!interactive) {
+                            // Modul prodi penuh (mis. hero slider) butuh lebar kolom penuh.
+                            if (block.type === 'widget') {
+                              return (
+                                <div key={block.id} className="sm:col-span-2 lg:col-span-full">
+                                  <BlockView
+                                    block={block}
+                                    primaryColor={primaryColor}
+                                    accentColor={accentColor}
+                                    interactive={false}
+                                    renderEmbeddedWidget={renderEmbeddedWidget}
+                                  />
+                                </div>
+                              );
+                            }
                             return (
                               <BlockView
                                 key={block.id}
