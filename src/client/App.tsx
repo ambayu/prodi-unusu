@@ -51,6 +51,7 @@ import { AdminMedia } from './pages/admin/AdminMedia';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminBuilder } from './pages/admin/AdminBuilder';
 import { AdminWidgetBank } from './pages/admin/AdminWidgetBank';
+import { AdminWidgetBankStudio } from './pages/admin/AdminWidgetBankStudio';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminPortalHero } from './pages/admin/AdminPortalHero';
 import { AdminNavigation } from './pages/admin/AdminNavigation';
@@ -166,6 +167,27 @@ export const App: React.FC = () => {
           <RequireAuth>
             <RequirePermission anyOf={['builder.view']}>
               <AdminWidgetBank />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      {/* Studio Bank Widget: halaman penuh untuk membuat/menyunting widget. */}
+      <Route
+        path="/admin/widget-bank/new"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['builder.create']}>
+              <AdminWidgetBankStudio />
+            </RequirePermission>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/widget-bank/:id/edit"
+        element={
+          <RequireAuth>
+            <RequirePermission anyOf={['builder.update']}>
+              <AdminWidgetBankStudio />
             </RequirePermission>
           </RequireAuth>
         }

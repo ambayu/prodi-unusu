@@ -2105,7 +2105,7 @@ export const AdminBuilder: React.FC = () => {
                                         <span>{origin.sourceDesc}</span>
                                         {isBankWidget && bankTemplateId > 0 ? (
                                           <Link
-                                            to={`/admin/widget-bank?edit=${bankTemplateId}`}
+                                            to={`/admin/widget-bank/${bankTemplateId}/edit`}
                                             className="inline-flex items-center gap-0.5 font-bold text-[#1e3a8a] hover:underline"
                                           >
                                             Edit di Bank Widget &rarr;
@@ -2160,7 +2160,7 @@ export const AdminBuilder: React.FC = () => {
                                       ) : null}
                                       {isBankWidget && bankTemplateId > 0 ? (
                                         <Link
-                                          to={`/admin/widget-bank?edit=${bankTemplateId}`}
+                                          to={`/admin/widget-bank/${bankTemplateId}/edit`}
                                           className="inline-flex h-7 items-center gap-1 rounded-[8px] bg-[#1e3a8a] px-2.5 text-[11px] font-bold text-white transition-colors hover:bg-[#172f6e]"
                                         >
                                           <PencilSquareIcon className="h-3.5 w-3.5" /> Edit Bebas
@@ -2644,7 +2644,7 @@ export const AdminBuilder: React.FC = () => {
                       </p>
                     </div>
                     <Link
-                      to={`/admin/widget-bank?edit=${Number(configFormState.templateId)}`}
+                      to={`/admin/widget-bank/${Number(configFormState.templateId)}/edit`}
                       className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[9px] bg-[#1e3a8a] px-3 text-xs font-bold text-white transition-colors hover:bg-[#172f6e]"
                     >
                       <PencilSquareIcon className="h-3.5 w-3.5" />

@@ -145,7 +145,7 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
                           {template.description || 'Widget bebas dari Bank Widget.'}
                         </p>
                         <Link
-                          to={`/admin/widget-bank?edit=${template.id}`}
+                          to={`/admin/widget-bank/${template.id}/edit`}
                           className="mt-1 inline-block text-[10px] font-bold text-[#1e3a8a] hover:underline"
                         >
                           Edit di Bank Widget &rarr;
