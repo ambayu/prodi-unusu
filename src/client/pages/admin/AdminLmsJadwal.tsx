@@ -6,6 +6,8 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ClockIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
   MapPinIcon,
   UserGroupIcon,
   CheckCircleIcon,
@@ -99,6 +101,7 @@ export const AdminLmsJadwal: React.FC = () => {
 
   const [selectedSemester, setSelectedSemester] = useState<number | 'all'>('all');
   const [selectedYear, setSelectedYear] = useState<string>('');
+  const [search, setSearch] = useState('');
   const [expandedCourseId, setExpandedCourseId] = useState<number | null>(null);
   const [expandedDosenClassId, setExpandedDosenClassId] = useState<number | null>(null);
 
@@ -205,11 +208,40 @@ export const AdminLmsJadwal: React.FC = () => {
     [courses],
   );
 
-  // Filter semester 1-8
+  const totalCredits = useMemo(
+    () => courses.reduce((sum, c) => sum + (Number(c.credits) || 0), 0),
+    [courses],
+  );
+
+  const semesterCards = useMemo(
+    () =>
+      SEMESTERS.map((number) => {
+        const list = courses.filter((c) => c.semesterNumber === number);
+        return {
+          number,
+          courseCount: list.length,
+          totalCredits: list.reduce((sum, c) => sum + (Number(c.credits) || 0), 0),
+        };
+      }),
+    [courses],
+  );
+
+  // Filter semester 1-8 & pencarian kode/nama/dosen
   const filteredCourses = useMemo(() => {
-    if (selectedSemester === 'all') return courses;
-    return courses.filter((c) => c.semesterNumber === selectedSemester);
-  }, [courses, selectedSemester]);
+    const q = search.trim().toLowerCase();
+    return courses.filter((c) => {
+      if (selectedSemester !== 'all' && c.semesterNumber !== selectedSemester) {
+        return false;
+      }
+      if (!q) return true;
+      const lecturer = (c.classroom?.lecturerName ?? '').toLowerCase();
+      return (
+        c.code.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q) ||
+        lecturer.includes(q)
+      );
+    });
+  }, [courses, selectedSemester, search]);
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -327,75 +359,115 @@ export const AdminLmsJadwal: React.FC = () => {
   return (
     <AdminLayout
       title="Perkuliahan & Jadwal LMS"
-      description="Navigasi semester kurikulum, mata kuliah, dosen pengampu, edit jadwal, dan daftar 16 pertemuan LMS."
+      description={`${courses.length} penawaran mata kuliah • ${assignedCount} sudah ada dosen`}
     >
       <div className="space-y-5">
-        {/* BARIS PILIHAN TAHUN KURIKULUM & INFO */}
-        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/50 p-3.5 shadow-2xs sm:flex-row sm:items-center sm:px-4">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <label htmlFor="select-curriculum-year" className="text-xs font-bold text-slate-700 whitespace-nowrap">
-              Tahun Kurikulum
-            </label>
-            <SearchableSelect
-              id="select-curriculum-year"
-              value={effectiveYear}
-              onChange={(val) => {
-                setSelectedYear(val);
-                setSelectedSemester('all');
-                setExpandedCourseId(null);
-                setExpandedDosenClassId(null);
-              }}
-              options={yearOptions}
-              clearable={false}
-              size="sm"
-              searchPlaceholder="Cari tahun..."
-              icon={<CalendarDaysIcon className="h-4 w-4" />}
-              dropdownMinWidth={240}
-              className="w-44"
-            />
+        <section
+          className="rounded-2xl border border-slate-200/90 bg-slate-50/45 p-4 shadow-2xs sm:p-5"
+          aria-label="Filter perkuliahan dan jadwal"
+        >
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <p className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-[#1e3a8a] shadow-2xs ring-1 ring-slate-200/80">
+                <FunnelIcon className="h-3.5 w-3.5" />
+              </span>
+              Pilih tahun kurikulum, semester, atau cari mata kuliah
+            </p>
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+              {curriculums.length > 0 ? (
+                <SearchableSelect
+                  id="select-curriculum-year"
+                  value={effectiveYear}
+                  onChange={(val) => {
+                    setSelectedYear(val);
+                    setSelectedSemester('all');
+                    setExpandedCourseId(null);
+                    setExpandedDosenClassId(null);
+                  }}
+                  options={yearOptions}
+                  clearable={false}
+                  searchPlaceholder="Cari tahun kurikulum..."
+                  icon={<CalendarDaysIcon className="h-4 w-4" />}
+                  dropdownMinWidth={240}
+                  className="w-full sm:w-44"
+                  aria-label="Filter berdasarkan tahun kurikulum"
+                />
+              ) : null}
+              <div className="relative sm:w-72">
+                <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="search"
+                  className="field-input pl-9"
+                  placeholder="Cari kode atau nama..."
+                  aria-label="Cari kode, nama mata kuliah, atau dosen"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold tabular-nums">
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200/70 bg-blue-50/80 px-2.5 py-1 text-[#1e3a8a]">
-              {courses.length} Penawaran MK
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200/70 bg-blue-50/80 px-2.5 py-1 text-[#1e3a8a]">
-              {assignedCount} Sudah Ada Dosen
-            </span>
-          </div>
-        </div>
-
-        {/* TAB FILTER SEMESTER 1 - 8 */}
-        <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setSelectedSemester('all')}
-            className={`rounded-xl px-3.5 py-2 text-xs font-bold tabular-nums transition-all ${
-              selectedSemester === 'all'
-                ? 'bg-[#1e3a8a] text-white shadow-[0_4px_12px_-4px_rgba(30,58,138,0.55)]'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            Semua Semester ({courses.length})
-          </button>
-          {SEMESTERS.map((sem) => {
-            const count = courses.filter((c) => c.semesterNumber === sem).length;
-            return (
-              <button
-                key={sem}
-                type="button"
-                onClick={() => setSelectedSemester(sem)}
-                className={`rounded-xl px-3.5 py-2 text-xs font-bold tabular-nums transition-all ${
-                  selectedSemester === sem
-                    ? 'bg-[#1e3a8a] text-white shadow-[0_4px_12px_-4px_rgba(30,58,138,0.55)]'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
+            <button
+              type="button"
+              onClick={() => setSelectedSemester('all')}
+              className={`group rounded-xl border p-3 text-left transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a8a] ${
+                selectedSemester === 'all'
+                  ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white shadow-[0_6px_16px_-6px_rgba(30,58,138,0.5)]'
+                  : 'border-slate-200/90 bg-white text-slate-700 shadow-2xs hover:border-[#1e3a8a]/40 hover:bg-[#eff6ff]/70'
+              }`}
+            >
+              <span className="block text-sm font-bold tracking-tight">Semua</span>
+              <span
+                className={`mt-1 block text-[11px] tabular-nums ${
+                  selectedSemester === 'all' ? 'text-blue-100' : 'text-slate-500'
                 }`}
               >
-                Semester {sem} {count > 0 ? `(${count})` : ''}
-              </button>
-            );
-          })}
-        </div>
+                {courses.length} MK · {totalCredits} SKS
+              </span>
+              <span
+                className={`mt-2.5 block h-1 rounded-full transition-colors ${
+                  selectedSemester === 'all'
+                    ? 'bg-[#fbbf24]'
+                    : 'bg-slate-200/90 group-hover:bg-[#1e3a8a]/25'
+                }`}
+              />
+            </button>
+            {semesterCards.map((semester) => {
+              const selected = selectedSemester === semester.number;
+              return (
+                <button
+                  key={semester.number}
+                  type="button"
+                  onClick={() => setSelectedSemester(semester.number)}
+                  className={`group rounded-xl border p-3 text-left transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1e3a8a] ${
+                    selected
+                      ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white shadow-[0_6px_16px_-6px_rgba(30,58,138,0.5)]'
+                      : 'border-slate-200/90 bg-white text-slate-700 shadow-2xs hover:border-[#1e3a8a]/40 hover:bg-[#eff6ff]/70'
+                  }`}
+                >
+                  <span className="block text-sm font-bold tracking-tight">
+                    Semester {semester.number}
+                  </span>
+                  <span
+                    className={`mt-1 block text-[11px] tabular-nums ${
+                      selected ? 'text-blue-100' : 'text-slate-500'
+                    }`}
+                  >
+                    {semester.courseCount} MK · {semester.totalCredits} SKS
+                  </span>
+                  <span
+                    className={`mt-2.5 block h-1 rounded-full transition-colors ${
+                      selected
+                        ? 'bg-[#fbbf24]'
+                        : 'bg-slate-200/90 group-hover:bg-[#1e3a8a]/25'
+                    }`}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
         {coursesQuery.isLoading ? (
           <LoadingState label="Memuat penawaran mata kuliah kurikulum..." />
@@ -405,9 +477,25 @@ export const AdminLmsJadwal: React.FC = () => {
           <EmptyState
             title="Tidak ada mata kuliah"
             description={
-              selectedSemester === 'all'
+              search.trim()
+                ? 'Tidak ada mata kuliah yang cocok dengan pencarian Anda.'
+                : selectedSemester === 'all'
                 ? 'Belum ada mata kuliah pada kurikulum saat ini.'
                 : `Tidak ada mata kuliah yang ditawarkan untuk Semester ${selectedSemester}.`
+            }
+            action={
+              search.trim() || selectedSemester !== 'all' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setSelectedSemester('all');
+                  }}
+                  className="btn-secondary"
+                >
+                  Reset filter & pencarian
+                </button>
+              ) : undefined
             }
           />
         ) : (

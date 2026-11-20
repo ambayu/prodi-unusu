@@ -54,6 +54,7 @@ function asNumber(value: unknown, fallback: number): number {
 export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({ widgetCode, config }) => {
   const { tenant } = useTenant();
   const primaryColor = tenant?.theme?.primaryColor || '#1e3a8a';
+  const accentColor = tenant?.theme?.accentColor || '#d97706';
 
   // 1. HERO SLIDER
   if (widgetCode === 'hero_slider') {
@@ -169,6 +170,7 @@ export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({ widgetCode, conf
         title={asString(config.title)}
         limit={asNumber(config.limit, 6)}
         primaryColor={primaryColor}
+        accentColor={accentColor}
       />
     );
   }
@@ -745,11 +747,12 @@ const GalleryGridWidget: React.FC<{ title?: string; limit: number; primaryColor:
 };
 
 // Sub-komponen Widget Dosen
-const LecturersWidget: React.FC<{ title?: string; limit: number; primaryColor: string }> = ({
-  title,
-  limit,
-  primaryColor,
-}) => {
+const LecturersWidget: React.FC<{
+  title?: string;
+  limit: number;
+  primaryColor: string;
+  accentColor: string;
+}> = ({ title, limit, primaryColor, accentColor }) => {
   const lecturersQuery = useQuery({
     queryKey: ['public', 'lecturers', 'widget', limit],
     queryFn: () => lecturerApi.public().then((res) => (res.data.lecturers ?? []).slice(0, limit)),
@@ -757,15 +760,33 @@ const LecturersWidget: React.FC<{ title?: string; limit: number; primaryColor: s
 
   const lecturers = lecturersQuery.data ?? [];
 
+  // Sesuaikan jumlah kolom agar tidak menyisakan ruang kosong saat jumlah dosen sedikit
+  const gridColsClass =
+    lecturers.length === 1
+      ? 'grid-cols-1 max-w-md mx-auto'
+      : lecturers.length === 2
+        ? 'grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto'
+        : lecturers.length === 3
+          ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+
   return (
-    <section className="py-16 sm:py-22 bg-editorial-paper border-t border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-5 border-b border-slate-200 gap-4">
+    <section className="relative py-16 sm:py-22 bg-editorial-paper border-t border-slate-200 overflow-hidden">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-5 border-b border-slate-200/90 gap-4">
           <div>
             <span
-              className="inline-block py-1.5 px-4 rounded-full text-[13px] font-extrabold tracking-widest uppercase mb-3"
-              style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+              className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full text-[12px] font-extrabold tracking-widest uppercase mb-3 border"
+              style={{
+                backgroundColor: `${primaryColor}12`,
+                color: primaryColor,
+                borderColor: `${primaryColor}24`,
+              }}
             >
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: accentColor }}
+              />
               Tenaga Pendidik
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
@@ -774,41 +795,88 @@ const LecturersWidget: React.FC<{ title?: string; limit: number; primaryColor: s
           </div>
           <Link
             to="/dosen"
-            className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-5 text-[15px] font-extrabold transition-all hover:border-slate-500"
+            className="group/cta inline-flex min-h-[48px] items-center gap-2 rounded-xl border border-slate-300 bg-white/95 px-5 text-[15px] font-extrabold shadow-xs transition-all hover:shadow-md hover:border-slate-400"
             style={{ color: primaryColor }}
           >
             <span>Semua Dosen</span>
-            <ArrowRightIcon className="w-5 h-5" />
+            <ArrowRightIcon className="w-4 h-4 transition-transform duration-200 group-hover/cta:translate-x-0.5" />
           </Link>
         </div>
 
-        {lecturers.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-[16px] text-slate-700 bg-white">
+        {lecturersQuery.isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs animate-pulse"
+              >
+                <div className="h-24 bg-slate-200" />
+                <div className="flex flex-col items-center px-6 pb-6 -mt-12">
+                  <div className="w-24 h-24 rounded-2xl bg-slate-200 ring-4 ring-white" />
+                  <div className="mt-4 h-4 w-44 rounded bg-slate-200" />
+                  <div className="mt-2 h-3 w-28 rounded bg-slate-100" />
+                  <div className="mt-4 h-7 w-32 rounded-full bg-slate-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : lecturers.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-[16px] text-slate-700 bg-white/90">
             Belum ada data dosen yang ditambahkan.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className={`grid ${gridColsClass} gap-6 lg:gap-7`}>
             {lecturers.map((doc) => {
               const inisial = (doc.name || 'D')
-                .replace(/^(Dr\.|Prof\.|Drs\.|Ir\.)\s+/i, '')
-                .split(' ')
+                .replace(/^(Dr\.|Prof\.|Drs\.|Ir\.|H\.|Hj\.)\s+/i, '')
+                .split(/\s+/)
                 .filter(Boolean)
                 .slice(0, 2)
                 .map((n) => n[0]?.toUpperCase())
                 .join('');
 
+              const identifier = doc.id || doc.nidn;
+              const detailHref = identifier ? `/dosen/${identifier}` : '/dosen';
+              const roleLabel = doc.academicRank || doc.education || 'Dosen Tetap';
+
               return (
-                <div
+                <Link
                   key={doc.id}
-                  className="group relative flex flex-col items-center text-center p-6 rounded-2xl border border-slate-200 bg-white shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                  to={detailHref}
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-slate-300 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-offset-2"
+                  style={{ outlineColor: primaryColor }}
                 >
-                  <div className="relative mb-5">
-                    <div className="w-28 h-28 rounded-full overflow-hidden p-1.5 ring-2 ring-slate-200 group-hover:ring-emerald-600/50 transition-all duration-300 shadow-sm bg-gradient-to-tr from-slate-100 to-white">
+                  {/* Banner atas bertekstur arsitektural adaptif warna prodi */}
+                  <div
+                    className="relative h-24 w-full overflow-hidden"
+                    style={{
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}d8 65%, #0f172a 100%)`,
+                    }}
+                  >
+                    <img
+                      src="/assets/visual/lecturer-card-texture.png"
+                      alt=""
+                      aria-hidden="true"
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover object-center opacity-40 mix-blend-screen transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div
+                      className="absolute inset-x-0 bottom-0 h-[3px] opacity-85"
+                      style={{
+                        background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+                      }}
+                    />
+                  </div>
+
+                  {/* Foto / Avatar mengambang di perbatasan banner */}
+                  <div className="relative -mt-14 flex justify-center px-6">
+                    <div className="relative h-28 w-28 rounded-2xl bg-white p-1.5 shadow-lg ring-1 ring-slate-200/80 transition-transform duration-300 group-hover:scale-[1.03]">
                       {doc.photoUrl ? (
                         <img
                           src={doc.photoUrl}
-                          alt={doc.name}
-                          className="w-full h-full object-cover object-top rounded-full transition-transform duration-500 group-hover:scale-105"
+                          alt={`Foto ${doc.name}`}
+                          loading="lazy"
+                          className="h-full w-full rounded-xl object-cover object-top transition-transform duration-500 group-hover:scale-105"
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
                             const fallback = e.currentTarget.nextElementSibling;
@@ -817,37 +885,65 @@ const LecturersWidget: React.FC<{ title?: string; limit: number; primaryColor: s
                         />
                       ) : null}
                       <div
-                        className={`w-full h-full rounded-full flex items-center justify-center font-black text-2xl text-white shadow-inner ${
+                        className={`relative h-full w-full overflow-hidden rounded-xl flex items-center justify-center font-extrabold text-2xl tracking-wider text-white shadow-inner ${
                           doc.photoUrl ? 'hidden' : ''
                         }`}
                         style={{
-                          background: `linear-gradient(135deg, ${primaryColor} 0%, #0d9488 100%)`,
+                          background: `linear-gradient(145deg, ${primaryColor} 0%, ${primaryColor}cc 60%, #0f172a 100%)`,
                         }}
                       >
-                        {inisial || 'DS'}
+                        <img
+                          src="/assets/visual/lecturer-card-texture.png"
+                          alt=""
+                          aria-hidden="true"
+                          className="absolute inset-0 h-full w-full object-cover opacity-35 mix-blend-screen"
+                        />
+                        <span className="relative z-10">{inisial || 'DS'}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="w-full space-y-2 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-extrabold text-[16px] text-slate-950 group-hover:text-emerald-800 transition-colors line-clamp-2 leading-snug">
+                  {/* Identitas dosen dengan tinggi sejajar antar kartu */}
+                  <div className="flex flex-1 flex-col items-center text-center px-6 pt-4 pb-5">
+                    <div className="min-h-[2.75rem] flex items-center justify-center">
+                      <h3 className="font-extrabold text-[16px] text-slate-950 leading-snug line-clamp-2 transition-colors group-hover:text-slate-800">
                         {doc.name}
                       </h3>
-                      {doc.nidn ? (
-                        <p className="text-[13px] font-mono font-semibold text-slate-700 mt-1">
-                          NIDN: {doc.nidn}
-                        </p>
-                      ) : null}
                     </div>
 
-                    <div className="pt-3">
-                      <span className="inline-block px-3.5 py-1.5 rounded-full text-[13px] font-bold bg-slate-100 text-slate-900 group-hover:bg-emerald-50 group-hover:text-emerald-900 transition-colors">
-                        {doc.academicRank || doc.education || 'Dosen Tetap'}
+                    <p className="mt-1.5 min-h-[20px] text-[12.5px] font-mono font-semibold tracking-tight text-slate-600">
+                      {doc.nidn ? `NIDN ${doc.nidn}` : '\u00A0'}
+                    </p>
+
+                    {doc.expertise ? (
+                      <p className="mt-2 text-[13px] text-slate-600 line-clamp-1">
+                        {doc.expertise}
+                      </p>
+                    ) : null}
+
+                    <div className="mt-auto pt-4">
+                      <span
+                        className="inline-flex items-center rounded-full border px-3.5 py-1 text-[12.5px] font-bold tracking-tight transition-colors"
+                        style={{
+                          backgroundColor: `${primaryColor}10`,
+                          borderColor: `${primaryColor}28`,
+                          color: primaryColor,
+                        }}
+                      >
+                        {roleLabel}
                       </span>
                     </div>
                   </div>
-                </div>
+
+                  {/* Footer aksi halus menuju detail profil dosen */}
+                  <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/75 px-6 py-3 text-[13px] font-bold transition-colors group-hover:bg-slate-50">
+                    <span style={{ color: primaryColor }}>Lihat Profil</span>
+                    <ArrowRightIcon
+                      className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
+                      style={{ color: primaryColor }}
+                    />
+                  </div>
+                </Link>
               );
             })}
           </div>
