@@ -24,6 +24,7 @@ import {
   InformationCircleIcon,
   EllipsisVerticalIcon,
   FolderArrowDownIcon,
+  RectangleStackIcon,
   Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
@@ -96,7 +97,7 @@ const WIDGET_SIDEBAR_LABELS: Record<string, string> = {
   vision_mission: 'Komitmen Akademik & Visi Misi',
   statistics: 'Statistik Prodi',
   cta_banner: 'Banner Ajakan (CTA)',
-  custom_layout: 'Widget Susunan Kolom',
+  custom_layout: 'Bank Widget',
 };
 
 /** Nama widget yang dipakai di dropdown & kartu: label sidebar untuk widget dinamis. */
@@ -219,9 +220,9 @@ function getWidgetOriginMeta(widgetCode: string): {
     case 'custom_layout':
       return {
         type: 'custom',
-        badge: 'Dari: Bank Widget',
-        badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
-        sourceDesc: 'Susunan kolom dari Bank Widget; ubah isinya sekali untuk semua halaman.',
+        badge: 'Bank Widget',
+        badgeClass: 'bg-blue-50 text-[#1e3a8a] border-blue-200',
+        sourceDesc: 'Widget bebas dari Bank Widget — edit kolom, konten, atau modul prodi di Bank Widget.',
         manageRoute: '/admin/widget-bank',
         manageLabel: 'Buka Bank Widget',
       };
@@ -571,7 +572,33 @@ export const AdminBuilder: React.FC = () => {
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'page', selectedPageId] });
     void queryClient.invalidateQueries({ queryKey: ['admin', 'pages'] });
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'widget-bank'] });
   };
+
+  const bankTemplateMap = useMemo(() => {
+    const map = new Map<number, { id: number; name: string }>();
+    for (const tpl of bankQuery.data ?? []) {
+      map.set(tpl.id, { id: tpl.id, name: tpl.name });
+    }
+    return map;
+  }, [bankQuery.data]);
+
+  const orderedWidgets = useMemo(() => {
+    const list = widgetsQuery.data ?? [];
+    return [...list].sort((a, b) => {
+      if (a.code === 'custom_layout' && b.code !== 'custom_layout') return -1;
+      if (b.code === 'custom_layout' && a.code !== 'custom_layout') return 1;
+      return 0;
+    });
+  }, [widgetsQuery.data]);
+
+  const legacyWidgetCount = useMemo(() => {
+    if (!page) return 0;
+    return page.sections.reduce(
+      (sum, section) => sum + section.widgets.filter((item) => item.widget.code !== 'custom_layout').length,
+      0,
+    );
+  }, [page]);
 
   const createSection = useMutation({
     mutationFn: async () => {
@@ -715,6 +742,24 @@ export const AdminBuilder: React.FC = () => {
     mutationFn: (id: number) => builderApi.duplicateWidget(id),
     onSuccess: () => {
       toast.success('Widget berhasil digandakan.');
+      refresh();
+    },
+    onError: (error) => toast.error(toApiError(error).message),
+  });
+
+  const convertWidgetToBank = useMutation({
+    mutationFn: (widgetId: number) => builderApi.convertWidgetToBank(widgetId),
+    onSuccess: (res) => {
+      toast.success(res.data.message);
+      refresh();
+    },
+    onError: (error) => toast.error(toApiError(error).message),
+  });
+
+  const convertPageToBank = useMutation({
+    mutationFn: (pageId: number) => builderApi.convertPageToBank(pageId),
+    onSuccess: (res) => {
+      toast.success(res.data.message);
       refresh();
     },
     onError: (error) => toast.error(toApiError(error).message),
@@ -1781,17 +1826,29 @@ export const AdminBuilder: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        const defaultWidget = widgetsQuery.data?.[0];
-                        setSectionDraft({
-                          sectionKey: defaultWidget ? defaultWidget.code.replace(/_/g, '-') : 'about-prodi',
-                          title: defaultWidget
-                            ? `Seksi ${getWidgetDisplayName(defaultWidget.code, defaultWidget.name)}`
-                            : 'Seksi Baru',
-                          widgetCode: defaultWidget ? defaultWidget.code : 'about_prodi',
-                          widgetTitle: '',
-                          widgetDescription: '',
-                          templateId: '',
-                        });
+                        const firstBank = bankQuery.data?.[0];
+                        if (firstBank) {
+                          setSectionDraft({
+                            sectionKey: 'bank-widget',
+                            title: `Seksi ${firstBank.name}`,
+                            widgetCode: 'custom_layout',
+                            widgetTitle: '',
+                            widgetDescription: '',
+                            templateId: firstBank.id,
+                          });
+                        } else {
+                          const defaultWidget = orderedWidgets[0];
+                          setSectionDraft({
+                            sectionKey: defaultWidget ? defaultWidget.code.replace(/_/g, '-') : 'bank-widget',
+                            title: defaultWidget
+                              ? `Seksi ${getWidgetDisplayName(defaultWidget.code, defaultWidget.name)}`
+                              : 'Seksi Baru',
+                            widgetCode: defaultWidget ? defaultWidget.code : 'custom_layout',
+                            widgetTitle: '',
+                            widgetDescription: '',
+                            templateId: '',
+                          });
+                        }
                         setSectionFormOpen(true);
                       }}
                       className="btn-primary"
@@ -1801,6 +1858,35 @@ export const AdminBuilder: React.FC = () => {
                     </button>
                   ) : null}
                 </div>
+
+                {legacyWidgetCount > 0 && has('builder.update') ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-blue-200 bg-blue-50/75 px-4 py-3">
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-white text-[#1e3a8a] ring-1 ring-inset ring-blue-200">
+                        <RectangleStackIcon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-extrabold text-slate-900">
+                          {legacyWidgetCount} widget di halaman ini belum berada di Bank Widget
+                        </p>
+                        <p className="mt-0.5 text-[11px] leading-snug text-slate-600">
+                          Pindahkan ke Bank Widget agar seluruh widget halaman ini bisa diedit bebas, dipadukan kolom, dan dipakai ulang di halaman lain.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => convertPageToBank.mutate(page.id)}
+                      disabled={convertPageToBank.isPending}
+                      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[9px] bg-[#1e3a8a] px-3 text-[11px] font-bold text-white shadow-2xs transition-colors hover:bg-[#172f6e] disabled:opacity-60"
+                    >
+                      <RectangleStackIcon className="h-3.5 w-3.5" />
+                      <span>
+                        {convertPageToBank.isPending ? 'Memindahkan…' : 'Pindahkan Semua ke Bank Widget'}
+                      </span>
+                    </button>
+                  </div>
+                ) : null}
 
                 <WidgetLibrary
                   widgets={widgetsQuery.data ?? []}
@@ -1903,13 +1989,14 @@ export const AdminBuilder: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => {
+                                  const firstBank = bankQuery.data?.[0];
                                   setWidgetSectionId(section.id);
                                   setWidgetDraft({
-                                    widgetCode: 'about_prodi',
+                                    widgetCode: firstBank ? 'custom_layout' : 'about_prodi',
                                     variantCode: '',
                                     widgetTitle: '',
                                     widgetDescription: '',
-                                    templateId: '',
+                                    templateId: firstBank ? firstBank.id : '',
                                   });
                                   setWidgetFormOpen(true);
                                 }}
@@ -1950,6 +2037,15 @@ export const AdminBuilder: React.FC = () => {
                               .map((widget, widgetIdx, allWidgets) => {
                                 const config = parseConfig(widget.configJson);
                                 const origin = getWidgetOriginMeta(widget.widget.code);
+                                const isBankWidget = widget.widget.code === 'custom_layout';
+                                const bankTemplateId = isBankWidget ? Number(config.templateId || 0) : 0;
+                                const bankTemplate = bankTemplateId > 0 ? bankTemplateMap.get(bankTemplateId) : undefined;
+                                const cardTitle = isBankWidget
+                                  ? bankTemplate?.name ??
+                                    (typeof config.templateName === 'string' && config.templateName
+                                      ? config.templateName
+                                      : getWidgetDisplayName(widget.widget.code, widget.widget.name))
+                                  : getWidgetDisplayName(widget.widget.code, widget.widget.name);
                                 return (
                                   <div
                                     key={widget.id}
@@ -1959,7 +2055,7 @@ export const AdminBuilder: React.FC = () => {
                                       <div className="flex flex-wrap items-center gap-2">
                                         <span
                                           className={`h-2 w-2 shrink-0 rounded-full ${
-                                            widget.widget.code === 'custom_layout'
+                                            isBankWidget
                                               ? 'bg-[#fbbf24]'
                                               : origin.type === 'dynamic'
                                                 ? 'bg-emerald-500'
@@ -1968,7 +2064,7 @@ export const AdminBuilder: React.FC = () => {
                                           aria-hidden="true"
                                         />
                                         <p className="text-xs font-extrabold text-slate-900">
-                                          {getWidgetDisplayName(widget.widget.code, widget.widget.name)}
+                                          {cardTitle}
                                         </p>
                                         <span
                                           className={`rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${origin.badgeClass}`}
@@ -2000,10 +2096,21 @@ export const AdminBuilder: React.FC = () => {
                                         ) : null;
                                       })()}
                                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-500">
-                                        <span className="font-semibold text-slate-700">{summarize(config)}</span>
-                                        <span>·</span>
+                                        {!isBankWidget ? (
+                                          <>
+                                            <span className="font-semibold text-slate-700">{summarize(config)}</span>
+                                            <span>·</span>
+                                          </>
+                                        ) : null}
                                         <span>{origin.sourceDesc}</span>
-                                        {origin.manageRoute && (
+                                        {isBankWidget && bankTemplateId > 0 ? (
+                                          <Link
+                                            to={`/admin/widget-bank?edit=${bankTemplateId}`}
+                                            className="inline-flex items-center gap-0.5 font-bold text-[#1e3a8a] hover:underline"
+                                          >
+                                            Edit di Bank Widget &rarr;
+                                          </Link>
+                                        ) : origin.manageRoute ? (
                                           <a
                                             href={origin.manageRoute}
                                             target="_blank"
@@ -2012,11 +2119,11 @@ export const AdminBuilder: React.FC = () => {
                                           >
                                             {origin.manageLabel} &rarr;
                                           </a>
-                                        )}
+                                        ) : null}
                                       </div>
                                     </div>
 
-                                    <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-center">
+                                    <div className="flex flex-wrap shrink-0 items-center gap-1.5 self-end sm:self-center">
                                       <div className="inline-flex overflow-hidden rounded-[8px] border border-slate-200 bg-white">
                                         <button
                                           type="button"
@@ -2039,6 +2146,26 @@ export const AdminBuilder: React.FC = () => {
                                           <ArrowDownIcon className="h-3 w-3" />
                                         </button>
                                       </div>
+                                      {!isBankWidget && has('builder.update') ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => convertWidgetToBank.mutate(widget.id)}
+                                          disabled={convertWidgetToBank.isPending}
+                                          title="Pindahkan ke Bank Widget agar bisa diedit bebas"
+                                          className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-amber-300 bg-amber-50 px-2 text-[10px] font-bold text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                                        >
+                                          <RectangleStackIcon className="h-3.5 w-3.5" />
+                                          Ke Bank
+                                        </button>
+                                      ) : null}
+                                      {isBankWidget && bankTemplateId > 0 ? (
+                                        <Link
+                                          to={`/admin/widget-bank?edit=${bankTemplateId}`}
+                                          className="inline-flex h-7 items-center gap-1 rounded-[8px] bg-[#1e3a8a] px-2.5 text-[11px] font-bold text-white transition-colors hover:bg-[#172f6e]"
+                                        >
+                                          <PencilSquareIcon className="h-3.5 w-3.5" /> Edit Bebas
+                                        </Link>
+                                      ) : null}
                                       {has('builder.update') ? (
                                         <button
                                           type="button"
@@ -2050,7 +2177,7 @@ export const AdminBuilder: React.FC = () => {
                                           }}
                                           className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-[#1e3a8a]/25 bg-white px-2.5 text-[11px] font-bold text-[#1e3a8a] transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] hover:text-white"
                                         >
-                                          <PencilSquareIcon className="h-3.5 w-3.5" /> Atur
+                                          <PencilSquareIcon className="h-3.5 w-3.5" /> {isBankWidget ? 'Ganti' : 'Atur'}
                                         </button>
                                       ) : null}
                                       {has('builder.create') ? (
@@ -2134,9 +2261,14 @@ export const AdminBuilder: React.FC = () => {
                   : sectionDraft.title,
               });
             }}
-            options={(widgetsQuery.data ?? []).map((widget) => {
+            options={orderedWidgets.map((widget) => {
               const origin = getWidgetOriginMeta(widget.code);
-              const prefix = origin.type === 'dynamic' ? 'Konten & Akademik' : 'Kustom / Media';
+              const prefix =
+                widget.code === 'custom_layout'
+                  ? 'Utama · Bank Widget Bebas'
+                  : origin.type === 'dynamic'
+                    ? 'Konten & Akademik'
+                    : 'Kustom / Media';
               const displayName = getWidgetDisplayName(widget.code, widget.name);
               return {
                 value: widget.code,
@@ -2189,7 +2321,15 @@ export const AdminBuilder: React.FC = () => {
                 id="section-bank-template"
                 className="field-input"
                 value={String(sectionDraft.templateId)}
-                onChange={(event) => setSectionDraft({ ...sectionDraft, templateId: event.target.value })}
+                onChange={(event) => {
+                  const tplId = event.target.value;
+                  const tpl = (bankQuery.data ?? []).find((item) => String(item.id) === tplId);
+                  setSectionDraft({
+                    ...sectionDraft,
+                    templateId: tplId,
+                    title: tpl ? `Seksi ${tpl.name}` : sectionDraft.title,
+                  });
+                }}
               >
                 <option value="">Pilih widget...</option>
                 {bankQuery.data.map((template) => (
@@ -2201,45 +2341,47 @@ export const AdminBuilder: React.FC = () => {
             ) : (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-500">
                 Bank Widget masih kosong.{' '}
-                <a href="/admin/widget-bank" className="font-bold text-[#1e3a8a] underline">
+                <Link to="/admin/widget-bank" className="font-bold text-[#1e3a8a] underline">
                   Buat widget pertama
-                </a>{' '}
+                </Link>{' '}
                 terlebih dahulu.
               </p>
             )}
           </Field>
-        ) : null}
+        ) : (
+          <>
+            <Field
+              label="Judul Tampilan Widget"
+              htmlFor="section-widget-title"
+              hint="Judul seksi yang muncul di website. Kosongkan untuk memakai judul bawaan."
+            >
+              <input
+                id="section-widget-title"
+                type="text"
+                className="field-input"
+                placeholder="Contoh: Mata Kuliah Unggulan Semester Ganjil"
+                value={sectionDraft.widgetTitle}
+                onChange={(event) => setSectionDraft({ ...sectionDraft, widgetTitle: event.target.value })}
+              />
+            </Field>
 
-        <Field
-          label="Judul Tampilan Widget"
-          htmlFor="section-widget-title"
-          hint="Judul seksi yang muncul di website. Kosongkan untuk memakai judul bawaan."
-        >
-          <input
-            id="section-widget-title"
-            type="text"
-            className="field-input"
-            placeholder="Contoh: Mata Kuliah Unggulan Semester Ganjil"
-            value={sectionDraft.widgetTitle}
-            onChange={(event) => setSectionDraft({ ...sectionDraft, widgetTitle: event.target.value })}
-          />
-        </Field>
-
-        <Field
-          label="Deskripsi Singkat"
-          htmlFor="section-widget-desc"
-          hint="Pengantar singkat di bawah judul seksi (opsional)."
-        >
-          <textarea
-            id="section-widget-desc"
-            className="field-input min-h-[70px]"
-            placeholder="Contoh: Daftar mata kuliah inti yang membentuk kompetensi lulusan prodi."
-            value={sectionDraft.widgetDescription}
-            onChange={(event) =>
-              setSectionDraft({ ...sectionDraft, widgetDescription: event.target.value })
-            }
-          />
-        </Field>
+            <Field
+              label="Deskripsi Singkat"
+              htmlFor="section-widget-desc"
+              hint="Pengantar singkat di bawah judul seksi (opsional)."
+            >
+              <textarea
+                id="section-widget-desc"
+                className="field-input min-h-[70px]"
+                placeholder="Contoh: Daftar mata kuliah inti yang membentuk kompetensi lulusan prodi."
+                value={sectionDraft.widgetDescription}
+                onChange={(event) =>
+                  setSectionDraft({ ...sectionDraft, widgetDescription: event.target.value })
+                }
+              />
+            </Field>
+          </>
+        )}
 
         <Field label="Judul Seksi (Label Penanda)" htmlFor="section-title" hint="Judul penanda di panel builder.">
           <input
@@ -2278,9 +2420,14 @@ export const AdminBuilder: React.FC = () => {
             onChange={(code) => {
               if (code) setWidgetDraft({ ...widgetDraft, widgetCode: code, variantCode: '', templateId: '' });
             }}
-            options={(widgetsQuery.data ?? []).map((widget) => {
+            options={orderedWidgets.map((widget) => {
               const origin = getWidgetOriginMeta(widget.code);
-              const prefix = origin.type === 'dynamic' ? 'Konten & Akademik' : 'Kustom / Media';
+              const prefix =
+                widget.code === 'custom_layout'
+                  ? 'Utama · Bank Widget Bebas'
+                  : origin.type === 'dynamic'
+                    ? 'Konten & Akademik'
+                    : 'Kustom / Media';
               const displayName = getWidgetDisplayName(widget.code, widget.name);
               return {
                 value: widget.code,
@@ -2321,37 +2468,6 @@ export const AdminBuilder: React.FC = () => {
           );
         })()}
 
-        <Field
-          label="Judul Tampilan Widget"
-          htmlFor="widget-title"
-          hint="Judul seksi yang muncul di website. Kosongkan untuk memakai judul bawaan."
-        >
-          <input
-            id="widget-title"
-            type="text"
-            className="field-input"
-            placeholder="Contoh: Berita Prestasi Mahasiswa"
-            value={widgetDraft.widgetTitle}
-            onChange={(event) => setWidgetDraft({ ...widgetDraft, widgetTitle: event.target.value })}
-          />
-        </Field>
-
-        <Field
-          label="Deskripsi Singkat"
-          htmlFor="widget-desc"
-          hint="Pengantar singkat di bawah judul seksi (opsional)."
-        >
-          <textarea
-            id="widget-desc"
-            className="field-input min-h-[70px]"
-            placeholder="Contoh: Rangkaian kabar terbaru dari kegiatan dan prestasi prodi."
-            value={widgetDraft.widgetDescription}
-            onChange={(event) =>
-              setWidgetDraft({ ...widgetDraft, widgetDescription: event.target.value })
-            }
-          />
-        </Field>
-
         {widgetDraft.widgetCode === 'custom_layout' ? (
           <Field
             label="Pilih dari Bank Widget"
@@ -2376,14 +2492,47 @@ export const AdminBuilder: React.FC = () => {
             ) : (
               <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-500">
                 Bank Widget masih kosong.{' '}
-                <a href="/admin/widget-bank" className="font-bold text-[#1e3a8a] underline">
+                <Link to="/admin/widget-bank" className="font-bold text-[#1e3a8a] underline">
                   Buat widget pertama
-                </a>{' '}
+                </Link>{' '}
                 terlebih dahulu.
               </p>
             )}
           </Field>
-        ) : null}
+        ) : (
+          <>
+            <Field
+              label="Judul Tampilan Widget"
+              htmlFor="widget-title"
+              hint="Judul seksi yang muncul di website. Kosongkan untuk memakai judul bawaan."
+            >
+              <input
+                id="widget-title"
+                type="text"
+                className="field-input"
+                placeholder="Contoh: Berita Prestasi Mahasiswa"
+                value={widgetDraft.widgetTitle}
+                onChange={(event) => setWidgetDraft({ ...widgetDraft, widgetTitle: event.target.value })}
+              />
+            </Field>
+
+            <Field
+              label="Deskripsi Singkat"
+              htmlFor="widget-desc"
+              hint="Pengantar singkat di bawah judul seksi (opsional)."
+            >
+              <textarea
+                id="widget-desc"
+                className="field-input min-h-[70px]"
+                placeholder="Contoh: Rangkaian kabar terbaru dari kegiatan dan prestasi prodi."
+                value={widgetDraft.widgetDescription}
+                onChange={(event) =>
+                  setWidgetDraft({ ...widgetDraft, widgetDescription: event.target.value })
+                }
+              />
+            </Field>
+          </>
+        )}
 
         {selectedWidgetDefinition?.variants.length ? (
           <Field label="Varian tampilan" htmlFor="widget-variant">
@@ -2450,11 +2599,67 @@ export const AdminBuilder: React.FC = () => {
           </div>
 
           {configMode === 'visual' ? (
-            <WidgetVisualForm
-              widgetCode={configTarget?.widget.code || ''}
-              config={configFormState}
-              onChange={(updated) => setConfigFormState(updated)}
-            />
+            configTarget?.widget.code === 'custom_layout' ? (
+              <div className="space-y-4">
+                <Field
+                  label="Pilih Template dari Bank Widget"
+                  htmlFor="config-bank-template"
+                  required
+                  hint="Ubah pilihan di sini untuk menukar widget, atau buka Bank Widget untuk mengedit isi, kolom, dan modul di dalamnya secara bebas."
+                >
+                  {bankQuery.data && bankQuery.data.length > 0 ? (
+                    <select
+                      id="config-bank-template"
+                      className="field-input"
+                      value={String(configFormState.templateId ?? '')}
+                      onChange={(event) => {
+                        const idNum = Number(event.target.value);
+                        const tpl = (bankQuery.data ?? []).find((item) => item.id === idNum);
+                        setConfigFormState({
+                          templateId: idNum || '',
+                          templateName: tpl?.name ?? '',
+                        });
+                      }}
+                    >
+                      <option value="">Pilih widget...</option>
+                      {bankQuery.data.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
+                      Bank Widget masih kosong.
+                    </p>
+                  )}
+                </Field>
+
+                {Number(configFormState.templateId || 0) > 0 ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3.5">
+                    <div className="text-xs text-slate-700">
+                      <p className="font-bold text-[#1e3a8a]">Edit Desain &amp; Konten Bebas</p>
+                      <p className="mt-0.5 text-[11px] text-slate-600">
+                        Atur jumlah kolom, tambah teks/gambar/video, atau ubah konfigurasi modul prodi di Bank Widget.
+                      </p>
+                    </div>
+                    <Link
+                      to={`/admin/widget-bank?edit=${Number(configFormState.templateId)}`}
+                      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[9px] bg-[#1e3a8a] px-3 text-xs font-bold text-white transition-colors hover:bg-[#172f6e]"
+                    >
+                      <PencilSquareIcon className="h-3.5 w-3.5" />
+                      Buka di Bank Widget
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <WidgetVisualForm
+                widgetCode={configTarget?.widget.code || ''}
+                config={configFormState}
+                onChange={(updated) => setConfigFormState(updated)}
+              />
+            )
           ) : (
             <Field
               label="Konfigurasi JSON"

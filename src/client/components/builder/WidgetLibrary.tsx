@@ -75,7 +75,8 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
 }) => {
   const [terbuka, setTerbuka] = useState(false);
 
-  const perKategori = widgets.reduce<Record<string, WidgetDefinition[]>>((hasil, widget) => {
+  const builtInWidgets = widgets.filter((w) => w.code !== 'custom_layout');
+  const perKategori = builtInWidgets.reduce<Record<string, WidgetDefinition[]>>((hasil, widget) => {
     (hasil[widget.category] ??= []).push(widget);
     return hasil;
   }, {});
@@ -98,8 +99,12 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
           className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/95 via-white/85 to-transparent"
         />
         <span className="relative">
-          <span className="block text-sm font-bold tracking-tight text-slate-900">Pustaka Widget</span>
-          <span className="block text-[11px] text-slate-500">{widgets.length} widget tersedia untuk halaman ini</span>
+          <span className="block text-sm font-bold tracking-tight text-slate-900">
+            Bank Widget &amp; Pustaka Modul
+          </span>
+          <span className="block text-[11px] text-slate-500">
+            {bankTemplates.length} widget di Bank Widget · {builtInWidgets.length} modul bawaan
+          </span>
         </span>
         {terbuka ? (
           <ChevronDownIcon className="relative h-4 w-4 text-slate-500" />
@@ -114,18 +119,18 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
             <div>
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-[#1e3a8a]">
-                  Bank Widget Prodi
+                  Bank Widget Prodi (Utama)
                 </p>
                 <Link
                   to="/admin/widget-bank"
-                  className="text-[10px] font-bold text-slate-500 underline hover:text-[#1e3a8a]"
+                  className="text-[11px] font-bold text-[#1e3a8a] underline hover:text-[#172f6e]"
                 >
-                  Kelola Bank Widget
+                  Kelola / Buat di Bank Widget &rarr;
                 </Link>
               </div>
               {bankTemplates.length === 0 ? (
                 <p className="rounded-[10px] border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-500">
-                  Belum ada widget susunan kolom. Buat sekali di Bank Widget lalu pakai di halaman mana pun.
+                  Belum ada widget di Bank Widget. Pindahkan widget halaman ke Bank Widget atau buat widget baru agar bebas dimodifikasi.
                 </p>
               ) : (
                 <ul className="grid gap-2.5 sm:grid-cols-2">
@@ -137,8 +142,14 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-bold text-slate-900">{template.name}</p>
                         <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-500">
-                          {template.description || 'Widget kustom dari Bank Widget.'}
+                          {template.description || 'Widget bebas dari Bank Widget.'}
                         </p>
+                        <Link
+                          to={`/admin/widget-bank?edit=${template.id}`}
+                          className="mt-1 inline-block text-[10px] font-bold text-[#1e3a8a] hover:underline"
+                        >
+                          Edit di Bank Widget &rarr;
+                        </Link>
                       </div>
                       <button
                         type="button"
@@ -155,47 +166,60 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
               )}
             </div>
           ) : null}
-          {widgets.length === 0 ? <p className="text-xs text-slate-500">Belum ada widget terdaftar.</p> : null}
-          {Object.entries(perKategori).map(([kategori, daftar]) => (
-            <div key={kategori}>
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">{LABEL_KATEGORI[kategori] ?? kategori}</p>
-              <ul className="grid gap-2.5 sm:grid-cols-2">
-                {daftar.map((widget) => {
-                  const Ikon = IKON_WIDGET[widget.code] ?? Squares2X2Icon;
-                  return (
-                  <li
-                    key={widget.code}
-                    className="group relative flex items-start justify-between gap-3 overflow-hidden rounded-[12px] border border-slate-200/90 bg-white px-3.5 py-3 transition-all hover:border-[#1e3a8a]/35 hover:shadow-xs"
-                  >
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 select-none bg-cover bg-right-bottom opacity-40 transition-opacity group-hover:opacity-70"
-                      style={{ backgroundImage: "url('/assets/admin-card-texture.png')" }}
-                    />
-                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-blue-50 text-[#1e3a8a] ring-1 ring-inset ring-blue-100">
-                      <Ikon className="h-[18px] w-[18px]" aria-hidden="true" />
-                    </div>
-                    <div className="relative min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-900">{namaTampil(widget)}</p>
-                      {widget.description ? <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{widget.description}</p> : null}
-                    </div>
-                    {onPilih ? (
-                      <button
-                        type="button"
-                        onClick={() => onPilih(widget)}
-                        aria-label={`Tambah widget ${namaTampil(widget)}`}
-                        className="relative inline-flex h-8 shrink-0 items-center gap-1 rounded-[8px] border border-blue-200/80 bg-blue-50/80 px-2.5 text-[11px] font-bold text-[#1e3a8a] transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] hover:text-white"
-                      >
-                        <PlusIcon className="h-3 w-3" />
-                        Tambah
-                      </button>
-                    ) : null}
-                  </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+
+          {builtInWidgets.length > 0 ? (
+            <details className="rounded-[12px] border border-slate-200 bg-slate-50/60 px-3.5 py-2.5">
+              <summary className="cursor-pointer select-none text-[11px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700">
+                Modul Bawaan Langsung ({builtInWidgets.length}) — Disarankan lewat Bank Widget
+              </summary>
+              <div className="mt-3 space-y-3">
+                {Object.entries(perKategori).map(([kategori, daftar]) => (
+                  <div key={kategori}>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      {LABEL_KATEGORI[kategori] ?? kategori}
+                    </p>
+                    <ul className="grid gap-2.5 sm:grid-cols-2">
+                      {daftar.map((widget) => {
+                        const Ikon = IKON_WIDGET[widget.code] ?? Squares2X2Icon;
+                        return (
+                          <li
+                            key={widget.code}
+                            className="group relative flex items-start justify-between gap-3 overflow-hidden rounded-[12px] border border-slate-200/90 bg-white px-3.5 py-3 transition-all hover:border-[#1e3a8a]/35 hover:shadow-xs"
+                          >
+                            <div
+                              aria-hidden="true"
+                              className="pointer-events-none absolute inset-0 select-none bg-cover bg-right-bottom opacity-40 transition-opacity group-hover:opacity-70"
+                              style={{ backgroundImage: "url('/assets/admin-card-texture.png')" }}
+                            />
+                            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-blue-50 text-[#1e3a8a] ring-1 ring-inset ring-blue-100">
+                              <Ikon className="h-[18px] w-[18px]" aria-hidden="true" />
+                            </div>
+                            <div className="relative min-w-0 flex-1">
+                              <p className="text-xs font-bold text-slate-900">{namaTampil(widget)}</p>
+                              {widget.description ? (
+                                <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{widget.description}</p>
+                              ) : null}
+                            </div>
+                            {onPilih ? (
+                              <button
+                                type="button"
+                                onClick={() => onPilih(widget)}
+                                aria-label={`Tambah widget ${namaTampil(widget)}`}
+                                className="relative inline-flex h-8 shrink-0 items-center gap-1 rounded-[8px] border border-blue-200/80 bg-blue-50/80 px-2.5 text-[11px] font-bold text-[#1e3a8a] transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] hover:text-white"
+                              >
+                                <PlusIcon className="h-3 w-3" />
+                                Tambah
+                              </button>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </div>
       ) : null}
     </div>

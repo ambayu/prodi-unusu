@@ -11,6 +11,7 @@ import type {
   CustomRow,
   CustomRowBackground,
   CustomRowLayout,
+  EmbeddableWidgetCode,
 } from '../../../shared/schemas/builder';
 
 export interface CustomLayoutWidgetProps {
@@ -22,6 +23,8 @@ export interface CustomLayoutWidgetProps {
   forceMobile?: boolean;
   selectedBlockId?: string | null;
   onSelectBlock?: (rowId: string, colIndex: number, blockId: string) => void;
+  /** Renderer untuk blok modul prodi (`type: 'widget'`). */
+  renderEmbeddedWidget?: (widgetCode: EmbeddableWidgetCode, config: Record<string, unknown>) => React.ReactNode;
 }
 
 /** Mengekstrak ID video YouTube (11 karakter aman) dari berbagai format URL YouTube. */
@@ -110,7 +113,8 @@ const BlockView: React.FC<{
   primaryColor: string;
   accentColor: string;
   interactive: boolean;
-}> = ({ block, primaryColor, accentColor, interactive }) => {
+  renderEmbeddedWidget?: (widgetCode: EmbeddableWidgetCode, config: Record<string, unknown>) => React.ReactNode;
+}> = ({ block, primaryColor, accentColor, interactive, renderEmbeddedWidget }) => {
   if (block.type === 'text') {
     const centered = block.align === 'center';
     const paragraphs = block.body
@@ -290,6 +294,21 @@ const BlockView: React.FC<{
     );
   }
 
+  if (block.type === 'widget') {
+    const rendered = renderEmbeddedWidget ? (
+      renderEmbeddedWidget(block.widgetCode, block.config ?? {})
+    ) : (
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center text-xs font-semibold text-slate-500">
+        Modul Prodi: {block.widgetCode}
+      </div>
+    );
+    return (
+      <div className={`w-full overflow-hidden ${interactive ? 'pointer-events-none select-none' : ''}`}>
+        {rendered}
+      </div>
+    );
+  }
+
   // Video YouTube
   const videoId = extractYouTubeId(block.url);
   return (
@@ -328,6 +347,7 @@ export const CustomLayoutWidget: React.FC<CustomLayoutWidgetProps> = ({
   forceMobile = false,
   selectedBlockId = null,
   onSelectBlock,
+  renderEmbeddedWidget,
 }) => {
   if (rows.length === 0) {
     if (!interactive) return null;
@@ -346,6 +366,63 @@ export const CustomLayoutWidget: React.FC<CustomLayoutWidgetProps> = ({
   return (
     <div className="w-full">
       {rows.map((row) => {
+        const isSingleFullWidgetRow =
+          row.layout === '1-col' &&
+          row.columns.length === 1 &&
+          row.columns[0]?.length === 1 &&
+          row.columns[0][0]?.type === 'widget';
+
+        if (isSingleFullWidgetRow) {
+          const block = row.columns[0][0];
+          const isSelected = interactive && selectedBlockId === block.id;
+          if (!interactive) {
+            return (
+              <div key={row.id} className="w-full">
+                <BlockView
+                  block={block}
+                  primaryColor={primaryColor}
+                  accentColor={accentColor}
+                  interactive={false}
+                  renderEmbeddedWidget={renderEmbeddedWidget}
+                />
+              </div>
+            );
+          }
+
+          return (
+            <div
+              key={row.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onSelectBlock?.(row.id, 0, block.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSelectBlock?.(row.id, 0, block.id);
+                }
+              }}
+              className={`group relative cursor-pointer transition-all ${
+                isSelected
+                  ? 'ring-2 ring-inset ring-[#1e3a8a]'
+                  : 'hover:ring-2 hover:ring-inset hover:ring-[#1e3a8a]/40'
+              }`}
+            >
+              {isSelected ? (
+                <span className="pointer-events-none absolute right-3 top-3 z-20 rounded-full bg-[#1e3a8a] px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                  Sedang diedit
+                </span>
+              ) : null}
+              <BlockView
+                block={block}
+                primaryColor={primaryColor}
+                accentColor={accentColor}
+                interactive
+                renderEmbeddedWidget={renderEmbeddedWidget}
+              />
+            </div>
+          );
+        }
+
         const bg = rowBackgroundStyle(row.background, primaryColor);
         const gridClass = gridClassForRow(row.layout, forceMobile);
 
@@ -372,6 +449,7 @@ export const CustomLayoutWidget: React.FC<CustomLayoutWidgetProps> = ({
                                 primaryColor={primaryColor}
                                 accentColor={accentColor}
                                 interactive={false}
+                                renderEmbeddedWidget={renderEmbeddedWidget}
                               />
                             );
                           }
@@ -404,6 +482,7 @@ export const CustomLayoutWidget: React.FC<CustomLayoutWidgetProps> = ({
                                 primaryColor={primaryColor}
                                 accentColor={accentColor}
                                 interactive
+                                renderEmbeddedWidget={renderEmbeddedWidget}
                               />
                             </div>
                           );

@@ -1,7 +1,9 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowDownIcon,
+  ArrowDownTrayIcon,
   ArrowRightIcon,
   ArrowUpIcon,
   Bars3BottomLeftIcon,
@@ -18,6 +20,7 @@ import {
   PlayCircleIcon,
   PlusIcon,
   RectangleStackIcon,
+  Squares2X2Icon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
@@ -30,13 +33,17 @@ import { useSiteStore } from '../../app/siteStore';
 import { builderApi, mediaApi, type WidgetTemplateItem } from '../../services/adminApi';
 import { firstFieldError, toApiError } from '../../services/api';
 import { CustomLayoutWidget } from '../../components/builder/CustomLayoutWidget';
+import { WidgetRenderer } from '../../components/builder/WidgetRenderer';
+import { WidgetVisualForm } from '../../components/builder/WidgetVisualForm';
 import {
+  EMBEDDABLE_WIDGET_CODES,
   columnCountForLayout,
   type CustomBlock,
   type CustomLayoutTemplateConfig,
   type CustomRow,
   type CustomRowBackground,
   type CustomRowLayout,
+  type EmbeddableWidgetCode,
 } from '../../../shared/schemas/builder';
 
 // ---------------------------------------------------------
@@ -78,7 +85,30 @@ const BLOCK_LABEL: Record<CustomBlock['type'], string> = {
   list: 'Daftar Poin',
   stat: 'Angka Sorotan',
   youtube: 'Video YouTube',
+  widget: 'Modul Prodi',
 };
+
+const EMBEDDABLE_WIDGET_META: Record<EmbeddableWidgetCode, { label: string; hint: string }> = {
+  hero_slider: { label: 'Hero Slider (Banner Beranda)', hint: 'Slide banner utama beranda' },
+  about_prodi: { label: 'Profil Program Studi', hint: 'Otomatis dari menu Profil Prodi' },
+  vision_mission: { label: 'Visi & Misi Program Studi', hint: 'Otomatis dari menu Visi & Misi' },
+  curriculum_overview: { label: 'Struktur Kurikulum', hint: 'Otomatis dari menu Kurikulum' },
+  lecturer_list: { label: 'Daftar Dosen & Pengajar', hint: 'Otomatis dari menu Dosen' },
+  latest_news: { label: 'Berita Terbaru', hint: 'Otomatis dari menu Berita' },
+  gallery_grid: { label: 'Galeri Kegiatan', hint: 'Otomatis dari menu Galeri' },
+  facility_grid: { label: 'Sarana & Prasarana', hint: 'Otomatis dari menu Sarana' },
+  document_list: { label: 'Dokumen & Unduhan', hint: 'Otomatis dari menu Dokumen' },
+  statistics: { label: 'Statistik Program Studi', hint: 'Baris angka statistik' },
+  cta_banner: { label: 'Banner Ajakan (CTA)', hint: 'Banner ajakan pendaftaran' },
+  contact_information: { label: 'Informasi Kontak', hint: 'Alamat, telepon & email prodi' },
+};
+
+function getBlockDisplayName(block: CustomBlock): string {
+  if (block.type === 'widget') {
+    return EMBEDDABLE_WIDGET_META[block.widgetCode]?.label ?? block.widgetCode;
+  }
+  return BLOCK_LABEL[block.type];
+}
 
 const LABEL_BACKGROUND: Record<CustomRowBackground, string> = {
   white: 'Putih',
@@ -113,7 +143,7 @@ function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}${idCounter.toString(36)}`;
 }
 
-function createBlock(type: CustomBlock['type']): CustomBlock {
+function createBlock(type: CustomBlock['type'], widgetCode: EmbeddableWidgetCode = 'about_prodi'): CustomBlock {
   const id = newId(type);
   switch (type) {
     case 'text':
@@ -128,6 +158,8 @@ function createBlock(type: CustomBlock['type']): CustomBlock {
       return { id, type, value: '100%', label: 'Judul Sorotan', description: '' };
     case 'youtube':
       return { id, type, url: '', caption: '' };
+    case 'widget':
+      return { id, type, widgetCode, config: {} };
   }
 }
 
@@ -262,6 +294,7 @@ function cloneRowsWithFreshIds(rows: CustomRow[]): CustomRow[] {
 
 export const AdminWidgetBank: React.FC = () => {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const notifier = useNotifier();
   const { has } = usePermission();
@@ -291,6 +324,7 @@ export const AdminWidgetBank: React.FC = () => {
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'widget-bank'] });
     void queryClient.invalidateQueries({ queryKey: ['admin', 'page'] });
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'pages'] });
   };
 
   const resetForm = () => {
@@ -320,8 +354,36 @@ export const AdminWidgetBank: React.FC = () => {
     setName(template.name);
     setDescription(template.description ?? '');
     setRows(template.config.rows);
+    const firstRow = template.config.rows[0];
+    const firstBlock = firstRow?.columns[0]?.[0];
+    if (firstRow && firstBlock && template.config.rows.length === 1 && firstRow.columns.length === 1 && firstRow.columns[0].length === 1) {
+      setSelected({ rowId: firstRow.id, blockId: firstBlock.id });
+    }
     setEditorOpen(true);
   };
+
+  // Buka langsung editor bila diarahkan dari Page Builder lewat ?edit=<id>.
+  const editParam = searchParams.get('edit');
+  useEffect(() => {
+    if (!editParam || templates.length === 0) return;
+    const targetId = Number(editParam);
+    const target = templates.find((item) => item.id === targetId);
+    if (!target) return;
+    openEdit(target);
+    const next = new URLSearchParams(searchParams);
+    next.delete('edit');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editParam, templates]);
+
+  const importPagesMutation = useMutation({
+    mutationFn: () => builderApi.importPagesToBank(),
+    onSuccess: (res) => {
+      toast.success(res.data.message);
+      refresh();
+    },
+    onError: (error) => toast.error(toApiError(error).message),
+  });
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -405,8 +467,8 @@ export const AdminWidgetBank: React.FC = () => {
     updateRow(row.id, (current) => resizeColumns(current, layout));
   };
 
-  const addBlock = (row: CustomRow, colIndex: number, type: CustomBlock['type']) => {
-    const block = createBlock(type);
+  const addBlock = (row: CustomRow, colIndex: number, type: CustomBlock['type'], widgetCode?: EmbeddableWidgetCode) => {
+    const block = createBlock(type, widgetCode);
     updateRow(row.id, (current) => ({
       ...current,
       columns: current.columns.map((blocks, index) =>
@@ -488,14 +550,27 @@ export const AdminWidgetBank: React.FC = () => {
   return (
     <AdminLayout
       title="Bank Widget"
-      description="Susun widget susunan kolom sendiri, lalu pakai ulang di Visual Page Builder. Perubahan otomatis mengikuti semua halaman yang memakainya."
+      description="Susun widget bebas — padukan kolom teks, gambar, video, maupun modul prodi (Hero Slider, Profil, Visi Misi, Kurikulum, Dosen, Berita) — lalu pakai ulang di Page Builder."
       actions={
-        has('builder.create') ? (
-          <button type="button" onClick={() => openCreate()} className="btn-primary">
-            <PlusIcon className="h-4 w-4" />
-            Buat Widget Baru
-          </button>
-        ) : null
+        <div className="flex flex-wrap items-center gap-2">
+          {has('builder.update') ? (
+            <button
+              type="button"
+              onClick={() => importPagesMutation.mutate()}
+              disabled={importPagesMutation.isPending}
+              className="inline-flex h-10 items-center gap-1.5 rounded-[10px] border border-[#1e3a8a]/25 bg-white px-3.5 text-xs font-bold text-[#1e3a8a] shadow-2xs transition-colors hover:border-[#1e3a8a] hover:bg-blue-50 disabled:opacity-60"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              <span>{importPagesMutation.isPending ? 'Memindahkan…' : 'Impor dari Halaman'}</span>
+            </button>
+          ) : null}
+          {has('builder.create') ? (
+            <button type="button" onClick={() => openCreate()} className="btn-primary">
+              <PlusIcon className="h-4 w-4" />
+              Buat Widget Baru
+            </button>
+          ) : null}
+        </div>
       }
     >
       <div className="space-y-5">
@@ -613,13 +688,31 @@ export const AdminWidgetBank: React.FC = () => {
                   ) : (
                     template.config.rows.slice(0, 4).map((row) => (
                       <div key={row.id} className="flex gap-1.5">
-                        {WIREFRAME_COLUMNS[row.layout].map((weight, index) => (
-                          <div
-                            key={`${row.id}-${index}`}
-                            className="h-6 rounded-[4px] border border-slate-200 bg-slate-50"
-                            style={{ flexGrow: weight }}
-                          />
-                        ))}
+                        {WIREFRAME_COLUMNS[row.layout].map((weight, index) => {
+                          const colBlocks = row.columns[index] ?? [];
+                          const widgetBlock = colBlocks.find((item) => item.type === 'widget');
+                          return (
+                            <div
+                              key={`${row.id}-${index}`}
+                              className={`flex h-7 min-w-0 items-center justify-center rounded-[5px] border px-1.5 text-[10px] font-bold ${
+                                widgetBlock
+                                  ? 'border-blue-200 bg-blue-50/70 text-[#1e3a8a]'
+                                  : 'border-slate-200 bg-slate-50 text-slate-400'
+                              }`}
+                              style={{ flexGrow: weight }}
+                            >
+                              {widgetBlock && widgetBlock.type === 'widget' ? (
+                                <span className="truncate">
+                                  {EMBEDDABLE_WIDGET_META[widgetBlock.widgetCode]?.label ?? widgetBlock.widgetCode}
+                                </span>
+                              ) : colBlocks.length > 0 ? (
+                                <span className="truncate text-[9px] font-semibold">
+                                  {colBlocks.map((b) => BLOCK_LABEL[b.type]).join(' · ')}
+                                </span>
+                              ) : null}
+                            </div>
+                          );
+                        })}
                       </div>
                     ))
                   )}
@@ -826,7 +919,7 @@ export const AdminWidgetBank: React.FC = () => {
                                     selected?.blockId === block.id ? 'text-[#1e3a8a]' : 'text-slate-700'
                                   }`}
                                 >
-                                  <span className="truncate">{BLOCK_LABEL[block.type]}</span>
+                                  <span className="truncate">{getBlockDisplayName(block)}</span>
                                   <ChevronRightIcon className="h-3 w-3 shrink-0 text-slate-400" />
                                 </button>
                                 <div className="flex items-center justify-end gap-0.5 border-t border-slate-100 px-1 py-0.5">
@@ -881,17 +974,31 @@ export const AdminWidgetBank: React.FC = () => {
                             aria-label={`Tambah blok ke kolom ${colIndex + 1}`}
                             value=""
                             onChange={(event) => {
-                              const type = event.target.value as CustomBlock['type'];
-                              if (type) addBlock(row, colIndex, type);
+                              const raw = event.target.value;
+                              if (!raw) return;
+                              if (raw.startsWith('widget:')) {
+                                addBlock(row, colIndex, 'widget', raw.slice('widget:'.length) as EmbeddableWidgetCode);
+                                return;
+                              }
+                              addBlock(row, colIndex, raw as CustomBlock['type']);
                             }}
                             className="mt-1.5 h-7 w-full rounded-md border border-dashed border-slate-300 bg-white px-1 text-[10px] font-semibold text-slate-600 hover:border-[#1e3a8a]/50"
                           >
-                            <option value="">+ Tambah blok</option>
-                            {BLOCK_TYPES.map((option) => (
-                              <option key={option.type} value={option.type}>
-                                {option.label} — {option.hint}
-                              </option>
-                            ))}
+                            <option value="">+ Tambah blok / modul</option>
+                            <optgroup label="Konten Bebas">
+                              {BLOCK_TYPES.map((option) => (
+                                <option key={option.type} value={option.type}>
+                                  {option.label} — {option.hint}
+                                </option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Modul & Data Prodi">
+                              {EMBEDDABLE_WIDGET_CODES.map((code) => (
+                                <option key={code} value={`widget:${code}`}>
+                                  {EMBEDDABLE_WIDGET_META[code].label}
+                                </option>
+                              ))}
+                            </optgroup>
                           </select>
                         </div>
                       ))}
@@ -966,6 +1073,9 @@ export const AdminWidgetBank: React.FC = () => {
                     forceMobile={previewMode === 'mobile'}
                     selectedBlockId={selected?.blockId ?? null}
                     onSelectBlock={(rowId, _colIndex, blockId) => setSelected({ rowId, blockId })}
+                    renderEmbeddedWidget={(embeddedCode, embeddedConfig) => (
+                      <WidgetRenderer widgetCode={embeddedCode} config={embeddedConfig} />
+                    )}
                   />
                 </div>
               </div>
@@ -1011,7 +1121,7 @@ const BlockEditor: React.FC<{
     }
   };
 
-  const title = BLOCK_LABEL[block.type];
+  const title = getBlockDisplayName(block);
 
   return (
     <div className="rounded-xl border-2 border-[#1e3a8a]/30 bg-white p-3 shadow-2xs">
@@ -1295,6 +1405,41 @@ const BlockEditor: React.FC<{
               />
             </label>
           </>
+        ) : null}
+
+        {block.type === 'widget' ? (
+          <div className="space-y-3">
+            <label className="field-label">
+              Jenis Modul Prodi
+              <select
+                className="field-input"
+                value={block.widgetCode}
+                onChange={(event) =>
+                  onChange({
+                    widgetCode: event.target.value as EmbeddableWidgetCode,
+                    config: {},
+                  })
+                }
+              >
+                {EMBEDDABLE_WIDGET_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {EMBEDDABLE_WIDGET_META[code].label} — {EMBEDDABLE_WIDGET_META[code].hint}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-2.5">
+              <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-[#1e3a8a]">
+                <Squares2X2Icon className="h-3.5 w-3.5" />
+                <span>Pengaturan Modul</span>
+              </div>
+              <WidgetVisualForm
+                widgetCode={block.widgetCode}
+                config={block.config ?? {}}
+                onChange={(nextConfig) => onChange({ config: nextConfig })}
+              />
+            </div>
+          </div>
         ) : null}
       </div>
 

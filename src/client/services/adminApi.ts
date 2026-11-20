@@ -99,6 +99,18 @@ export const builderApi = {
   duplicateWidgetTemplate: (id: number) =>
     api.post<{ template: WidgetTemplateItem }>(`/admin/widget-bank/${id}/duplicate`),
   deleteWidgetTemplate: (id: number) => api.delete(`/admin/widget-bank/${id}`),
+  convertWidgetToBank: (widgetId: number) =>
+    api.post<{ convertedCount: number; createdTemplateIds: number[]; firstTemplateId: number | null; message: string }>(
+      `/admin/widget-bank/convert-widget/${widgetId}`,
+    ),
+  convertPageToBank: (pageId: number) =>
+    api.post<{ convertedCount: number; createdTemplateIds: number[]; firstTemplateId: number | null; message: string }>(
+      `/admin/widget-bank/convert-page/${pageId}`,
+    ),
+  importPagesToBank: () =>
+    api.post<{ convertedCount: number; createdTemplateIds: number[]; firstTemplateId: number | null; message: string }>(
+      '/admin/widget-bank/import-pages',
+    ),
 };
 
 // ---------------------------------------------------------

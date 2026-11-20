@@ -201,5 +201,114 @@ describe('validasi Bank Widget kustom', () => {
     expect(columnCountForLayout('2-col-left')).toBe(2);
     expect(columnCountForLayout('3-col')).toBe(3);
   });
+
+  it('menerima blok modul prodi (type: widget) yang sah di dalam Bank Widget', () => {
+    const result = createWidgetTemplateSchema.safeParse({
+      name: 'Hero + Statistik',
+      config: {
+        rows: [
+          {
+            id: 'row-hero',
+            layout: '1-col',
+            background: 'white',
+            columns: [
+              [
+                {
+                  id: 'mod-hero',
+                  type: 'widget',
+                  widgetCode: 'hero_slider',
+                  config: {
+                    slides: [{ imageUrl: '/uploads/banner.jpg', alt: 'Beranda' }],
+                    autoplayMs: 5000,
+                  },
+                },
+              ],
+            ],
+          },
+        ],
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('menolak konfigurasi tidak valid di dalam blok modul prodi (type: widget)', () => {
+    const badHero = createWidgetTemplateSchema.safeParse({
+      name: 'Hero XSS',
+      config: {
+        rows: [
+          {
+            id: 'row-hero',
+            layout: '1-col',
+            background: 'white',
+            columns: [
+              [
+                {
+                  id: 'mod-hero',
+                  type: 'widget',
+                  widgetCode: 'hero_slider',
+                  config: {
+                    slides: [{ imageUrl: 'javascript:alert(1)', alt: 'xss' }],
+                  },
+                },
+              ],
+            ],
+          },
+        ],
+      },
+    });
+    expect(badHero.success).toBe(false);
+
+    const badStats = createWidgetTemplateSchema.safeParse({
+      name: 'Statistik Negatif',
+      config: {
+        rows: [
+          {
+            id: 'row-stat',
+            layout: '1-col',
+            background: 'white',
+            columns: [
+              [
+                {
+                  id: 'mod-stat',
+                  type: 'widget',
+                  widgetCode: 'statistics',
+                  config: {
+                    items: [{ label: 'Mahasiswa', value: -10, icon: 'users' }],
+                  },
+                },
+              ],
+            ],
+          },
+        ],
+      },
+    });
+    expect(badStats.success).toBe(false);
+  });
+
+  it('menolak penyematan custom_layout di dalam Bank Widget untuk mencegah rekursi', () => {
+    const recursive = createWidgetTemplateSchema.safeParse({
+      name: 'Rekursif',
+      config: {
+        rows: [
+          {
+            id: 'row-rec',
+            layout: '1-col',
+            background: 'white',
+            columns: [
+              [
+                {
+                  id: 'mod-rec',
+                  type: 'widget',
+                  widgetCode: 'custom_layout',
+                  config: { templateId: 1 },
+                },
+              ],
+            ],
+          },
+        ],
+      },
+    });
+    expect(recursive.success).toBe(false);
+  });
 });
 

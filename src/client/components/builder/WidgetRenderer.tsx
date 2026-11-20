@@ -262,6 +262,9 @@ export const WidgetRenderer: React.FC<WidgetInstanceProps> = ({ widgetCode, conf
         rows={rows}
         primaryColor={primaryColor}
         accentColor={accentColor}
+        renderEmbeddedWidget={(embeddedCode, embeddedConfig) => (
+          <WidgetRenderer widgetCode={embeddedCode} config={embeddedConfig} />
+        )}
       />
     );
   }

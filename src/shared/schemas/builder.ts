@@ -131,6 +131,50 @@ const customYoutubeBlockSchema = z.object({
   caption: z.string().trim().max(240).default(''),
 });
 
+/**
+ * Daftar modul/widget prodi yang dapat disematkan ke dalam Bank Widget.
+ * `custom_layout` sengaja tidak dimasukkan untuk mencegah rekursi tak terbatas.
+ */
+export const EMBEDDABLE_WIDGET_CODES = [
+  'hero_slider',
+  'about_prodi',
+  'vision_mission',
+  'statistics',
+  'lecturer_list',
+  'curriculum_overview',
+  'latest_news',
+  'document_list',
+  'facility_grid',
+  'gallery_grid',
+  'contact_information',
+  'cta_banner',
+] as const;
+
+export const embeddableWidgetCodeSchema = z.enum(EMBEDDABLE_WIDGET_CODES);
+export type EmbeddableWidgetCode = z.infer<typeof embeddableWidgetCodeSchema>;
+
+const EMBEDDABLE_WIDGET_CONFIG_SCHEMAS: Record<EmbeddableWidgetCode, z.ZodTypeAny> = {
+  hero_slider: heroSliderConfigSchema,
+  about_prodi: aboutProdiConfigSchema,
+  vision_mission: visionMissionConfigSchema,
+  statistics: statisticsConfigSchema,
+  lecturer_list: dataWidgetConfigSchema,
+  curriculum_overview: dataWidgetConfigSchema,
+  latest_news: dataWidgetConfigSchema,
+  document_list: dataWidgetConfigSchema,
+  facility_grid: dataWidgetConfigSchema,
+  gallery_grid: dataWidgetConfigSchema,
+  contact_information: contactWidgetConfigSchema,
+  cta_banner: ctaBannerConfigSchema,
+};
+
+const customWidgetBlockSchema = z.object({
+  id: z.string().trim().min(1).max(60),
+  type: z.literal('widget'),
+  widgetCode: embeddableWidgetCodeSchema,
+  config: z.record(z.string(), z.unknown()).default({}),
+});
+
 export const customBlockSchema = z.discriminatedUnion('type', [
   customTextBlockSchema,
   customImageBlockSchema,
@@ -138,6 +182,7 @@ export const customBlockSchema = z.discriminatedUnion('type', [
   customListBlockSchema,
   customStatBlockSchema,
   customYoutubeBlockSchema,
+  customWidgetBlockSchema,
 ]);
 
 export const customRowSchema = z.object({
@@ -147,9 +192,30 @@ export const customRowSchema = z.object({
   columns: z.array(z.array(customBlockSchema).max(12)).min(1).max(3),
 });
 
-export const customLayoutTemplateConfigSchema = z.object({
-  rows: z.array(customRowSchema).max(12).default([]),
-});
+export const customLayoutTemplateConfigSchema = z
+  .object({
+    rows: z.array(customRowSchema).max(12).default([]),
+  })
+  .superRefine((data, ctx) => {
+    data.rows.forEach((row, rowIdx) => {
+      row.columns.forEach((col, colIdx) => {
+        col.forEach((block, blockIdx) => {
+          if (block.type !== 'widget') return;
+          const schema = EMBEDDABLE_WIDGET_CONFIG_SCHEMAS[block.widgetCode];
+          const parsed = schema.safeParse(block.config ?? {});
+          if (!parsed.success) {
+            for (const issue of parsed.error.issues) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['rows', rowIdx, 'columns', colIdx, blockIdx, 'config', ...issue.path],
+                message: issue.message,
+              });
+            }
+          }
+        });
+      });
+    });
+  });
 
 export const createWidgetTemplateSchema = z.object({
   name: z.string().trim().min(2, 'Nama widget minimal 2 karakter.').max(150),
@@ -183,18 +249,7 @@ export function columnCountForLayout(layout: CustomRowLayout): 1 | 2 | 3 {
  * Kunci harus sama dengan `WIDGETS[].code` pada constants/organization.ts.
  */
 export const WIDGET_CONFIG_SCHEMAS: Record<string, z.ZodTypeAny> = {
-  hero_slider: heroSliderConfigSchema,
-  about_prodi: aboutProdiConfigSchema,
-  vision_mission: visionMissionConfigSchema,
-  statistics: statisticsConfigSchema,
-  lecturer_list: dataWidgetConfigSchema,
-  curriculum_overview: dataWidgetConfigSchema,
-  latest_news: dataWidgetConfigSchema,
-  document_list: dataWidgetConfigSchema,
-  facility_grid: dataWidgetConfigSchema,
-  gallery_grid: dataWidgetConfigSchema,
-  contact_information: contactWidgetConfigSchema,
-  cta_banner: ctaBannerConfigSchema,
+  ...EMBEDDABLE_WIDGET_CONFIG_SCHEMAS,
   custom_layout: customLayoutWidgetConfigSchema,
 };
 
