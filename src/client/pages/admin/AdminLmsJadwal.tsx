@@ -374,25 +374,25 @@ export const AdminLmsJadwal: React.FC = () => {
               Pilih tahun kurikulum, semester, atau cari mata kuliah
             </p>
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-              {curriculums.length > 0 ? (
-                <SearchableSelect
-                  id="select-curriculum-year"
-                  value={effectiveYear}
-                  onChange={(val) => {
-                    setSelectedYear(val);
-                    setSelectedSemester('all');
-                    setExpandedCourseId(null);
-                    setExpandedDosenClassId(null);
-                  }}
-                  options={yearOptions}
-                  clearable={false}
-                  searchPlaceholder="Cari tahun kurikulum..."
-                  icon={<CalendarDaysIcon className="h-4 w-4" />}
-                  dropdownMinWidth={240}
-                  className="w-full sm:w-44"
-                  aria-label="Filter berdasarkan tahun kurikulum"
-                />
-              ) : null}
+              <SearchableSelect
+                id="select-curriculum-year"
+                value={effectiveYear}
+                onChange={(val) => {
+                  setSelectedYear(val);
+                  setSelectedSemester('all');
+                  setExpandedCourseId(null);
+                  setExpandedDosenClassId(null);
+                }}
+                options={yearOptions}
+                placeholder="Tahun kurikulum..."
+                noResultLabel="Belum ada tahun kurikulum."
+                clearable={false}
+                searchPlaceholder="Cari tahun kurikulum..."
+                icon={<CalendarDaysIcon className="h-4 w-4" />}
+                dropdownMinWidth={240}
+                className="w-full sm:w-48"
+                aria-label="Filter berdasarkan tahun kurikulum"
+              />
               <div className="relative sm:w-72">
                 <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input

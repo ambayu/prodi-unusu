@@ -121,8 +121,12 @@ export const FacilityDetailPage: React.FC = () => {
                   <div className="flex-1 min-w-0 space-y-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider text-slate-900 shadow-2xs"
-                        style={{ backgroundColor: accent }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider border"
+                        style={{
+                          backgroundColor: `${primary}12`,
+                          borderColor: `${primary}28`,
+                          color: primary,
+                        }}
                       >
                         <TagIcon className="w-3.5 h-3.5" />
                         <span>{facility.category}</span>
@@ -140,7 +144,7 @@ export const FacilityDetailPage: React.FC = () => {
                       </h1>
                       {facility.location && (
                         <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-slate-600">
-                          <MapPinIcon className="w-4 h-4 text-blue-600 shrink-0" />
+                          <MapPinIcon className="w-4 h-4 shrink-0" style={{ color: primary }} />
                           <span>{facility.location}</span>
                         </p>
                       )}

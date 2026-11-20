@@ -79,11 +79,9 @@ const LecturerCard: React.FC<{
 
         {/* Pita jabatan akademik menempel di bawah foto */}
         {dosen.academicRank ? (
-          <span
-            className="absolute bottom-3 left-3 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-sm"
-            style={{ backgroundColor: accent }}
-          >
-            {dosen.academicRank}
+          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-slate-950/75 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-md">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
+            <span>{dosen.academicRank}</span>
           </span>
         ) : null}
       </div>

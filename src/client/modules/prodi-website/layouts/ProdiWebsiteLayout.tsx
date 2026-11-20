@@ -184,7 +184,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
         </div>
       </div>
 
-      {/* Navbar utama dengan warna tema spesifik prodi/fakultas — Teks 15px & Target Klik Lega */}
+      {/* Navbar utama dengan warna tema spesifik prodi/fakultas â€” Teks 15px & Target Klik Lega */}
       <nav
         className="sticky top-0 z-30 text-white shadow-md transition-colors duration-200 border-b-2"
         style={{ backgroundColor: primaryColor, borderBottomColor: accentColor }}
@@ -337,7 +337,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
               </Link>
             </div>
 
-            {/* Mobile Hamburger — Target sentuh 48px */}
+            {/* Mobile Hamburger â€” Target sentuh 48px */}
             <div className="lg:hidden flex items-center">
               <button
                 type="button"
@@ -437,7 +437,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
         {children}
       </div>
 
-      {/* Footer Bersih Terstandarisasi — Teks Besar & Kontras Tinggi */}
+      {/* Footer Bersih Terstandarisasi â€” Teks Besar & Kontras Tinggi */}
       <footer className="bg-slate-900 text-slate-100 border-t-4" style={{ borderTopColor: accentColor }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
@@ -450,7 +450,9 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
                   <p className="font-extrabold text-white text-lg leading-tight">
                     {labelUnit} {tenant?.name}
                   </p>
-                  <p className="text-[13px] font-bold text-amber-300">UNUSU Sumatera Utara</p>
+                  <p className="text-[13px] font-bold leading-snug text-amber-300">
+                    Universitas Nahdlatul Ulama Sumatera Utara
+                  </p>
                 </div>
               </div>
               <p className="text-slate-200 leading-relaxed text-[15px]">
@@ -539,7 +541,7 @@ export const ProdiWebsiteLayout: React.FC<{ children: React.ReactNode }> = ({ ch
           </div>
 
           <div className="pt-8 border-t border-slate-700/80 text-center text-slate-300 text-[14px] font-medium">
-            © {new Date().getFullYear()} {adalahFakultas ? tenant?.name : `Program Studi ${tenant?.name || 'Sistem Informasi'}`} • Universitas Nahdlatul Ulama Sumatera Utara
+            &copy; {new Date().getFullYear()} {adalahFakultas ? tenant?.name : `Program Studi ${tenant?.name || 'Sistem Informasi'}`} &bull; Universitas Nahdlatul Ulama Sumatera Utara
           </div>
         </div>
       </footer>

@@ -1,31 +1,75 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   AcademicCapIcon,
-  EnvelopeIcon,
+  ArrowLeftIcon,
   ArrowTopRightOnSquareIcon,
-  BuildingLibraryIcon,
-  BriefcaseIcon,
   BookOpenIcon,
+  BriefcaseIcon,
+  BuildingLibraryIcon,
   CheckCircleIcon,
+  EnvelopeIcon,
   IdentificationIcon,
   MapPinIcon,
-  CalendarIcon,
 } from '@heroicons/react/24/outline';
-import { PageHeader } from '../../components/ui/PageHeader';
 import { useSeo } from '../../hooks/useSeo';
 import { useTenant } from '../../hooks/useSite';
 import { ErrorState, LoadingState } from '../../components/ui/States';
 import { lecturerApi } from '../../services/contentApi';
 import { toApiError } from '../../services/api';
 
+const BULAN_ID = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
+
+function formatTanggalIndonesia(raw?: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const dmy = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (dmy) {
+    const day = Number(dmy[1]);
+    const month = BULAN_ID[Number(dmy[2]) - 1];
+    if (month && day >= 1 && day <= 31) return `${day} ${month} ${dmy[3]}`;
+  }
+  const ymd = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (ymd) {
+    const day = Number(ymd[3]);
+    const month = BULAN_ID[Number(ymd[2]) - 1];
+    if (month && day >= 1 && day <= 31) return `${day} ${month} ${ymd[1]}`;
+  }
+  return trimmed;
+}
+
+function inferEducation(education?: string | null, name?: string): string {
+  if (education?.trim()) return education.trim();
+  if (!name) return '-';
+  if (/\bDr\.|\bPh\.?D/i.test(name)) return 'Doktor (S3)';
+  if (/\bM\.[A-Za-z]+|\bM\.Si|\bM\.Kom|\bM\.Pd|\bM\.Ag|\bM\.M\b|\bM\.H\b/i.test(name)) {
+    return 'Magister (S2)';
+  }
+  if (/\bS\.[A-Za-z]+/i.test(name)) return 'Sarjana (S1)';
+  return '-';
+}
+
 export const LecturerDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { tenant } = useTenant();
+  const [photoFailed, setPhotoFailed] = useState(false);
 
   const primary = tenant?.theme?.primaryColor ?? '#1e3a8a';
-  const accent = tenant?.theme?.accentColor ?? '#fbbf24';
+  const accent = tenant?.theme?.accentColor ?? '#0284c7';
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['public', 'lecturer', id],
@@ -34,6 +78,10 @@ export const LecturerDetailPage: React.FC = () => {
   });
 
   const dosen = data;
+
+  React.useEffect(() => {
+    setPhotoFailed(false);
+  }, [id, dosen?.photoUrl]);
 
   useSeo({
     tenant,
@@ -44,12 +92,16 @@ export const LecturerDetailPage: React.FC = () => {
   });
 
   const namaBersih = dosen?.name ? dosen.name.replace(/^[\s\-._]+/, '').trim() : '';
-  const inisial = React.useMemo(() => {
+
+  const inisial = useMemo(() => {
     if (!namaBersih) return 'DS';
-    const bagian = namaBersih.split(/\s+/).filter(Boolean);
+    const bagian = namaBersih
+      .replace(/^(Dr\.|Prof\.|Drs\.|Ir\.|H\.|Hj\.)\s+/i, '')
+      .split(/\s+/)
+      .filter(Boolean);
     if (bagian.length === 0) return 'DS';
     const awal = bagian[0]?.[0] ?? '';
-    const akhir = bagian.length > 1 ? bagian[bagian.length - 1]?.[0] ?? '' : '';
+    const akhir = bagian.length > 1 ? bagian[1]?.[0] ?? '' : '';
     return (awal + akhir).toUpperCase() || 'DS';
   }, [namaBersih]);
 
@@ -57,34 +109,128 @@ export const LecturerDetailPage: React.FC = () => {
     dosen?.sintaUrl ||
     (dosen?.sintaId ? `https://sinta.kemdiktisaintek.go.id/authors/profile/${dosen.sintaId}` : null);
 
-  return (
-    <>
-      <PageHeader
-        eyebrow="Direktori Tenaga Pendidik"
-        title={dosen?.name || 'Detail Tenaga Pendidik'}
-        description={
-          dosen
-            ? `${dosen.academicRank ?? 'Dosen'} • ${dosen.studyProgramName ?? tenant?.name ?? 'Program Studi'}`
-            : 'Profil akademik dan portofolio penelitian sivitas akademika.'
-        }
-      />
+  const scopusLink = dosen?.scopusId
+    ? `https://www.scopus.com/authid/detail.uri?authorId=${dosen.scopusId}`
+    : null;
 
-      {/* Main Container dengan Margin Publik Standar Web Kampus */}
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
+  const orcidLink = dosen?.orcid ? `https://orcid.org/${dosen.orcid}` : null;
+
+  const pendidikanLabel = useMemo(
+    () => inferEducation(dosen?.education, namaBersih),
+    [dosen?.education, namaBersih],
+  );
+
+  const ttlLabel = useMemo(() => {
+    const tanggal = formatTanggalIndonesia(dosen?.dateOfBirth);
+    const parts = [dosen?.placeOfBirth?.trim(), tanggal].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : '-';
+  }, [dosen?.placeOfBirth, dosen?.dateOfBirth]);
+
+  const genderLabel =
+    dosen?.gender === 'L' || dosen?.gender?.toLowerCase() === 'laki-laki'
+      ? 'Laki-laki'
+      : dosen?.gender === 'P' || dosen?.gender?.toLowerCase() === 'perempuan'
+        ? 'Perempuan'
+        : '-';
+
+  const expertiseTags = useMemo(() => {
+    if (!dosen?.expertise) return [];
+    const items = dosen.expertise
+      .split(/[,;\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return items.length > 1 ? items : [];
+  }, [dosen?.expertise]);
+
+  const publicationLinks = [
+    {
+      key: 'sinta',
+      label: 'SINTA Kemdiktisaintek',
+      shortLabel: 'Profil SINTA',
+      value: dosen?.sintaId ? `ID: ${dosen.sintaId}` : sintaLink ? 'Terdaftar' : null,
+      href: sintaLink,
+    },
+    {
+      key: 'scholar',
+      label: 'Google Scholar',
+      shortLabel: 'Google Scholar',
+      value: dosen?.googleScholar ? 'Terdaftar' : null,
+      href: dosen?.googleScholar || null,
+    },
+    {
+      key: 'scopus',
+      label: 'Scopus Author',
+      shortLabel: 'Scopus',
+      value: dosen?.scopusId ? `ID: ${dosen.scopusId}` : null,
+      href: scopusLink,
+    },
+    {
+      key: 'orcid',
+      label: 'ORCID iD',
+      shortLabel: 'ORCID',
+      value: dosen?.orcid || null,
+      href: orcidLink,
+    },
+  ];
+
+  const activePublications = publicationLinks.filter((item) => Boolean(item.href));
+
+  return (
+    <div className="bg-editorial-paper min-h-[70vh]">
+      {/* Banner Header Bertekstur Arsitektural Adaptif Tema */}
+      <header
+        className="relative overflow-hidden pb-24 pt-10 sm:pb-28 sm:pt-12"
+        style={{
+          background: `linear-gradient(135deg, ${primary} 0%, ${primary}e6 58%, #0f172a 100%)`,
+        }}
+      >
+        <img
+          src="/assets/visual/lecturer-card-texture.png"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-30 mix-blend-screen"
+        />
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px] opacity-90"
+          style={{
+            background: `linear-gradient(90deg, transparent 0%, ${accent} 50%, transparent 100%)`,
+          }}
+        />
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <Link
+              to="/dosen"
+              className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[13px] font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
+            >
+              <ArrowLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+              <span>Kembali ke Direktori Dosen</span>
+            </Link>
+
+            <span className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-white/80">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
+              Profil Tenaga Pendidik
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* Konten Utama */}
+      <section className="relative z-10 mx-auto -mt-16 max-w-7xl px-4 pb-16 sm:-mt-20 sm:px-6 lg:px-8">
         {isLoading ? (
-          <div className="bg-white rounded-3xl border border-slate-200/80 p-16 shadow-xs">
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-12 shadow-lg">
             <LoadingState label="Memuat profil data dosen..." rows={5} />
           </div>
         ) : isError || !dosen ? (
-          <div className="bg-white rounded-3xl border border-slate-200/80 p-12 shadow-xs space-y-4">
+          <div className="space-y-4 rounded-3xl border border-slate-200/90 bg-white p-12 shadow-lg">
             <ErrorState
               message={error ? toApiError(error).message : 'Profil dosen tidak ditemukan atau belum aktif.'}
               onRetry={() => void refetch()}
             />
-            <div className="text-center pt-2">
+            <div className="pt-2 text-center">
               <Link
                 to="/dosen"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-xs shadow-md transition hover:opacity-95"
+                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-95"
                 style={{ backgroundColor: primary }}
               >
                 Lihat Seluruh Dosen
@@ -93,457 +239,394 @@ export const LecturerDetailPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* 1. KARTU HEADER HERO PROFIL MEWAH & ELEGAN */}
-            <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm transition hover:shadow-md">
-              {/* Ornamen Garis Aksen di Paling Atas */}
-              <div
-                className="h-2.5 w-full"
-                style={{
-                  backgroundImage: `linear-gradient(90deg, ${primary} 0%, ${primary}cc 70%, ${accent} 100%)`,
-                }}
-              />
-
-              <div className="p-6 sm:p-10">
-                <div className="flex flex-col md:flex-row gap-8 items-center md:items-stretch text-center md:text-left">
-                  {/* Foto Profil Pas Foto Penuh (Full Height Mengikuti Konten Kanan) */}
-                  <div className="shrink-0 w-full sm:w-56 md:w-64 self-stretch flex">
-                    <div className="relative w-full min-h-[260px] rounded-2xl overflow-hidden bg-slate-100 border-2 border-white shadow-xl ring-1 ring-slate-200/80 flex items-center justify-center">
-                      {dosen.photoUrl ? (
+            {/* 1. KARTU HERO PROFIL UTAMA */}
+            <article className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-lg">
+              <div className="p-6 sm:p-8 lg:p-10">
+                <div className="flex flex-col items-center gap-7 md:flex-row md:items-start md:gap-9">
+                  {/* Foto Pas Foto Proporsional 3:4 */}
+                  <div className="w-44 shrink-0 sm:w-52">
+                    <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-100 p-1.5 shadow-lg ring-1 ring-slate-200/90">
+                      {dosen.photoUrl && !photoFailed ? (
                         <img
                           src={dosen.photoUrl}
-                          alt={dosen.name}
-                          className="w-full h-full object-cover object-top"
+                          alt={`Foto ${dosen.name}`}
+                          className="h-full w-full rounded-xl object-cover object-top"
+                          onError={() => setPhotoFailed(true)}
                         />
                       ) : (
                         <div
-                          className="w-full h-full min-h-[260px] flex flex-col items-center justify-center p-6 text-center text-white"
+                          className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-xl p-5 text-center text-white"
                           style={{
-                            backgroundImage: `linear-gradient(145deg, ${primary} 0%, ${primary}dd 60%, ${accent} 100%)`,
+                            background: `linear-gradient(145deg, ${primary} 0%, ${primary}d0 60%, #0f172a 100%)`,
                           }}
                         >
-                          <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-xs text-white flex items-center justify-center font-black text-3xl mb-3 shadow-inner border border-white/30">
+                          <img
+                            src="/assets/visual/lecturer-card-texture.png"
+                            alt=""
+                            aria-hidden="true"
+                            className="absolute inset-0 h-full w-full object-cover opacity-35 mix-blend-screen"
+                          />
+                          <span className="relative z-10 text-4xl font-extrabold tracking-wider">
                             {inisial}
-                          </div>
-                          <span className="text-xs font-bold uppercase tracking-wider text-white/90">
+                          </span>
+                          <span className="relative z-10 mt-2 text-[11px] font-bold uppercase tracking-widest text-white/80">
                             Tenaga Pendidik
                           </span>
                         </div>
                       )}
 
-                      {/* Badge Gelar / Jabatan di Sudut Bawah Foto */}
-                      {dosen.academicRank && (
-                        <div
-                          className="absolute bottom-3 left-3 right-3 py-1.5 px-3 rounded-lg text-center text-[10px] font-black uppercase tracking-wider text-slate-950 shadow-md backdrop-blur-md"
-                          style={{ backgroundColor: accent }}
-                        >
-                          {dosen.academicRank}
+                      {dosen.academicRank ? (
+                        <div className="absolute inset-x-3 bottom-3 flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-center text-[11px] font-bold tracking-wide text-white backdrop-blur-md">
+                          <span
+                            className="h-1.5 w-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: accent }}
+                          />
+                          <span className="truncate">{dosen.academicRank}</span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
-                  {/* Uraian Identitas Profil Utama */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between space-y-4">
-                    {/* Status Pill & Tag Pendidikan */}
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/80 shadow-2xs">
-                        <CheckCircleIcon className="w-4 h-4 text-emerald-600" />
+                  {/* Identitas & Ringkasan Kontak */}
+                  <div className="flex min-w-0 flex-1 flex-col text-center md:text-left">
+                    {/* Status & Chip Akademik */}
+                    <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/90 bg-emerald-50 px-3 py-1 text-[12px] font-bold text-emerald-800">
+                        <CheckCircleIcon className="h-4 w-4 text-emerald-600" />
                         <span>{dosen.isActive !== false ? 'Dosen Aktif' : 'Non-Aktif'}</span>
                       </span>
 
-                      {dosen.academicRank && (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
-                          {dosen.academicRank}
-                        </span>
-                      )}
+                      <span
+                        className="inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-bold"
+                        style={{
+                          backgroundColor: `${primary}10`,
+                          borderColor: `${primary}28`,
+                          color: primary,
+                        }}
+                      >
+                        {dosen.academicRank || 'Dosen Tetap'}
+                      </span>
 
-                      {dosen.education && (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-800 text-xs font-semibold border border-blue-200/80">
-                          Pendidikan: {dosen.education}
+                      {pendidikanLabel !== '-' ? (
+                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100/90 px-3 py-1 text-[12px] font-semibold text-slate-700">
+                          {pendidikanLabel}
                         </span>
-                      )}
+                      ) : null}
                     </div>
 
-                    {/* Nama Lengkap & Gelar */}
-                    <div>
-                      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                        {dosen.name}
-                      </h1>
-                      <div className="mt-2 flex flex-wrap items-center justify-center md:justify-start gap-2 text-sm font-semibold text-slate-600">
-                        <span className="text-blue-700 font-bold">
-                          {dosen.studyProgramName || tenant?.name || 'Program Studi'}
-                        </span>
-                        <span className="text-slate-300">&bull;</span>
-                        <span className="text-slate-500">
-                          {dosen.facultyName || 'Universitas Nahdlatul Ulama Sumatera Utara'}
-                        </span>
-                      </div>
+                    {/* Nama & Afiliasi */}
+                    <h1 className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-3xl lg:text-[34px]">
+                      {dosen.name}
+                    </h1>
+
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[14.5px] font-semibold text-slate-600 md:justify-start">
+                      <span className="font-bold" style={{ color: primary }}>
+                        {dosen.studyProgramName || tenant?.name || 'Program Studi'}
+                      </span>
+                      <span className="text-slate-300" aria-hidden="true">
+                        &bull;
+                      </span>
+                      <span>
+                        {dosen.facultyName || 'Universitas Nahdlatul Ulama Sumatera Utara'}
+                      </span>
                     </div>
 
-                    {/* Ringkasan Biografi / Deskripsi Cepat (Bila Ada) */}
-                    {dosen.bio && (
-                      <div className="rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50/70 to-slate-50/50 p-4 text-xs sm:text-sm text-slate-700 leading-relaxed text-left shadow-2xs">
-                        <span className="block text-[10px] font-extrabold text-blue-900 uppercase tracking-widest mb-1">
-                          Sekilas Profil:
-                        </span>
-                        <p className="line-clamp-3 text-slate-700 font-normal">{dosen.bio}</p>
-                      </div>
-                    )}
-
-                    {/* Parameter Identitas Cepat (NIDN, NIP, Email, Lokasi / Domisili) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1 text-left">
-                      <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-2xs">
-                        <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {/* Grid Metadata Ringkas (hanya tampilkan kolom yang informatif) */}
+                    <div className="mt-6 grid grid-cols-1 gap-3 text-left sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5">
+                        <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          <IdentificationIcon className="h-3.5 w-3.5" style={{ color: primary }} />
                           NIDN / NUPTK
                         </span>
-                        <span className="font-bold text-slate-900 text-sm font-mono mt-0.5 block">
+                        <span className="mt-1 block font-mono text-[14px] font-bold text-slate-950">
                           {dosen.nidn || '-'}
                         </span>
                       </div>
 
-                      <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-2xs">
-                        <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          NIP
-                        </span>
-                        <span className="font-bold text-slate-900 text-sm font-mono mt-0.5 block">
-                          {dosen.nip || '-'}
-                        </span>
-                      </div>
+                      {dosen.nip ? (
+                        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5">
+                          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            <IdentificationIcon className="h-3.5 w-3.5" style={{ color: primary }} />
+                            NIP
+                          </span>
+                          <span className="mt-1 block font-mono text-[14px] font-bold text-slate-950">
+                            {dosen.nip}
+                          </span>
+                        </div>
+                      ) : null}
 
-                      <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-2xs">
-                        <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5">
+                        <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          <EnvelopeIcon className="h-3.5 w-3.5" style={{ color: primary }} />
                           Email Resmi
                         </span>
                         {dosen.email ? (
                           <a
                             href={`mailto:${dosen.email}`}
-                            className="font-bold text-blue-700 hover:text-blue-900 hover:underline mt-0.5 block truncate text-xs"
+                            className="mt-1 block truncate text-[13.5px] font-bold hover:underline"
+                            style={{ color: primary }}
+                            title={dosen.email}
                           >
                             {dosen.email}
                           </a>
                         ) : (
-                          <span className="font-semibold text-slate-400 mt-0.5 block text-xs">-</span>
+                          <span className="mt-1 block text-[13.5px] font-medium text-slate-400">
+                            Belum tersedia
+                          </span>
                         )}
                       </div>
 
-                      <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/80 shadow-2xs">
-                        <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                          <MapPinIcon className="w-3 h-3 text-slate-400" />
-                          Domisili / Alamat
+                      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5">
+                        <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          <MapPinIcon className="h-3.5 w-3.5" style={{ color: primary }} />
+                          Domisili
                         </span>
-                        <span className="font-semibold text-slate-800 text-xs mt-0.5 block truncate" title={dosen.address || undefined}>
+                        <span
+                          className="mt-1 block truncate text-[13.5px] font-semibold text-slate-800"
+                          title={dosen.address || undefined}
+                        >
                           {dosen.address || 'Medan, Sumatera Utara'}
                         </span>
                       </div>
                     </div>
 
-                    {/* Tombol Profil Publikasi Ilmiah Cepat */}
-                    <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-2.5">
-                      {sintaLink ? (
-                        <a
-                          href={sintaLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs transition-all shadow-xs hover:-translate-y-0.5"
-                        >
-                          <span>Profil SINTA</span>
-                          <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5 text-slate-950" />
-                        </a>
-                      ) : (
-                        <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-semibold text-xs border border-slate-200">
-                          SINTA Belum Ditautkan
-                        </span>
-                      )}
-
-                      {dosen.googleScholar && (
-                        <a
-                          href={dosen.googleScholar}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-xs hover:-translate-y-0.5"
-                        >
-                          <span>Google Scholar</span>
-                          <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-
-                      {dosen.scopusId && (
-                        <a
-                          href={`https://www.scopus.com/authid/detail.uri?authorId=${dosen.scopusId}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs transition-all shadow-xs hover:-translate-y-0.5"
-                        >
-                          <span>Scopus ID</span>
-                          <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-
-                      {dosen.orcid && (
-                        <a
-                          href={`https://orcid.org/${dosen.orcid}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition-all shadow-xs hover:-translate-y-0.5"
-                        >
-                          <span>ORCID</span>
-                          <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                    </div>
+                    {/* Aksi Cepat Tautan Publikasi (hanya yang terhubung) */}
+                    {activePublications.length > 0 ? (
+                      <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
+                        {activePublications.map((pub) => (
+                          <a
+                            key={pub.key}
+                            href={pub.href!}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[13px] font-bold text-white shadow-xs transition hover:-translate-y-0.5 hover:opacity-95"
+                            style={{ backgroundColor: primary }}
+                          >
+                            <span>{pub.shortLabel}</span>
+                            <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
-            </div>
+            </article>
 
-            {/* 2. RINCIAN TABULAR 2 KOLOM (MODERN CARDS) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Kolom Kiri (1/3): Informasi Kepegawaian & Verifikasi Data */}
-              <div className="space-y-6">
-                <div className="rounded-3xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100/70 border-b border-slate-200 flex items-center gap-2.5">
-                    <BuildingLibraryIcon className="w-5 h-5 text-blue-700" />
-                    <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">
+            {/* 2. RINCIAN INFORMASI AKADEMIK & KEPEGAWAIAN */}
+            <div className="grid grid-cols-1 gap-7 lg:grid-cols-12">
+              {/* Kolom Kiri (4/12): Informasi Kepegawaian */}
+              <div className="lg:col-span-4">
+                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
+                  <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/80 px-6 py-4">
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-xl"
+                      style={{ backgroundColor: `${primary}14`, color: primary }}
+                    >
+                      <BuildingLibraryIcon className="h-4 w-4" />
+                    </span>
+                    <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
                       Informasi Kepegawaian
                     </h2>
                   </div>
 
-                  <dl className="divide-y divide-slate-100 text-xs">
+                  <dl className="divide-y divide-slate-100">
                     <div className="px-6 py-3.5">
-                      <dt className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                      <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                         Program Studi (Homebase)
                       </dt>
-                      <dd className="mt-1 font-bold text-slate-800 text-sm">
+                      <dd className="mt-1 text-[14px] font-bold text-slate-900">
                         {dosen.studyProgramName || tenant?.name || '-'}
                       </dd>
                     </div>
 
                     <div className="px-6 py-3.5">
-                      <dt className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                      <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                         Fakultas
                       </dt>
-                      <dd className="mt-1 font-bold text-slate-800">
+                      <dd className="mt-1 text-[14px] font-semibold text-slate-800">
                         {dosen.facultyName || 'Universitas Nahdlatul Ulama Sumatera Utara'}
                       </dd>
                     </div>
 
                     <div className="px-6 py-3.5">
-                      <dt className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                      <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                         Jabatan Fungsional
                       </dt>
-                      <dd className="mt-1 font-bold text-slate-800">
+                      <dd className="mt-1 text-[14px] font-semibold text-slate-800">
                         {dosen.academicRank || 'Tenaga Pendidik'}
                       </dd>
                     </div>
 
                     <div className="px-6 py-3.5">
-                      <dt className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                      <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                         Pendidikan Terakhir
                       </dt>
-                      <dd className="mt-1 font-bold text-slate-800">
-                        {dosen.education || (
-                          namaBersih.includes('M.') || namaBersih.includes('M.Si') || namaBersih.includes('M.Kom') || namaBersih.includes('M.Pd')
-                            ? 'Magister (S2)'
-                            : namaBersih.includes('Dr.')
-                            ? 'Doktor (S3)'
-                            : '-'
-                        )}
+                      <dd className="mt-1 text-[14px] font-semibold text-slate-800">
+                        {pendidikanLabel}
                       </dd>
                     </div>
 
                     <div className="px-6 py-3.5">
-                      <dt className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                        Tempat &amp; Tanggal Lahir
+                      <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Tempat, Tanggal Lahir
                       </dt>
-                      <dd className="mt-1 font-semibold text-slate-800">
-                        {dosen.placeOfBirth || dosen.dateOfBirth
-                          ? [dosen.placeOfBirth, dosen.dateOfBirth].filter(Boolean).join(', ')
-                          : '-'}
-                      </dd>
+                      <dd className="mt-1 text-[14px] font-semibold text-slate-800">{ttlLabel}</dd>
                     </div>
 
                     <div className="px-6 py-3.5">
-                      <dt className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                      <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                         Jenis Kelamin
                       </dt>
-                      <dd className="mt-1 font-semibold text-slate-800">
-                        {dosen.gender === 'L' || dosen.gender === 'Laki-Laki'
-                          ? 'Laki-laki'
-                          : dosen.gender === 'P' || dosen.gender === 'Perempuan'
-                          ? 'Perempuan'
-                          : '-'}
-                      </dd>
+                      <dd className="mt-1 text-[14px] font-semibold text-slate-800">{genderLabel}</dd>
                     </div>
 
-                    {dosen.address && (
+                    {dosen.address ? (
                       <div className="px-6 py-3.5">
-                        <dt className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                          Domisili / Alamat
+                        <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          Alamat / Domisili
                         </dt>
-                        <dd className="mt-1 font-semibold text-slate-800 text-xs">
+                        <dd className="mt-1 text-[13.5px] font-semibold text-slate-800">
                           {dosen.address}
                         </dd>
                       </div>
-                    )}
+                    ) : null}
                   </dl>
                 </div>
               </div>
 
-              {/* Kolom Kanan (2/3): Keahlian, Biografi, & Portofolio */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Bidang Keahlian */}
-                <div className="rounded-3xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100/70 border-b border-slate-200 flex items-center gap-2.5">
-                    <BriefcaseIcon className="w-5 h-5 text-indigo-700" />
-                    <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                      Bidang Keahlian &amp; Fokus Riset
+              {/* Kolom Kanan (8/12): Biografi, Keahlian & Indeks Publikasi */}
+              <div className="space-y-6 lg:col-span-8">
+                {/* Biografi Akademik */}
+                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
+                  <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/80 px-6 py-4">
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-xl"
+                      style={{ backgroundColor: `${primary}14`, color: primary }}
+                    >
+                      <BookOpenIcon className="h-4 w-4" />
+                    </span>
+                    <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
+                      Profil &amp; Biografi Akademik
                     </h2>
                   </div>
-                  <div className="p-6 text-sm text-slate-700 leading-relaxed">
-                    {dosen.expertise ? (
-                      <p className="font-medium text-slate-800">{dosen.expertise}</p>
-                    ) : (
-                      <p className="text-slate-400 italic text-xs">Belum ada keterangan bidang keahlian khusus.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Deskripsi / Biografi Akademik Lengkap */}
-                <div className="rounded-3xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100/70 border-b border-slate-200 flex items-center gap-2.5">
-                    <BookOpenIcon className="w-5 h-5 text-emerald-700" />
-                    <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                      Deskripsi / Biografi Akademik
-                    </h2>
-                  </div>
-                  <div className="p-6 text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                  <div className="p-6 text-[15px] leading-relaxed text-slate-700 whitespace-pre-line">
                     {dosen.bio ? (
                       <p>{dosen.bio}</p>
                     ) : (
-                      <p className="text-slate-400 italic text-xs">
-                        Belum ada biografi akademik yang dilampirkan untuk dosen ini di portal ONE UNUSU.
+                      <p className="text-[13.5px] italic text-slate-400">
+                        Biografi akademik belum dilengkapi pada portal ONE UNUSU.
                       </p>
                     )}
                   </div>
                 </div>
 
-                {/* Tautan Riset & Publikasi Ilmiah */}
-                <div className="rounded-3xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100/70 border-b border-slate-200 flex items-center gap-2.5">
-                    <AcademicCapIcon className="w-5 h-5 text-amber-700" />
-                    <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                      Tautan Riset &amp; Publikasi Ilmiah
+                {/* Bidang Keahlian (hanya tampil bila tersedia agar tidak menambah blok kosong) */}
+                {dosen.expertise ? (
+                  <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
+                    <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/80 px-6 py-4">
+                      <span
+                        className="flex h-8 w-8 items-center justify-center rounded-xl"
+                        style={{ backgroundColor: `${primary}14`, color: primary }}
+                      >
+                        <BriefcaseIcon className="h-4 w-4" />
+                      </span>
+                      <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
+                        Bidang Keahlian &amp; Fokus Riset
+                      </h2>
+                    </div>
+                    <div className="p-6">
+                      {expertiseTags.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {expertiseTags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center rounded-full border px-3.5 py-1.5 text-[13px] font-semibold"
+                              style={{
+                                backgroundColor: `${primary}0d`,
+                                borderColor: `${primary}24`,
+                                color: primary,
+                              }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[15px] leading-relaxed text-slate-700">
+                          {dosen.expertise}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Indeks Riset & Publikasi Ilmiah */}
+                <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm">
+                  <div className="flex items-center gap-2.5 border-b border-slate-200/80 bg-slate-50/80 px-6 py-4">
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-xl"
+                      style={{ backgroundColor: `${primary}14`, color: primary }}
+                    >
+                      <AcademicCapIcon className="h-4 w-4" />
+                    </span>
+                    <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
+                      Indeks Riset &amp; Publikasi Ilmiah
                     </h2>
                   </div>
 
-                  <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="p-4 rounded-2xl border border-amber-200/80 bg-amber-50/40 flex items-center justify-between min-h-[72px] transition hover:bg-amber-50">
-                      <div className="min-w-0 pr-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block truncate">
-                          SINTA Kemdiktisaintek
-                        </span>
-                        <span className="font-mono text-slate-900 font-bold mt-0.5 block truncate">
-                          {dosen.sintaId || '-'}
-                        </span>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {sintaLink ? (
-                          <a
-                            href={sintaLink}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition shadow-2xs"
+                  <div className="grid grid-cols-1 gap-3.5 p-6 sm:grid-cols-2">
+                    {publicationLinks.map((pub) =>
+                      pub.href ? (
+                        <a
+                          key={pub.key}
+                          href={pub.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group flex items-center justify-between gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md"
+                          style={{
+                            backgroundColor: `${primary}08`,
+                            borderColor: `${primary}28`,
+                          }}
+                        >
+                          <div className="min-w-0">
+                            <span
+                              className="block truncate text-[11px] font-extrabold uppercase tracking-wider"
+                              style={{ color: primary }}
+                            >
+                              {pub.label}
+                            </span>
+                            <span className="mt-1 block truncate font-mono text-[13.5px] font-bold text-slate-900">
+                              {pub.value}
+                            </span>
+                          </div>
+                          <span
+                            className="inline-flex shrink-0 items-center gap-1 rounded-xl px-3 py-1.5 text-[12px] font-bold text-white transition group-hover:opacity-95"
+                            style={{ backgroundColor: primary }}
                           >
-                            Buka &rarr;
-                          </a>
-                        ) : (
-                          <span className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200">
-                            N/A
+                            <span>Buka</span>
+                            <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
                           </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl border border-blue-200/80 bg-blue-50/40 flex items-center justify-between min-h-[72px] transition hover:bg-blue-50">
-                      <div className="min-w-0 pr-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 block truncate">
-                          Google Scholar
-                        </span>
-                        <span className="text-slate-900 font-bold mt-0.5 block truncate">
-                          {dosen.googleScholar ? 'Terdaftar' : '-'}
-                        </span>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {dosen.googleScholar ? (
-                          <a
-                            href={dosen.googleScholar}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition shadow-2xs"
-                          >
-                            Buka &rarr;
-                          </a>
-                        ) : (
-                          <span className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200">
-                            N/A
+                        </a>
+                      ) : (
+                        <div
+                          key={pub.key}
+                          className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4"
+                        >
+                          <div className="min-w-0">
+                            <span className="block truncate text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                              {pub.label}
+                            </span>
+                            <span className="mt-1 block text-[12.5px] text-slate-400">
+                              Belum ditautkan
+                            </span>
+                          </div>
+                          <span className="shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-400">
+                            &mdash;
                           </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl border border-orange-200/80 bg-orange-50/40 flex items-center justify-between min-h-[72px] transition hover:bg-orange-50">
-                      <div className="min-w-0 pr-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-orange-800 block truncate">
-                          Scopus Author ID
-                        </span>
-                        <span className="font-mono text-slate-900 font-bold mt-0.5 block truncate">
-                          {dosen.scopusId || '-'}
-                        </span>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {dosen.scopusId ? (
-                          <a
-                            href={`https://www.scopus.com/authid/detail.uri?authorId=${dosen.scopusId}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs transition shadow-2xs"
-                          >
-                            Buka &rarr;
-                          </a>
-                        ) : (
-                          <span className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200">
-                            N/A
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/40 flex items-center justify-between min-h-[72px] transition hover:bg-emerald-50">
-                      <div className="min-w-0 pr-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block truncate">
-                          ORCID ID
-                        </span>
-                        <span className="font-mono text-slate-900 font-bold mt-0.5 block truncate">
-                          {dosen.orcid || '-'}
-                        </span>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {dosen.orcid ? (
-                          <a
-                            href={`https://orcid.org/${dosen.orcid}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition shadow-2xs"
-                          >
-                            Buka &rarr;
-                          </a>
-                        ) : (
-                          <span className="inline-flex items-center justify-center min-w-[76px] px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs border border-slate-200">
-                            N/A
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                        </div>
+                      ),
+                    )}
                   </div>
                 </div>
               </div>
@@ -551,7 +634,7 @@ export const LecturerDetailPage: React.FC = () => {
           </div>
         )}
       </section>
-    </>
+    </div>
   );
 };
 
