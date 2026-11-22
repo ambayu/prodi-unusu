@@ -927,6 +927,82 @@ router.get(
   }),
 );
 
+/**
+ * GET /api/v1/public/news/:slug
+ *
+ * Detail satu berita terbit lintas prodi tanpa `requireTenant`, dipakai oleh
+ * ONE UNUSU API Hub (`GET /api/v2/website/berita/:slug`). Parameter opsional
+ * `?prodi=` (kode atau nama prodi/fakultas) dipakai membedakan slug yang sama
+ * di dua tenant berbeda.
+ */
+router.get(
+  '/news/:slug',
+  validate({ params: slugParamSchema }),
+  asyncHandler(async (req, res) => {
+    const { slug } = getParams<{ slug: string }>(req);
+    const prodiFilter =
+      typeof req.query.prodi === 'string' ? req.query.prodi.trim().toLowerCase() : '';
+
+    const candidates = await prisma.post.findMany({
+      where: { slug, status: 'published', isPublished: true },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
+      take: 20,
+      include: {
+        category: { select: { name: true, slug: true } },
+        studyProgram: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            faculty: { select: { name: true } },
+          },
+        },
+        faculty: { select: { id: true, code: true, name: true } },
+      },
+    });
+
+    const post =
+      (prodiFilter
+        ? candidates.find((p) => {
+            const keys = [
+              p.studyProgram?.code,
+              p.studyProgram?.name,
+              p.faculty?.code,
+              p.faculty?.name,
+            ]
+              .filter(Boolean)
+              .map((v) => String(v).trim().toLowerCase());
+            return keys.includes(prodiFilter);
+          })
+        : null) ?? candidates[0];
+
+    if (!post) {
+      throw AppError.notFound('Berita tidak ditemukan atau belum diterbitkan.');
+    }
+
+    await prisma.post.update({ where: { id: post.id }, data: { views: { increment: 1 } } });
+
+    const isFaculty = !post.studyProgram && Boolean(post.faculty);
+    res.json({
+      success: true,
+      post: {
+        id: post.id,
+        title: post.title,
+        slug: post.slug,
+        excerpt: post.excerpt,
+        content: post.content,
+        thumbnailUrl: post.thumbnailUrl,
+        publishedAt: post.publishedAt,
+        views: post.views + 1,
+        category: post.category,
+        studyProgramCode: post.studyProgram?.code ?? post.faculty?.code ?? null,
+        studyProgramName: post.studyProgram?.name ?? post.faculty?.name ?? null,
+        facultyName: post.studyProgram?.faculty.name ?? (isFaculty ? post.faculty?.name : null),
+      },
+    });
+  }),
+);
+
 /** GET /api/v1/public/sitemap: daftar URL publik tenant untuk sitemap.xml. */
 router.get(
   '/sitemap',
