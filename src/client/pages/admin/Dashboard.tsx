@@ -5,14 +5,12 @@ import {
   AcademicCapIcon,
   ArrowRightIcon,
   ArrowTopRightOnSquareIcon,
-  BookOpenIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
   ClockIcon,
   ExclamationTriangleIcon,
   InboxIcon,
   NewspaperIcon,
-  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../../components/AdminLayout';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/States';
@@ -104,15 +102,15 @@ export const Dashboard: React.FC = () => {
         />
       ) : stats ? (
         <div className="space-y-5">
-          {/* 1. Angka Kunci Akademik */}
-          <section className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-[#1e3a8a] via-[#1b357d] to-[#13265c] p-5 text-white shadow-sm sm:p-6">
+          {/* 1. Ringkasan Program Studi */}
+          <section className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-[#1e3a8a] via-[#1b357d] to-[#13265c] text-white shadow-sm">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[#fbbf24]/15 blur-2xl"
+              className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-[#fbbf24]/20 blur-2xl"
             />
-            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#fbbf24]">
+            <div className="relative flex flex-col sm:flex-row sm:items-stretch sm:justify-between">
+              <div className="flex min-w-0 flex-1 flex-col justify-center p-5 sm:p-6">
+                <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#fbbf24]">
                   <AcademicCapIcon className="h-3.5 w-3.5" />
                   <span>{tenant?.facultyName ?? 'Program Studi Aktif'}</span>
                 </div>
@@ -124,52 +122,12 @@ export const Dashboard: React.FC = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5 sm:gap-3 lg:min-w-[430px]">
-                {[
-                  {
-                    label: 'Dosen Aktif',
-                    value: stats.lecturers,
-                    sub: 'Tenaga pengajar',
-                    icon: UserGroupIcon,
-                    to: '/admin/dosen',
-                  },
-                  {
-                    label: 'Mata Kuliah',
-                    value: stats.courses,
-                    sub: `${stats.semesters} semester`,
-                    icon: BookOpenIcon,
-                    to: '/admin/kurikulum',
-                  },
-                  {
-                    label: 'Total SKS',
-                    value: stats.totalCredits,
-                    sub: 'Beban kurikulum',
-                    icon: AcademicCapIcon,
-                    to: '/admin/kurikulum',
-                  },
-                ].map((metric) => {
-                  const Icon = metric.icon;
-                  return (
-                    <Link
-                      key={metric.label}
-                      to={metric.to}
-                      className="group rounded-[13px] border border-white/15 bg-white/10 px-3.5 py-3 backdrop-blur-sm transition-colors hover:border-[#fbbf24]/60 hover:bg-white/15"
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-100/85">
-                          {metric.label}
-                        </span>
-                        <Icon className="h-4 w-4 shrink-0 text-[#fbbf24]" />
-                      </div>
-                      <p className="mt-1.5 text-2xl font-black leading-none tracking-tight tabular-nums text-white">
-                        {metric.value.toLocaleString('id-ID')}
-                      </p>
-                      <p className="mt-1 truncate text-[10px] font-medium text-blue-100/75">
-                        {metric.sub}
-                      </p>
-                    </Link>
-                  );
-                })}
+              <div className="relative flex shrink-0 items-end justify-end px-5 sm:px-6 sm:pt-3">
+                <img
+                  src="/assets/tentang/students-duo.png"
+                  alt="Mahasiswa Universitas Nahdlatul Ulama Sumatera Utara"
+                  className="h-32 w-auto select-none object-contain object-bottom drop-shadow-[0_10px_18px_rgba(0,0,0,0.28)] sm:h-36 md:h-40"
+                />
               </div>
             </div>
           </section>
