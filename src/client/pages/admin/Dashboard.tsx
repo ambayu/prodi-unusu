@@ -103,32 +103,30 @@ export const Dashboard: React.FC = () => {
       ) : stats ? (
         <div className="space-y-5">
           {/* 1. Ringkasan Program Studi */}
-          <section className="relative overflow-hidden rounded-[18px] bg-gradient-to-br from-[#1e3a8a] via-[#1b357d] to-[#13265c] text-white shadow-sm">
+          <section className="relative flex min-h-[168px] items-center overflow-hidden rounded-[18px] bg-gradient-to-r from-[#1e3a8a] via-[#183173] to-[#13265c] text-white shadow-sm sm:min-h-[192px]">
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-[#fbbf24]/20 blur-2xl"
-            />
-            <div className="relative flex flex-col sm:flex-row sm:items-stretch sm:justify-between">
-              <div className="flex min-w-0 flex-1 flex-col justify-center p-5 sm:p-6">
-                <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#fbbf24]">
-                  <AcademicCapIcon className="h-3.5 w-3.5" />
-                  <span>{tenant?.facultyName ?? 'Program Studi Aktif'}</span>
-                </div>
-                <h2 className="mt-2 truncate text-lg font-extrabold tracking-tight text-white sm:text-xl">
-                  {tenant?.name ?? 'Ringkasan Akademik'}
-                </h2>
-                <p className="mt-1 text-xs text-blue-100/85">
-                  {stats.semesters} semester aktif pada kurikulum program studi · {stats.postsPublished} berita terbit
-                </p>
-              </div>
+              className="pointer-events-none absolute inset-y-0 right-0 w-[62%] max-w-[480px] sm:w-[48%] lg:w-[42%]"
+            >
+              <img
+                src="/assets/admin-dashboard-banner-texture.jpg"
+                alt=""
+                className="h-full w-full select-none object-cover object-right opacity-90"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#183173] via-[#183173]/45 to-transparent" />
+            </div>
 
-              <div className="relative flex shrink-0 items-end justify-end px-5 sm:px-6 sm:pt-3">
-                <img
-                  src="/assets/tentang/students-duo.png"
-                  alt="Mahasiswa Universitas Nahdlatul Ulama Sumatera Utara"
-                  className="h-32 w-auto select-none object-contain object-bottom drop-shadow-[0_10px_18px_rgba(0,0,0,0.28)] sm:h-36 md:h-40"
-                />
+            <div className="relative z-10 max-w-xl min-w-0 px-6 py-7 sm:px-7 sm:py-8">
+              <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#fbbf24]">
+                <AcademicCapIcon className="h-3.5 w-3.5" />
+                <span>{tenant?.facultyName ?? 'Program Studi Aktif'}</span>
               </div>
+              <h2 className="mt-2.5 truncate text-xl font-extrabold tracking-tight text-white sm:text-2xl">
+                {tenant?.name ?? 'Ringkasan Akademik'}
+              </h2>
+              <p className="mt-1.5 text-xs text-blue-100/85 sm:text-sm">
+                {stats.semesters} semester aktif pada kurikulum program studi · {stats.postsPublished} berita terbit
+              </p>
             </div>
           </section>
 

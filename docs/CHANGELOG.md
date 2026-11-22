@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Dashboard Admin Prodi: mengganti 3 kartu metrik (Dosen Aktif, Mata Kuliah, Total SKS) di sisi kanan banner Program Studi Aktif dengan gambar visual mahasiswa UNUSU (`/assets/tentang/students-duo.png`).
+- Dashboard Admin Prodi: mengganti 3 kartu metrik (Dosen Aktif, Mata Kuliah, Total SKS) di sisi kanan banner Program Studi Aktif dengan tekstur ornamen arsitektural biru–emas (`/assets/admin-dashboard-banner-texture.jpg`) dan menambah sedikit tinggi banner.
 - Kurikulum: panel admin kini memakai penyaring kartu Semua dan Semester 1 sampai 8, lalu menampilkan penawaran yang dikelompokkan per semester beserta ringkasan jumlah mata kuliah, SKS, dan RPS.
 - Bank Dokumen: pratinjau, unduh, dan penghapusan dokumen migrasi BAKSI kini membaca kembali berkas legacy dari `uploads/dokumen/baksi`, sementara unggahan baru tetap memakai `uploads/documents`.
 - Hero Slider: scope fakultas kini menyimpan dan membaca widget `hero_slider` pada halaman fakultas sendiri. Beranda fakultas memakai API hero publik yang sama, sehingga banner editor dan domain fakultas konsisten; gambar bawaan hanya fallback.
